@@ -6,6 +6,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <cmath>
+#include <functional>
 #include <emscripten/emscripten.h>
 
 void trim(std::string &s) {
@@ -89,6 +90,7 @@ std::vector<std::string> split(const std::string &line) {
 }
 
 typedef std::vector<std::vector<std::string>> Table;
+typedef std::function<std::string(const std::string&)> CellFormatter;
 
 Table parse(const std::string &input) {
   Table t;
@@ -113,57 +115,65 @@ std::string escape(const std::string &s) {
   return out;
 }
 
-std::string to_latex(const Table &t) {
+std::string to_latex_formatted(const Table &t, const CellFormatter &format_cell) {
   if (t.empty()) return "";
   std::string out = "\\begin{tabular}{" + std::string(t[0].size(), 'c') + "}\n\\hline\n";
   for (const auto &row : t) {
     for (size_t i = 0; i < row.size(); ++i) {
       if (i) out += " & ";
-      out += escape(row[i]);
+      out += escape(format_cell(row[i]));
     }
     out += " \\\\\n";
   }
   return out + "\\hline\n\\end{tabular}";
+}
+
+std::string to_latex(const Table &t) {
+  return to_latex_formatted(t, [](const std::string &cell) {
+    return cell;
+  });
 }
 
 std::string to_latex_rounded(const Table &t, int decimals) {
-  if (t.empty()) return "";
-  std::string out = "\\begin{tabular}{" + std::string(t[0].size(), 'c') + "}\n\\hline\n";
-  for (const auto &row : t) {
-    for (size_t i = 0; i < row.size(); ++i) {
-      if (i) out += " & ";
-      std::string cell = round_number(row[i], decimals);
-      out += escape(cell);
-    }
-    out += " \\\\\n";
-  }
-  return out + "\\hline\n\\end{tabular}";
+  return to_latex_formatted(t, [decimals](const std::string &cell) {
+    return round_number(cell, decimals);
+  });
 }
 
 std::string to_latex_sig_figs(const Table &t, int sig_figs) {
-  if (t.empty()) return "";
-  std::string out = "\\begin{tabular}{" + std::string(t[0].size(), 'c') + "}\n\\hline\n";
-  for (const auto &row : t) {
-    for (size_t i = 0; i < row.size(); ++i) {
-      if (i) out += " & ";
-      std::string cell = round_significant_figures(row[i], sig_figs);
-      out += escape(cell);
-    }
-    out += " \\\\\n";
-  }
-  return out + "\\hline\n\\end{tabular}";
+  return to_latex_formatted(t, [sig_figs](const std::string &cell) {
+    return round_significant_figures(cell, sig_figs);
+  });
 }
 
-std::string to_csv(const Table &t) {
+std::string to_csv_formatted(const Table &t, const CellFormatter &format_cell) {
   std::string out;
   for (size_t i = 0; i < t.size(); ++i) {
     for (size_t j = 0; j < t[i].size(); ++j) {
       if (j) out += ',';
-      out += t[i][j];
+      out += format_cell(t[i][j]);
     }
     if (i + 1 < t.size()) out += '\n';
   }
   return out;
+}
+
+std::string to_csv(const Table &t) {
+  return to_csv_formatted(t, [](const std::string &cell) {
+    return cell;
+  });
+}
+
+std::string to_csv_rounded(const Table &t, int decimals) {
+  return to_csv_formatted(t, [decimals](const std::string &cell) {
+    return round_number(cell, decimals);
+  });
+}
+
+std::string to_csv_sig_figs(const Table &t, int sig_figs) {
+  return to_csv_formatted(t, [sig_figs](const std::string &cell) {
+    return round_significant_figures(cell, sig_figs);
+  });
 }
 
 std::string to_tikz_graph(const Table &t, const std::string &filename, int sig_figs, const std::string &legend_pos, const std::string &scale_mode) {
@@ -420,6 +430,12 @@ EMSCRIPTEN_KEEPALIVE char* gen_latex(const char* in) {
 }
 EMSCRIPTEN_KEEPALIVE char* gen_csv(const char* in) {
   return in ? dup(to_csv(parse(in))) : dup("");
+}
+EMSCRIPTEN_KEEPALIVE char* gen_csv_rounded(const char* in, int decimals) {
+  return in ? dup(to_csv_rounded(parse(in), decimals)) : dup("");
+}
+EMSCRIPTEN_KEEPALIVE char* gen_csv_sig_figs(const char* in, int sig_figs) {
+  return in ? dup(to_csv_sig_figs(parse(in), sig_figs)) : dup("");
 }
 EMSCRIPTEN_KEEPALIVE char* gen_latex_rounded(const char* in, int decimals) {
   return in ? dup(to_latex_rounded(parse(in), decimals)) : dup("");

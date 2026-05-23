@@ -20,19 +20,9 @@ jobs:
       uses: mymindstorm/setup-emsdk@v14
       with:
         version: 'latest'
-    
-    - name: Create dist directory
-      run: mkdir -p dist
-    
+
     - name: Build WASM
-      run: |
-        emcc convert.cpp -O3 \
-          -s WASM=1 \
-          -s MODULARIZE=1 \
-          -s EXPORT_NAME=ConvertModule \
-          -s EXPORTED_FUNCTIONS='[_gen_latex,_gen_csv,_free]' \
-          -s EXPORTED_RUNTIME_METHODS='["cwrap","UTF8ToString"]' \
-          -o dist/convert.js
+      run: bash scripts/build-wasm.sh
     
     - name: Commit and push if changed
       run: |
