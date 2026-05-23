@@ -3,60 +3,133 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>データ変換</title>
+<title>converTeXcel — データ変換ツール</title>
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" type="text/css" href="https://tikzjax.com/v1/fonts.css">
 <script src="https://tikzjax.com/v1/tikzjax.js"></script>
 </head>
 <body>
-<h2>データ変換</h2>
-<label for="input">入力データ:</label><br>
-<textarea id="input" rows="8" placeholder="データを貼り付け"></textarea><br>
-<fieldset>
-  <legend>丸め方式を選択:</legend>
-  <label><input type="radio" name="round-mode" value="none" checked> 丸めなし</label>
-  <label><input type="radio" name="round-mode" value="decimal"> 小数点以下の桁数</label>
-  <label><input type="radio" name="round-mode" value="sig-figs"> 有効数字</label>
-</fieldset>
-<label for="decimals">小数点以下桁数:</label>
-<input type="number" id="decimals" min="0" value="2">
-<label for="sig-figs">有効数字:</label>
-<input type="number" id="sig-figs" min="1" value="3"><br>
-<button id="latex-btn">LaTeX</button>
-<button id="csv-btn">CSV</button>
-<button id="tikz-btn">TikZ グラフ</button><br>
-<label for="filename">ファイル名 (TikZ用):</label>
-<input type="text" id="filename" value="data" placeholder="data">
-<label for="legend-pos">凡例位置:</label>
-<select id="legend-pos">
-  <option value="north west">north west</option>
-  <option value="north east">north east</option>
-  <option value="south west">south west</option>
-  <option value="south east">south east</option>
-  <option value="north">north</option>
-  <option value="south">south</option>
-  <option value="east">east</option>
-  <option value="west">west</option>
-</select>
-<label for="scale-mode">軸スケール:</label>
-<select id="scale-mode">
-  <option value="linear">線形</option>
-  <option value="semilog">片対数</option>
-  <option value="loglog">両対数</option>
-</select>
-<h3>LaTeX</h3>
-<label for="latex">LaTeX出力:</label><br>
-<textarea id="latex" rows="8" placeholder="LaTeX形式で出力されます"></textarea>
-<h3>CSV</h3>
-<label for="csv">CSV出力:</label><br>
-<textarea id="csv" rows="8" placeholder="CSV形式で出力されます"></textarea>
-<h3>TikZ グラフ</h3>
-<label for="tikz">TikZ グラフ出力:</label><br>
-<textarea id="tikz" rows="15" placeholder="TikZ/PGFPlotsグラフコードが出力されます"></textarea><br>
-<button id="preview-btn">プレビュー表示</button>
-<h3>TikZ プレビュー</h3>
-<div id="tikz-preview" style="border: 1px solid #ccc; padding: 10px; min-height: 200px; background: white;"></div>
+
+<header>
+  <img class="logo" src="logo.png" alt="converTeXcel">
+  <span class="tagline">Excel / TSV データを LaTeX・CSV・TikZ グラフに変換</span>
+</header>
+
+<main>
+
+  <!-- 入力 -->
+  <div class="card full-width">
+    <h2><span class="icon">📋</span>入力データ</h2>
+    <label for="input">Excel やスプレッドシートからコピーしたデータを貼り付けてください</label>
+    <textarea id="input" rows="7" placeholder="列ヘッダー&#10;x&#9;y1&#9;y2&#10;1&#9;2.3&#9;4.5&#10;2&#9;3.1&#9;5.2"></textarea>
+
+    <div class="options-row">
+      <div class="radio-group">
+        <label><input type="radio" name="round-mode" value="none" checked> 丸めなし</label>
+        <label><input type="radio" name="round-mode" value="decimal"> 小数点以下桁数</label>
+        <label><input type="radio" name="round-mode" value="sig-figs"> 有効数字</label>
+      </div>
+      <div class="number-field">
+        <label for="decimals">小数点:</label>
+        <input type="number" id="decimals" min="0" value="2">
+      </div>
+      <div class="number-field">
+        <label for="sig-figs">有効数字:</label>
+        <input type="number" id="sig-figs" min="1" value="3">
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button id="latex-btn" class="primary">LaTeX 変換</button>
+      <button id="csv-btn" class="primary">CSV 変換</button>
+      <button id="tikz-btn" class="primary">TikZ グラフ生成</button>
+    </div>
+  </div>
+
+  <!-- LaTeX 出力 -->
+  <div class="card">
+    <h2><span class="icon">📄</span>LaTeX 出力</h2>
+    <div class="output-header">
+      <label for="latex">tabular / siunitx 形式</label>
+      <button class="copy-btn" data-target="latex">コピー</button>
+    </div>
+    <textarea id="latex" rows="10" placeholder="LaTeX 形式で出力されます" readonly></textarea>
+  </div>
+
+  <!-- CSV 出力 -->
+  <div class="card">
+    <h2><span class="icon">📊</span>CSV 出力</h2>
+    <div class="output-header">
+      <label for="csv">カンマ区切り形式</label>
+      <button class="copy-btn" data-target="csv">コピー</button>
+    </div>
+    <textarea id="csv" rows="10" placeholder="CSV 形式で出力されます" readonly></textarea>
+  </div>
+
+  <!-- TikZ -->
+  <div class="card full-width">
+    <h2><span class="icon">📈</span>TikZ グラフ</h2>
+
+    <div class="tikz-controls">
+      <div class="field">
+        <label for="filename">ファイル名（TikZ 用）</label>
+        <input type="text" id="filename" value="data" placeholder="data">
+      </div>
+      <div class="field">
+        <label for="legend-pos">凡例位置</label>
+        <select id="legend-pos">
+          <option value="north west">north west</option>
+          <option value="north east">north east</option>
+          <option value="south west">south west</option>
+          <option value="south east">south east</option>
+          <option value="north">north</option>
+          <option value="south">south</option>
+          <option value="east">east</option>
+          <option value="west">west</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="scale-mode">軸スケール</label>
+        <select id="scale-mode">
+          <option value="linear">線形</option>
+          <option value="semilog">片対数</option>
+          <option value="loglog">両対数</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="output-header">
+      <label for="tikz">PGFPlots コード</label>
+      <button class="copy-btn" data-target="tikz">コピー</button>
+    </div>
+    <textarea id="tikz" rows="12" placeholder="TikZ/PGFPlots グラフコードが出力されます" readonly></textarea>
+
+    <div class="btn-row" style="margin-top:14px">
+      <button id="preview-btn" class="secondary">プレビュー表示</button>
+    </div>
+
+    <div id="tikz-preview">プレビューはここに表示されます</div>
+  </div>
+
+</main>
+
+<footer>converTeXcel — Excel データを LaTeX / TikZ に変換するツール</footer>
+
 <script src="dist/convert.js"></script>
 <script src="script.js"></script>
+<script>
+  // Copy buttons
+  document.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = document.getElementById(btn.dataset.target);
+      if (!target || !target.value) return;
+      navigator.clipboard.writeText(target.value).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = '✓ コピー済み';
+        setTimeout(() => btn.textContent = orig, 1500);
+      });
+    });
+  });
+</script>
 </body>
 </html>

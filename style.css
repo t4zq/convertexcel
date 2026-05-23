@@ -1,0 +1,278 @@
+:root {
+  --green: #2a7a2a;
+  --green-light: #d6ecd6;
+  --green-hover: #1f5c1f;
+  --gray: #666;
+  --gray-dark: #333;
+  --gray-light: #f5f5f5;
+  --border: #ddd;
+  --radius: 8px;
+  --shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #f0f2f0;
+  color: var(--gray-dark);
+  min-height: 100vh;
+}
+
+/* ── Header ── */
+header {
+  background: #fff;
+  border-bottom: 3px solid var(--green);
+  padding: 16px 32px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: var(--shadow);
+}
+
+header img.logo {
+  height: 48px;
+  width: auto;
+}
+
+header .tagline {
+  font-size: .85rem;
+  color: var(--gray);
+  margin-left: auto;
+}
+
+/* ── Main layout ── */
+main {
+  max-width: 1100px;
+  margin: 32px auto;
+  padding: 0 24px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+/* ── Card ── */
+.card {
+  background: #fff;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 24px;
+}
+
+.card h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--green);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 10px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card h2 .icon {
+  font-size: 1.1rem;
+}
+
+/* ── Input section (full width) ── */
+.card.full-width {
+  grid-column: 1 / -1;
+}
+
+/* ── Labels ── */
+label {
+  font-size: .85rem;
+  font-weight: 500;
+  color: var(--gray-dark);
+  display: block;
+  margin-bottom: 4px;
+}
+
+/* ── Textarea ── */
+textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: .85rem;
+  resize: vertical;
+  background: var(--gray-light);
+  transition: border-color .2s;
+}
+
+textarea:focus {
+  outline: none;
+  border-color: var(--green);
+  background: #fff;
+}
+
+/* ── Rounding options ── */
+.options-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin: 14px 0;
+  padding: 12px 14px;
+  background: var(--gray-light);
+  border-radius: 6px;
+}
+
+.radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.radio-group label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.radio-group input[type="radio"] {
+  accent-color: var(--green);
+}
+
+.number-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.number-field label { margin: 0; }
+
+input[type="number"] {
+  width: 64px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: .85rem;
+  text-align: center;
+}
+
+input[type="number"]:focus {
+  outline: none;
+  border-color: var(--green);
+}
+
+/* ── Buttons row ── */
+.btn-row {
+  display: flex;
+  gap: 10px;
+  margin: 14px 0 0;
+  flex-wrap: wrap;
+}
+
+button {
+  padding: 9px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: .875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .18s, transform .1s;
+}
+
+button.primary {
+  background: var(--green);
+  color: #fff;
+}
+
+button.primary:hover { background: var(--green-hover); }
+button.primary:active { transform: scale(.97); }
+
+button.secondary {
+  background: var(--gray-light);
+  color: var(--gray-dark);
+  border: 1px solid var(--border);
+}
+
+button.secondary:hover { background: var(--border); }
+
+/* ── TikZ controls ── */
+.tikz-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 14px 0;
+  align-items: flex-end;
+}
+
+.tikz-controls .field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 140px;
+}
+
+.tikz-controls input[type="text"],
+.tikz-controls select {
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: .85rem;
+  background: #fff;
+}
+
+.tikz-controls input[type="text"]:focus,
+.tikz-controls select:focus {
+  outline: none;
+  border-color: var(--green);
+}
+
+/* ── Output header with copy button ── */
+.output-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+button.copy-btn {
+  padding: 4px 12px;
+  font-size: .75rem;
+  font-weight: 500;
+  background: var(--green-light);
+  color: var(--green);
+  border: 1px solid var(--green);
+  border-radius: 4px;
+}
+
+button.copy-btn:hover { background: var(--green); color: #fff; }
+
+/* ── Preview ── */
+#tikz-preview {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 20px;
+  min-height: 220px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gray);
+  font-size: .85rem;
+}
+
+/* ── Footer ── */
+footer {
+  text-align: center;
+  padding: 24px;
+  font-size: .8rem;
+  color: #aaa;
+}
+
+/* ── Responsive ── */
+@media (max-width: 700px) {
+  main { grid-template-columns: 1fr; }
+  .card.full-width { grid-column: 1; }
+  header { padding: 12px 16px; }
+  header img.logo { height: 36px; }
+}
