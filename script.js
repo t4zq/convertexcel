@@ -520,6 +520,7 @@ ConvertModule().then((module) => {
     csvAttachment: wrapExport('gen_csv_attachment', 'number', ['string', 'number', 'number']),
   };
   let lastGeneratedTikz = '';
+  let autoPreviewTimer = null;
 
   const runWithInput = (handler) => {
     const data = elements.input.value.trim();
@@ -538,7 +539,7 @@ ConvertModule().then((module) => {
     };
   };
 
-  document.getElementById('latex-btn').onclick = () => runWithInput((data) => {
+  const generateLatexFromInput = (data) => {
     const options = getWasmOptions();
     elements.latex.value = takeString(wasm.latexConfig(
       data,
@@ -548,9 +549,10 @@ ConvertModule().then((module) => {
       options.hasHeader,
       options.cleanInput,
     ));
-  });
+    return elements.latex.value;
+  };
 
-  document.getElementById('csv-btn').onclick = () => runWithInput((data) => {
+  const generateCsvFromInput = (data) => {
     const options = getWasmOptions();
     elements.csv.value = takeString(wasm.csvConfig(
       data,
@@ -560,7 +562,8 @@ ConvertModule().then((module) => {
       options.hasHeader,
       options.cleanInput,
     ));
-  });
+    return elements.csv.value;
+  };
 
   const generateTikzFromInput = (data) => {
     const { sigFigs, figureNumber, legendPos, scaleMode, fitMethods } = getGraphOptions();
@@ -589,47 +592,45 @@ ConvertModule().then((module) => {
     return currentBaseTikz === lastBaseTikz;
   };
 
-  elements.fitMethodsBySeries?.addEventListener('change', () => {
-    const sourceData = elements.input.value.trim();
-    if (sourceData) {
-      generateTikzFromInput(sourceData);
+  const buildCsvAttachments = (tikzCode, showAlerts = true) => {
+    const csvReferences = extractCsvReferences(tikzCode);
+    const extraFiles = [];
+    if (csvReferences.length === 0) return extraFiles;
+
+    const data = elements.input.value.trim();
+    if (!data) {
+      if (showAlerts) {
+        alert('This PGFPlots code references a CSV file. Keep the source data in the input editor before previewing.');
+      }
+      return null;
     }
-  });
 
-  document.getElementById('tikz-btn').onclick = () => runWithInput(generateTikzFromInput);
+    const { hasHeader, cleanInput } = getDataOptions();
+    const csvData = takeString(wasm.csvAttachment(data, hasHeader ? 1 : 0, cleanInput ? 1 : 0));
+    csvReferences.forEach((name) => {
+      extraFiles.push({ name, contents: csvData });
+    });
+    return extraFiles;
+  };
 
-  elements.tikzPreviewBtn.onclick = () => {
+  const previewTikzPdf = ({ showAlerts = true, forceRegenerate = false } = {}) => {
     const { figureNumber } = getGraphOptions();
     const sourceData = elements.input.value.trim();
     const currentTikz = elements.tikz.value.trim();
-    const baseTikzCode = shouldRegenerateTikzForPreview(sourceData, currentTikz)
-      ? generateTikzFromInput(sourceData)
-      : currentTikz;
+    const shouldRegenerate = forceRegenerate || shouldRegenerateTikzForPreview(sourceData, currentTikz);
+    const baseTikzCode = shouldRegenerate && sourceData ? generateTikzFromInput(sourceData) : currentTikz;
     const tikzCode = applyFigureNumber(baseTikzCode.trim(), figureNumber);
 
     if (!tikzCode) {
-      alert('TikZ code is empty. Generate or edit PGFPlots code first.');
-      return;
+      if (showAlerts) alert('TikZ code is empty. Generate or edit PGFPlots code first.');
+      return false;
     }
 
     elements.tikz.value = tikzCode;
     lastGeneratedTikz = tikzCode;
 
-    const csvReferences = extractCsvReferences(tikzCode);
-    const extraFiles = [];
-    if (csvReferences.length > 0) {
-      const data = elements.input.value.trim();
-      if (!data) {
-        alert('This PGFPlots code references a CSV file. Keep the source data in the input editor before previewing.');
-        return;
-      }
-
-      const { hasHeader, cleanInput } = getDataOptions();
-      const csvData = takeString(wasm.csvAttachment(data, hasHeader ? 1 : 0, cleanInput ? 1 : 0));
-      csvReferences.forEach((name) => {
-        extraFiles.push({ name, contents: csvData });
-      });
-    }
+    const extraFiles = buildCsvAttachments(tikzCode, showAlerts);
+    if (extraFiles === null) return false;
 
     showPdfPreview({
       preview: elements.tikzPdfPreview,
@@ -641,5 +642,49 @@ ConvertModule().then((module) => {
       log: elements.tikzLog,
     });
     submitLatexForm('tikz-form', wrapTikzDocument(tikzCode), 'uplatex', extraFiles);
+    return true;
   };
+
+  const isAutoPreviewCandidate = (data) => {
+    const lines = data.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    if (lines.length < 2) return false;
+    const delimiter = lines[0].includes('\t') ? '\t' : ',';
+    return lines[0].split(delimiter).length >= 2;
+  };
+
+  const runAutoOutputAndPreview = () => {
+    const data = elements.input.value.trim();
+    if (!isAutoPreviewCandidate(data)) return;
+    generateLatexFromInput(data);
+    generateCsvFromInput(data);
+    previewTikzPdf({ showAlerts: false, forceRegenerate: true });
+  };
+
+  const scheduleAutoOutputAndPreview = () => {
+    clearTimeout(autoPreviewTimer);
+    autoPreviewTimer = setTimeout(runAutoOutputAndPreview, 700);
+  };
+
+  document.getElementById('latex-btn').onclick = () => runWithInput(generateLatexFromInput);
+  document.getElementById('csv-btn').onclick = () => runWithInput(generateCsvFromInput);
+
+  elements.fitMethodsBySeries?.addEventListener('change', () => {
+    const sourceData = elements.input.value.trim();
+    if (sourceData) {
+      generateTikzFromInput(sourceData);
+      scheduleAutoOutputAndPreview();
+    }
+  });
+
+  document.getElementById('tikz-btn').onclick = () => runWithInput(generateTikzFromInput);
+  elements.tikzPreviewBtn.onclick = () => previewTikzPdf({ showAlerts: true });
+
+  elements.input.editor?.session.on('change', scheduleAutoOutputAndPreview);
+  textareas.input?.addEventListener('input', scheduleAutoOutputAndPreview);
+  [elements.hasHeader, elements.cleanInput, elements.decimals, elements.sigFigs, elements.filename, elements.figureNumber, elements.legendPos, elements.scaleMode]
+    .filter(Boolean)
+    .forEach((element) => element.addEventListener('change', scheduleAutoOutputAndPreview));
+  document.querySelectorAll('input[name="round-mode"]').forEach((element) => {
+    element.addEventListener('change', scheduleAutoOutputAndPreview);
+  });
 });

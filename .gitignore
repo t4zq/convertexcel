@@ -1,5 +1,6 @@
 tools/emsdk/
 server.*.log
+dist/convert.wasm.tmp*
 
 # wrangler files
 .wrangler
