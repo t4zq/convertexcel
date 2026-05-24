@@ -9,7 +9,9 @@
 <body>
 
 <header>
-  <img class="logo" src="logo.png" alt="converTeXcel">
+  <a href="https://convertexcel.net/">
+    <img class="logo" src="logo.png" alt="converTeXcel">
+  </a>
   <span class="tagline">Excel / TSV データを LaTeX・CSV・TikZ グラフに変換</span>
 </header>
 
@@ -50,16 +52,14 @@
       </div>
     </div>
 
+    <div class="auto-preview-consent" hidden>
+      <span id="auto-preview-cooldown-status" class="cooldown-status" aria-live="polite"></span>
+    </div>
+
     <details id="stats-details" hidden>
       <summary>統計量</summary>
       <div id="stats-table-container"></div>
     </details>
-
-    <div class="btn-row">
-      <button id="latex-btn" class="primary">LaTeX 変換</button>
-      <button id="csv-btn" class="primary">CSV 変換</button>
-      <button id="tikz-btn" class="primary">TikZ グラフ生成</button>
-    </div>
   </div>
 
   <!-- LaTeX 出力 -->
@@ -70,11 +70,6 @@
       <button class="copy-btn" data-target="latex">コピー</button>
     </div>
     <textarea id="latex" rows="10" placeholder="LaTeX 形式で出力されます" readonly></textarea>
-    <div class="preview-controls">
-      <button id="latex-preview-btn" class="secondary">PDF プレビュー</button>
-      <button id="latex-delete-btn" class="secondary" style="display:none;">削除</button>
-      <span id="latex-loading" class="loading-indicator">PDFをコンパイル中...</span>
-    </div>
     <div id="latex-status" class="compile-status" role="status" aria-live="polite"></div>
     <pre id="latex-log" class="compile-log" hidden></pre>
     <form id="latex-form" style="display:none;" method="post" action="https://texlive.net/cgi-bin/latexcgi" target="latex-iframe" enctype="multipart/form-data"></form>
@@ -140,8 +135,7 @@
     <textarea id="tikz" rows="12" placeholder="TikZ/PGFPlots グラフコードが出力されます"></textarea>
 
     <div class="btn-row" style="margin-top:14px">
-      <button id="tikz-preview-btn" class="secondary">PDF プレビュー</button>
-      <button id="tikz-delete-btn" class="secondary" style="display:none;">削除</button>
+      <button id="tikz-preview-btn" class="primary">PDF プレビュー更新</button>
       <span id="tikz-loading" class="loading-indicator">PDFをコンパイル中...</span>
     </div>
 
@@ -154,6 +148,18 @@
   </div>
 
 </main>
+
+<div id="pdf-consent-modal" class="modal-backdrop" hidden>
+  <div class="consent-dialog" role="dialog" aria-modal="true" aria-labelledby="pdf-consent-title">
+    <h2 id="pdf-consent-title">PDF プレビューの送信確認</h2>
+    <p>入力データと生成した PGFPlots コードを texlive.net へ送信して PDF をコンパイルします。</p>
+    <p>同意後すぐに送信し、連続送信を避けるため 15 秒間クールダウンします。</p>
+    <div class="consent-actions">
+      <button id="pdf-consent-cancel" class="secondary" type="button">キャンセル</button>
+      <button id="pdf-consent-accept" class="primary" type="button">同意して送信</button>
+    </div>
+  </div>
+</div>
 
 <footer>
   <span>converTeXcel — Excel データを LaTeX / TikZ に変換するツール</span>
