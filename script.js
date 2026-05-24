@@ -88,6 +88,7 @@ const getDataOptions = () => ({
 });
 
 const fitMethodOptions = [
+  ['none', 'なし（近似なし）'],
   ['auto', '自動（R²最大）'],
   ['linear', '線形'],
   ['quadratic', '2次多項式'],
@@ -96,6 +97,57 @@ const fitMethodOptions = [
   ['logarithmic', '対数'],
   ['power', '累乗'],
 ];
+
+const computeStats = (rawData, hasHeader, cleanInput) => {
+  let text = rawData;
+  if (cleanInput) text = text.normalize('NFKC');
+  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  if (lines.length === 0) return [];
+  const delimiter = lines[0].includes('\t') ? '\t' : ',';
+  let headers = null;
+  let dataLines = lines;
+  if (hasHeader && lines.length > 1) {
+    headers = lines[0].split(delimiter).map((h) => h.trim());
+    dataLines = lines.slice(1);
+  }
+  if (dataLines.length === 0) return [];
+  const numCols = dataLines[0].split(delimiter).length;
+  const columns = Array.from({ length: numCols }, () => []);
+  for (const line of dataLines) {
+    const cells = line.split(delimiter);
+    for (let c = 0; c < numCols; c += 1) {
+      const val = parseFloat((cells[c] || '').trim());
+      if (Number.isFinite(val)) columns[c].push(val);
+    }
+  }
+  return columns.map((vals, i) => {
+    const colName = headers ? (headers[i] || `列${i + 1}`) : `列${i + 1}`;
+    if (vals.length === 0) return { colName, n: 0, mean: null, stddev: null, min: null, max: null };
+    const n = vals.length;
+    const mean = vals.reduce((s, v) => s + v, 0) / n;
+    const variance = n > 1 ? vals.reduce((s, v) => s + (v - mean) ** 2, 0) / (n - 1) : 0;
+    return { colName, n, mean, stddev: Math.sqrt(variance), min: Math.min(...vals), max: Math.max(...vals) };
+  });
+};
+
+const formatStat = (val) => {
+  if (val === null || !Number.isFinite(val)) return '—';
+  return Number(val.toPrecision(4)).toString();
+};
+
+const updateStatsDisplay = () => {
+  const statsDetails = document.getElementById('stats-details');
+  const container = document.getElementById('stats-table-container');
+  if (!statsDetails || !container) return;
+  const rawData = elements.input.value.trim();
+  if (!rawData) { statsDetails.hidden = true; return; }
+  const { hasHeader, cleanInput } = getDataOptions();
+  const stats = computeStats(rawData, hasHeader, cleanInput);
+  if (stats.length === 0) { statsDetails.hidden = true; return; }
+  statsDetails.hidden = false;
+  const rows = stats.map(({ colName, n, mean, stddev, min, max }) => `<tr><td>${colName}</td><td>${n}</td><td>${formatStat(mean)}</td><td>${formatStat(stddev)}</td><td>${formatStat(min)}</td><td>${formatStat(max)}</td></tr>`).join('');
+  container.innerHTML = `<table class="stats-table"><thead><tr><th>列</th><th>n</th><th>平均</th><th>標準偏差</th><th>最小</th><th>最大</th></tr></thead><tbody>${rows}</tbody></table>`;
+};
 
 const detectSeriesCount = () => {
   const firstLine = elements.input.value.split(/\r?\n/).map((line) => line.trim()).find(Boolean);
@@ -442,9 +494,13 @@ elements.tikzDeleteBtn?.addEventListener('click', () => {
   });
 });
 
-elements.input.editor?.session.on('change', updateFitMethodControls);
-textareas.input?.addEventListener('input', updateFitMethodControls);
+const updateInputDependents = () => { updateFitMethodControls(); updateStatsDisplay(); };
+elements.input.editor?.session.on('change', updateInputDependents);
+textareas.input?.addEventListener('input', updateInputDependents);
+elements.hasHeader?.addEventListener('change', updateStatsDisplay);
+elements.cleanInput?.addEventListener('change', updateStatsDisplay);
 updateFitMethodControls();
+updateStatsDisplay();
 
 ConvertModule().then((module) => {
   const takeString = (ptr) => {

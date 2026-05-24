@@ -487,6 +487,41 @@ button.copy-btn:hover { background: var(--green); color: #fff; }
 }
 
 /* ── Footer ── */
+/* ── Stats summary ── */
+#stats-details {
+  margin-top: 12px;
+}
+#stats-details summary {
+  cursor: pointer;
+  font-size: .85rem;
+  color: var(--gray);
+  user-select: none;
+}
+#stats-details summary:hover {
+  color: var(--green);
+}
+.stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .8rem;
+  margin-top: 8px;
+}
+.stats-table th,
+.stats-table td {
+  border: 1px solid var(--border);
+  padding: 5px 10px;
+  text-align: right;
+}
+.stats-table th:first-child,
+.stats-table td:first-child {
+  text-align: left;
+}
+.stats-table th {
+  background: var(--gray-light);
+  font-weight: 600;
+  color: var(--gray-dark);
+}
+
 footer {
   text-align: center;
   padding: 24px;

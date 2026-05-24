@@ -528,6 +528,7 @@ FitResult power_fit(const std::vector<Point> &points) {
   return result;
 }
 FitResult select_fit(const std::vector<Point> &points, const std::string &fit_method) {
+  if (fit_method == "none") return FitResult{false, "none", "", "", 0.0};
   std::vector<FitResult> candidates;
   if (fit_method == "auto" || fit_method == "linear") candidates.push_back(polynomial_fit(points, 1, "linear"));
   if (fit_method == "auto" || fit_method == "quadratic") candidates.push_back(polynomial_fit(points, 2, "quadratic"));
