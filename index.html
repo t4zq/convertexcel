@@ -12,7 +12,7 @@
   <a href="https://convertexcel.net/">
     <img class="logo" src="logo.png" alt="converTeXcel">
   </a>
-  <span class="tagline">Excel / TSV データを LaTeX・CSV・TikZ グラフに変換</span>
+  <span class="tagline">Excel データを論文・レポート用の表とグラフに整形</span>
 </header>
 
 <main>
@@ -22,9 +22,10 @@
     <ol class="usage-steps">
       <li>Excel やスプレッドシートの表をそのまま入力欄へ貼り付けます。1 列目を x、2 列目以降を y 系列として扱います。</li>
       <li>ヘッダー行、クリーニング、丸め方法を必要に応じて設定します。</li>
-      <li>LaTeX 変換、CSV 変換、TikZ グラフ生成のいずれかを押して出力を作成します。</li>
-      <li>TikZ では図番号、凡例位置、軸スケール、系列ごとの近似方法を調整できます。PGFPlots コードを直接編集してから PDF プレビューすることもできます。</li>
-      <li>PDF プレビューは texlive.net でコンパイルします。失敗した場合はステータスとログを確認してください。</li>
+      <li>貼り付けると、論文・レポートに使いやすい表、CSV、グラフコードが自動で作成されます。</li>
+      <li>LaTeX や TikZ は、数式や図表をきれいに組むための記法です。Word ユーザーでも、PDF プレビューを見ながら表やグラフの形を確認できます。</li>
+      <li>グラフでは図番号、凡例位置、軸スケール、系列ごとの近似方法を調整できます。必要なら生成されたコードを直接編集できます。</li>
+      <li>PDF プレビューは texlive.net で作成します。失敗した場合はステータスとログを確認してください。</li>
     </ol>
   </details>
 
@@ -64,12 +65,11 @@
 
   <!-- LaTeX 出力 -->
   <div class="card">
-    <h2>LaTeX 出力</h2>
+    <h2>表</h2>
     <div class="output-header">
-      <label for="latex">tabular / siunitx 形式</label>
       <button class="copy-btn" data-target="latex">コピー</button>
     </div>
-    <textarea id="latex" rows="10" placeholder="LaTeX 形式で出力されます" readonly></textarea>
+    <textarea id="latex" rows="10" placeholder="論文・レポート向けの表コードが出力されます" readonly></textarea>
     <div id="latex-status" class="compile-status" role="status" aria-live="polite"></div>
     <pre id="latex-log" class="compile-log" hidden></pre>
     <form id="latex-form" style="display:none;" method="post" action="https://texlive.net/cgi-bin/latexcgi" target="latex-iframe" enctype="multipart/form-data"></form>
@@ -82,7 +82,6 @@
   <div class="card">
     <h2>CSV 出力</h2>
     <div class="output-header">
-      <label for="csv">カンマ区切り形式</label>
       <button class="copy-btn" data-target="csv">コピー</button>
     </div>
     <textarea id="csv" rows="10" placeholder="CSV 形式で出力されます" readonly></textarea>
@@ -90,11 +89,11 @@
 
   <!-- TikZ -->
   <div class="card full-width">
-    <h2>TikZ グラフ</h2>
+    <h2>グラフ</h2>
 
     <div class="tikz-controls">
       <div class="field">
-        <label for="filename">ファイル名（TikZ 用）</label>
+        <label for="filename">データファイル名</label>
         <input type="text" id="filename" value="data" placeholder="data">
       </div>
       <div class="field">
@@ -129,10 +128,9 @@
     </div>
 
     <div class="output-header">
-      <label for="tikz">PGFPlots コード</label>
       <button class="copy-btn" data-target="tikz">コピー</button>
     </div>
-    <textarea id="tikz" rows="12" placeholder="TikZ/PGFPlots グラフコードが出力されます"></textarea>
+    <textarea id="tikz" rows="12" placeholder="PDF プレビュー用のグラフコードが出力されます"></textarea>
 
     <div class="btn-row" style="margin-top:14px">
       <button id="tikz-preview-btn" class="primary">PDF プレビュー更新</button>
@@ -152,8 +150,8 @@
 <div id="pdf-consent-modal" class="modal-backdrop" hidden>
   <div class="consent-dialog" role="dialog" aria-modal="true" aria-labelledby="pdf-consent-title">
     <h2 id="pdf-consent-title">PDF プレビューの送信確認</h2>
-    <p>入力データと生成した PGFPlots コードを texlive.net へ送信して PDF をコンパイルします。</p>
-    <p>同意後すぐに送信し、連続送信を避けるため 15 秒間クールダウンします。</p>
+    <p>PDF プレビューを作成するため、入力データと生成したグラフコードを texlive.net へ送信します。</p>
+    <p>LaTeX / TikZ は、論文やレポートの表・グラフをきれいに組むための記法です。Word で作業している場合も、ここでは完成イメージを PDF で確認できます。同意後すぐに送信し、連続送信を避けるため 15 秒間クールダウンします。</p>
     <div class="consent-actions">
       <button id="pdf-consent-cancel" class="secondary" type="button">キャンセル</button>
       <button id="pdf-consent-accept" class="primary" type="button">同意して送信</button>
@@ -162,7 +160,7 @@
 </div>
 
 <footer>
-  <span>converTeXcel — Excel データを LaTeX / TikZ に変換するツール</span>
+  <span>converTeXcel — Excel データを論文・レポート用の表とグラフに整形するツール</span>
   <a href="privacy.html">プライバシーポリシー</a>
 </footer>
 
