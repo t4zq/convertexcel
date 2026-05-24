@@ -5,16 +5,21 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+$emccCmd = "emcc"
 if (-not (Get-Command emcc -ErrorAction SilentlyContinue)) {
-  $localEmsdkEnv = Join-Path $PSScriptRoot "..\tools\emsdk\emsdk_env.ps1"
-  if (Test-Path $localEmsdkEnv) {
-    $env:EMSDK_QUIET = "1"
-    & $localEmsdkEnv | Out-Null
-  }
-}
-
-if (-not (Get-Command emcc -ErrorAction SilentlyContinue)) {
-  Write-Error @"
+  $emsdkRoot = Resolve-Path (Join-Path $PSScriptRoot "..\tools\emsdk") -ErrorAction SilentlyContinue
+  $localEmcc = if ($emsdkRoot) { Join-Path $emsdkRoot "upstream\emscripten\emcc.bat" } else { $null }
+  if ($localEmcc -and (Test-Path $localEmcc)) {
+    $emccCmd = $localEmcc
+    # Set environment variables expected by emcc
+    $env:EMSDK = $emsdkRoot.Path
+    $pythonDir = Get-ChildItem (Join-Path $emsdkRoot "python") -Directory -ErrorAction SilentlyContinue | Select-Object -Last 1
+    if ($pythonDir) { $env:EMSDK_PYTHON = Join-Path $pythonDir.FullName "python.exe" }
+    $nodeDir = Get-ChildItem (Join-Path $emsdkRoot "node") -Directory -ErrorAction SilentlyContinue | Select-Object -Last 1
+    if ($nodeDir) { $env:EMSDK_NODE = Join-Path $nodeDir.FullName "bin\node.exe" }
+    $env:PATH = "$emsdkRoot;$(Join-Path $emsdkRoot 'upstream\emscripten');$env:PATH"
+  } else {
+    Write-Error @"
 emcc was not found.
 
 Install and activate Emscripten first, or install it into this project:
@@ -26,6 +31,7 @@ Install and activate Emscripten first, or install it into this project:
 
 Then run this script again from the project root.
 "@
+  }
 }
 
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
@@ -46,7 +52,7 @@ $exportedFunctions = @(
   "_free"
 ) -join ","
 
-emcc $Source -O3 `
+& $emccCmd $Source -O3 `
   -s WASM=1 `
   -s MODULARIZE=1 `
   -s EXPORT_NAME=ConvertModule `
