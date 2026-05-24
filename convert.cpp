@@ -528,6 +528,7 @@ FitResult power_fit(const std::vector<Point> &points) {
   return result;
 }
 FitResult select_fit(const std::vector<Point> &points, const std::string &fit_method) {
+  if (fit_method == "none") return FitResult{false, "none", "", "", 0.0};
   std::vector<FitResult> candidates;
   if (fit_method == "auto" || fit_method == "linear") candidates.push_back(polynomial_fit(points, 1, "linear"));
   if (fit_method == "auto" || fit_method == "quadratic") candidates.push_back(polynomial_fit(points, 2, "quadratic"));
@@ -576,7 +577,7 @@ std::string plot_mark_style(size_t index) {
   return styles[index % 8];
 }
 
-std::string to_tikz_graph(const Table &t, const std::string &filename, int sig_figs, const std::string &legend_pos, const std::string &scale_mode, int figure_number = 0, const std::string &fit_methods = "auto") {
+std::string to_tikz_graph(const Table &t, const std::string &filename, int sig_figs, const std::string &legend_pos, const std::string &scale_mode, int figure_number = 0, const std::string &fit_methods = "auto", const std::vector<std::string> &headers = {}) {
   if (t.empty()) return "";
   
   size_t num_cols = t[0].size();
@@ -693,7 +694,9 @@ std::string to_tikz_graph(const Table &t, const std::string &filename, int sig_f
     out += "] {";
     out += filename;
     out += ".csv};\n";
-    std::string legend_text = "data " + std::to_string(i);
+    std::string legend_text = (headers.size() > i && !headers[i].empty())
+      ? headers[i]
+      : "data " + std::to_string(i);
     out += "            \\addlegendentry{";
     out += legend_text;
     out += "}\n";
@@ -906,7 +909,12 @@ EMSCRIPTEN_KEEPALIVE char* gen_tikz_graph_config(const char* in, const char* fil
   std::string sm = scale_mode ? scale_mode : "linear";
   std::string fm = fit_method ? fit_method : "auto";
   Table t = prepare_table(in, has_header != 0, clean_input != 0, false);
-  return dup(to_tikz_graph(t, filename, sig_figs, lp, sm, figure_number, fm));
+  std::vector<std::string> headers;
+  if (has_header != 0) {
+    Table with_hdr = prepare_table(in, true, clean_input != 0, true);
+    if (!with_hdr.empty()) headers = with_hdr[0];
+  }
+  return dup(to_tikz_graph(t, filename, sig_figs, lp, sm, figure_number, fm, headers));
 }
 EMSCRIPTEN_KEEPALIVE char* gen_csv_attachment(const char* in, int has_header, int clean_input) {
   Table t = prepare_table(in, has_header != 0, clean_input != 0, false);
