@@ -39,6 +39,10 @@ $exportedFunctions = @(
   "_gen_latex_sig_figs",
   "_gen_tikz_graph",
   "_gen_tikz_graph_preview",
+  "_gen_latex_config",
+  "_gen_csv_config",
+  "_gen_tikz_graph_config",
+  "_gen_csv_attachment",
   "_free"
 ) -join ","
 

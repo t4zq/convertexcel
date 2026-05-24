@@ -5,8 +5,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>converTeXcel — データ変換ツール</title>
 <link rel="stylesheet" href="style.css">
-<link rel="stylesheet" type="text/css" href="https://tikzjax.com/v1/fonts.css">
-<script src="https://tikzjax.com/v1/tikzjax.js"></script>
 </head>
 <body>
 
@@ -17,9 +15,20 @@
 
 <main>
 
+  <details class="usage-card card full-width">
+    <summary>使い方</summary>
+    <ol class="usage-steps">
+      <li>Excel やスプレッドシートの表をそのまま入力欄へ貼り付けます。1 列目を x、2 列目以降を y 系列として扱います。</li>
+      <li>ヘッダー行、クリーニング、丸め方法を必要に応じて設定します。</li>
+      <li>LaTeX 変換、CSV 変換、TikZ グラフ生成のいずれかを押して出力を作成します。</li>
+      <li>TikZ では図番号、凡例位置、軸スケール、系列ごとの近似方法を調整できます。PGFPlots コードを直接編集してから PDF プレビューすることもできます。</li>
+      <li>PDF プレビューは texlive.net でコンパイルします。失敗した場合はステータスとログを確認してください。</li>
+    </ol>
+  </details>
+
   <!-- 入力 -->
   <div class="card full-width">
-    <h2><span class="icon">📋</span>入力データ</h2>
+    <h2>入力データ</h2>
     <label for="input">Excel やスプレッドシートからコピーしたデータを貼り付けてください</label>
     <textarea id="input" rows="7" placeholder="列ヘッダー&#10;x&#9;y1&#9;y2&#10;1&#9;2.3&#9;4.5&#10;2&#9;3.1&#9;5.2"></textarea>
 
@@ -29,6 +38,8 @@
         <label><input type="radio" name="round-mode" value="decimal"> 小数点以下桁数</label>
         <label><input type="radio" name="round-mode" value="sig-figs"> 有効数字</label>
       </div>
+      <label class="option-check"><input type="checkbox" id="has-header" checked> ヘッダー行あり</label>
+      <label class="option-check"><input type="checkbox" id="clean-input" checked> 入力をクリーニング</label>
       <div class="number-field">
         <label for="decimals">小数点:</label>
         <input type="number" id="decimals" min="0" value="2">
@@ -48,17 +59,28 @@
 
   <!-- LaTeX 出力 -->
   <div class="card">
-    <h2><span class="icon">📄</span>LaTeX 出力</h2>
+    <h2>LaTeX 出力</h2>
     <div class="output-header">
       <label for="latex">tabular / siunitx 形式</label>
       <button class="copy-btn" data-target="latex">コピー</button>
     </div>
     <textarea id="latex" rows="10" placeholder="LaTeX 形式で出力されます" readonly></textarea>
+    <div class="preview-controls">
+      <button id="latex-preview-btn" class="secondary">PDF プレビュー</button>
+      <button id="latex-delete-btn" class="secondary" style="display:none;">削除</button>
+      <span id="latex-loading" class="loading-indicator">PDFをコンパイル中...</span>
+    </div>
+    <div id="latex-status" class="compile-status" role="status" aria-live="polite"></div>
+    <pre id="latex-log" class="compile-log" hidden></pre>
+    <form id="latex-form" style="display:none;" method="post" action="https://texlive.net/cgi-bin/latexcgi" target="latex-iframe" enctype="multipart/form-data"></form>
+    <div id="latex-pdf-preview" class="pdf-preview-pane" style="display:none;">
+      <iframe id="latex-iframe" name="latex-iframe" class="pdf-iframe" title="LaTeX PDF preview"></iframe>
+    </div>
   </div>
 
   <!-- CSV 出力 -->
   <div class="card">
-    <h2><span class="icon">📊</span>CSV 出力</h2>
+    <h2>CSV 出力</h2>
     <div class="output-header">
       <label for="csv">カンマ区切り形式</label>
       <button class="copy-btn" data-target="csv">コピー</button>
@@ -68,12 +90,16 @@
 
   <!-- TikZ -->
   <div class="card full-width">
-    <h2><span class="icon">📈</span>TikZ グラフ</h2>
+    <h2>TikZ グラフ</h2>
 
     <div class="tikz-controls">
       <div class="field">
         <label for="filename">ファイル名（TikZ 用）</label>
         <input type="text" id="filename" value="data" placeholder="data">
+      </div>
+      <div class="field">
+        <label for="figure-number">図番号</label>
+        <input type="number" id="figure-number" min="1" placeholder="自動">
       </div>
       <div class="field">
         <label for="legend-pos">凡例位置</label>
@@ -96,19 +122,30 @@
           <option value="loglog">両対数</option>
         </select>
       </div>
+      <div class="field fit-methods-field">
+        <label>系列ごとの近似方法</label>
+        <div id="fit-methods-by-series" class="fit-methods-by-series"></div>
+      </div>
     </div>
 
     <div class="output-header">
       <label for="tikz">PGFPlots コード</label>
       <button class="copy-btn" data-target="tikz">コピー</button>
     </div>
-    <textarea id="tikz" rows="12" placeholder="TikZ/PGFPlots グラフコードが出力されます" readonly></textarea>
+    <textarea id="tikz" rows="12" placeholder="TikZ/PGFPlots グラフコードが出力されます"></textarea>
 
     <div class="btn-row" style="margin-top:14px">
-      <button id="preview-btn" class="secondary">プレビュー表示</button>
+      <button id="tikz-preview-btn" class="secondary">PDF プレビュー</button>
+      <button id="tikz-delete-btn" class="secondary" style="display:none;">削除</button>
+      <span id="tikz-loading" class="loading-indicator">PDFをコンパイル中...</span>
     </div>
 
-    <div id="tikz-preview">プレビューはここに表示されます</div>
+    <div id="tikz-status" class="compile-status" role="status" aria-live="polite"></div>
+    <pre id="tikz-log" class="compile-log" hidden></pre>
+    <form id="tikz-form" style="display:none;" method="post" action="https://texlive.net/cgi-bin/latexcgi" target="tikz-iframe" enctype="multipart/form-data"></form>
+    <div id="tikz-pdf-preview" class="pdf-preview-pane" style="display:none;">
+      <iframe id="tikz-iframe" name="tikz-iframe" class="pdf-iframe" title="TikZ PDF preview"></iframe>
+    </div>
   </div>
 
 </main>
@@ -116,20 +153,7 @@
 <footer>converTeXcel — Excel データを LaTeX / TikZ に変換するツール</footer>
 
 <script src="dist/convert.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.35.5/ace.js"></script>
 <script src="script.js"></script>
-<script>
-  // Copy buttons
-  document.querySelectorAll('.copy-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const target = document.getElementById(btn.dataset.target);
-      if (!target || !target.value) return;
-      navigator.clipboard.writeText(target.value).then(() => {
-        const orig = btn.textContent;
-        btn.textContent = '✓ コピー済み';
-        setTimeout(() => btn.textContent = orig, 1500);
-      });
-    });
-  });
-</script>
 </body>
 </html>

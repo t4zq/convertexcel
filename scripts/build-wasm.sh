@@ -34,6 +34,6 @@ emcc "$source_file" -O3 \
   -s WASM=1 \
   -s MODULARIZE=1 \
   -s EXPORT_NAME=ConvertModule \
-  -s 'EXPORTED_FUNCTIONS=[_gen_latex,_gen_csv,_gen_csv_rounded,_gen_csv_sig_figs,_gen_latex_rounded,_gen_latex_sig_figs,_gen_tikz_graph,_gen_tikz_graph_preview,_free]' \
+  -s 'EXPORTED_FUNCTIONS=[_gen_latex,_gen_csv,_gen_csv_rounded,_gen_csv_sig_figs,_gen_latex_rounded,_gen_latex_sig_figs,_gen_tikz_graph,_gen_tikz_graph_preview,_gen_latex_config,_gen_csv_config,_gen_tikz_graph_config,_gen_csv_attachment,_free]' \
   -s 'EXPORTED_RUNTIME_METHODS=["cwrap","UTF8ToString"]' \
   -o "$out_dir/convert.js"
