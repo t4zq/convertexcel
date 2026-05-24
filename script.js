@@ -54,25 +54,27 @@ const elements = {
   sigFigs: document.getElementById('sig-figs'),
   hasHeader: document.getElementById('has-header'),
   cleanInput: document.getElementById('clean-input'),
+  autoPreviewCooldownStatus: document.getElementById('auto-preview-cooldown-status'),
   filename: document.getElementById('filename'),
   figureNumber: document.getElementById('figure-number'),
   legendPos: document.getElementById('legend-pos'),
   scaleMode: document.getElementById('scale-mode'),
   fitMethodsBySeries: document.getElementById('fit-methods-by-series'),
   latexPreviewBtn: document.getElementById('latex-preview-btn'),
-  latexDeleteBtn: document.getElementById('latex-delete-btn'),
   latexLoading: document.getElementById('latex-loading'),
   latexStatus: document.getElementById('latex-status'),
   latexLog: document.getElementById('latex-log'),
   latexPdfPreview: document.getElementById('latex-pdf-preview'),
   latexIframe: document.getElementById('latex-iframe'),
   tikzPreviewBtn: document.getElementById('tikz-preview-btn'),
-  tikzDeleteBtn: document.getElementById('tikz-delete-btn'),
   tikzLoading: document.getElementById('tikz-loading'),
   tikzStatus: document.getElementById('tikz-status'),
   tikzLog: document.getElementById('tikz-log'),
   tikzPdfPreview: document.getElementById('tikz-pdf-preview'),
   tikzIframe: document.getElementById('tikz-iframe'),
+  pdfConsentModal: document.getElementById('pdf-consent-modal'),
+  pdfConsentAccept: document.getElementById('pdf-consent-accept'),
+  pdfConsentCancel: document.getElementById('pdf-consent-cancel'),
 };
 
 const readNumber = (element, fallback) => parseInt(element.value, 10) || fallback;
@@ -86,6 +88,10 @@ const getDataOptions = () => ({
   hasHeader: Boolean(elements.hasHeader?.checked),
   cleanInput: Boolean(elements.cleanInput?.checked),
 });
+
+const AUTO_PREVIEW_COOLDOWN_SECONDS = 15;
+const AUTO_PREVIEW_COOLDOWN_MS = AUTO_PREVIEW_COOLDOWN_SECONDS * 1000;
+let pdfPreviewCooldownActive = false;
 
 const fitMethodOptions = [
   ['none', 'なし（近似なし）'],
@@ -332,7 +338,7 @@ const setCompileLog = (logElement, text) => {
 };
 
 const setPreviewBusy = (previewButton, deleteButton, isBusy) => {
-  if (previewButton) previewButton.disabled = isBusy;
+  if (previewButton) previewButton.disabled = isBusy || pdfPreviewCooldownActive;
   if (deleteButton) deleteButton.disabled = isBusy;
 };
 
@@ -463,35 +469,10 @@ elements.latexPreviewBtn?.addEventListener('click', () => {
     iframe: elements.latexIframe,
     loading: elements.latexLoading,
     previewButton: elements.latexPreviewBtn,
-    deleteButton: elements.latexDeleteBtn,
     status: elements.latexStatus,
     log: elements.latexLog,
   });
   submitLatexForm('latex-form', wrapLatexDocument(texCode), 'uplatex');
-});
-
-elements.latexDeleteBtn?.addEventListener('click', () => {
-  clearPdfPreview({
-    preview: elements.latexPdfPreview,
-    iframe: elements.latexIframe,
-    loading: elements.latexLoading,
-    previewButton: elements.latexPreviewBtn,
-    deleteButton: elements.latexDeleteBtn,
-    status: elements.latexStatus,
-    log: elements.latexLog,
-  });
-});
-
-elements.tikzDeleteBtn?.addEventListener('click', () => {
-  clearPdfPreview({
-    preview: elements.tikzPdfPreview,
-    iframe: elements.tikzIframe,
-    loading: elements.tikzLoading,
-    previewButton: elements.tikzPreviewBtn,
-    deleteButton: elements.tikzDeleteBtn,
-    status: elements.tikzStatus,
-    log: elements.tikzLog,
-  });
 });
 
 const updateInputDependents = () => { updateFitMethodControls(); updateStatsDisplay(); };
@@ -521,6 +502,88 @@ ConvertModule().then((module) => {
   };
   let lastGeneratedTikz = '';
   let autoPreviewTimer = null;
+  let autoPreviewCooldownTimer = null;
+  let autoPreviewCountdownTimer = null;
+  let autoPreviewConsented = false;
+  let autoPreviewRejected = false;
+
+  const setInputLocked = (locked) => {
+    elements.input.editor?.setReadOnly(locked);
+    if (textareas.input) textareas.input.disabled = locked;
+    elements.tikzPreviewBtn && (elements.tikzPreviewBtn.disabled = locked || pdfPreviewCooldownActive);
+  };
+
+  const setCooldownStatus = (message) => {
+    if (elements.autoPreviewCooldownStatus) {
+      elements.autoPreviewCooldownStatus.textContent = message || '';
+      elements.autoPreviewCooldownStatus.closest('.auto-preview-consent').hidden = !message;
+    }
+  };
+
+  const startPdfCooldown = () => {
+    clearTimeout(autoPreviewCooldownTimer);
+    clearInterval(autoPreviewCountdownTimer);
+    pdfPreviewCooldownActive = true;
+    setInputLocked(true);
+    let remainingSeconds = AUTO_PREVIEW_COOLDOWN_SECONDS;
+    setCooldownStatus(`クールダウン中: ${remainingSeconds}秒`);
+    autoPreviewCountdownTimer = setInterval(() => {
+      remainingSeconds -= 1;
+      setCooldownStatus(remainingSeconds > 0 ? `クールダウン中: ${remainingSeconds}秒` : '');
+    }, 1000);
+    autoPreviewCooldownTimer = setTimeout(() => {
+      clearInterval(autoPreviewCountdownTimer);
+      pdfPreviewCooldownActive = false;
+      setInputLocked(false);
+      setCooldownStatus('');
+    }, AUTO_PREVIEW_COOLDOWN_MS);
+  };
+
+  const showConsentDialog = () => new Promise((resolve) => {
+    if (!elements.pdfConsentModal || !elements.pdfConsentAccept || !elements.pdfConsentCancel) {
+      resolve(window.confirm('PDF プレビューのため、入力データと生成コードを texlive.net へ送信します。同意しますか？'));
+      return;
+    }
+
+    const close = (approved) => {
+      elements.pdfConsentModal.hidden = true;
+      elements.pdfConsentAccept.removeEventListener('click', approve);
+      elements.pdfConsentCancel.removeEventListener('click', cancel);
+      document.removeEventListener('keydown', onKeyDown);
+      resolve(approved);
+    };
+    const approve = () => close(true);
+    const cancel = () => close(false);
+    const onKeyDown = (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        approve();
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        cancel();
+      }
+    };
+
+    elements.pdfConsentModal.hidden = false;
+    elements.pdfConsentAccept.addEventListener('click', approve);
+    elements.pdfConsentCancel.addEventListener('click', cancel);
+    document.addEventListener('keydown', onKeyDown);
+    elements.pdfConsentAccept.focus();
+  });
+
+  const ensureAutoPreviewConsent = async () => {
+    if (autoPreviewConsented) return true;
+    if (autoPreviewRejected) return false;
+    const approved = await showConsentDialog();
+    autoPreviewConsented = approved;
+    autoPreviewRejected = !approved;
+    if (!approved) {
+      setInputLocked(true);
+      setCooldownStatus('texlive.net への送信に同意が必要です。再度使用するにはページを再読み込みしてください。');
+    }
+    return approved;
+  };
 
   const runWithInput = (handler) => {
     const data = elements.input.value.trim();
@@ -637,7 +700,6 @@ ConvertModule().then((module) => {
       iframe: elements.tikzIframe,
       loading: elements.tikzLoading,
       previewButton: elements.tikzPreviewBtn,
-      deleteButton: elements.tikzDeleteBtn,
       status: elements.tikzStatus,
       log: elements.tikzLog,
     });
@@ -652,21 +714,23 @@ ConvertModule().then((module) => {
     return lines[0].split(delimiter).length >= 2;
   };
 
-  const runAutoOutputAndPreview = () => {
+  const runAutoOutputAndPreview = async () => {
     const data = elements.input.value.trim();
     if (!isAutoPreviewCandidate(data)) return;
+    if (!(await ensureAutoPreviewConsent())) return;
+
     generateLatexFromInput(data);
     generateCsvFromInput(data);
-    previewTikzPdf({ showAlerts: false, forceRegenerate: true });
+    generateTikzFromInput(data);
+    if (previewTikzPdf({ showAlerts: false, forceRegenerate: true })) {
+      startPdfCooldown();
+    }
   };
 
   const scheduleAutoOutputAndPreview = () => {
     clearTimeout(autoPreviewTimer);
     autoPreviewTimer = setTimeout(runAutoOutputAndPreview, 700);
   };
-
-  document.getElementById('latex-btn').onclick = () => runWithInput(generateLatexFromInput);
-  document.getElementById('csv-btn').onclick = () => runWithInput(generateCsvFromInput);
 
   elements.fitMethodsBySeries?.addEventListener('change', () => {
     const sourceData = elements.input.value.trim();
@@ -676,8 +740,18 @@ ConvertModule().then((module) => {
     }
   });
 
-  document.getElementById('tikz-btn').onclick = () => runWithInput(generateTikzFromInput);
-  elements.tikzPreviewBtn.onclick = () => previewTikzPdf({ showAlerts: true });
+  elements.tikzPreviewBtn?.addEventListener('click', async () => {
+    if (pdfPreviewCooldownActive) return;
+    runWithInput(async (data) => {
+      if (!(await ensureAutoPreviewConsent())) return;
+      generateLatexFromInput(data);
+      generateCsvFromInput(data);
+      generateTikzFromInput(data);
+      if (previewTikzPdf({ showAlerts: true, forceRegenerate: true })) {
+        startPdfCooldown();
+      }
+    });
+  });
 
   elements.input.editor?.session.on('change', scheduleAutoOutputAndPreview);
   textareas.input?.addEventListener('input', scheduleAutoOutputAndPreview);
