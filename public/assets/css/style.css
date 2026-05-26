@@ -1057,6 +1057,8 @@ button:disabled {
   min-width: 0;
 }
 
+.field[hidden] { display: none !important; }
+
 .field label { margin: 0; }
 
 .tikz-controls input[type="text"],
@@ -1619,6 +1621,101 @@ input[type="range"] {
 .data-grid tr:first-child td input {
   color: var(--accent-dark);
   font-weight: 750;
+}
+
+/* ===== Large Data Mode ===== */
+.large-data-banner {
+  padding: 8px 14px;
+  background: var(--accent-soft);
+  border-bottom: 1px solid var(--border);
+  font-size: .82rem;
+  color: var(--accent-dark);
+  font-weight: 600;
+}
+
+.data-grid--preview td,
+.data-grid--preview th {
+  padding: 5px 10px;
+  font-family: "Cascadia Mono", Consolas, "Courier New", monospace;
+  font-size: .82rem;
+  white-space: nowrap;
+}
+
+.data-grid--preview th {
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  font-weight: 700;
+  text-align: left;
+}
+
+.data-grid--preview tbody tr:hover td { background: var(--surface-2); }
+
+.large-data-more {
+  text-align: center;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 6px;
+  font-size: .8rem;
+}
+
+.convert-large-data-preview {
+  margin-top: 10px;
+  max-height: 260px;
+}
+
+.convert-noise-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+}
+
+.convert-noise-controls[hidden] { display: none !important; }
+
+.convert-noise-controls .field {
+  min-width: 172px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+}
+
+/* ===== Filter Sliders ===== */
+#smooth-window,
+#filter-cutoff,
+#convert-smooth-window,
+#convert-filter-cutoff {
+  width: 120px;
+  accent-color: var(--accent);
+}
+
+.chart-action-group {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  min-width: 172px;
+}
+
+.chart-action-group button {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--text);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.chart-action-group button:hover,
+.chart-action-group button.is-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
 }
 
 /* ===== Charts ===== */

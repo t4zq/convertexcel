@@ -25,7 +25,13 @@ const chartAxis = (overrides = {}) => ({
   ...overrides,
 });
 
-const chartConfig = { responsive: true, displayModeBar: false };
+const chartConfig = {
+  responsive: true,
+  displayModeBar: true,
+  scrollZoom: true,
+  displaylogo: false,
+  modeBarButtonsToRemove: ['lasso2d', 'select2d'],
+};
 
 const MODE_CONFIG = {
   bode: {

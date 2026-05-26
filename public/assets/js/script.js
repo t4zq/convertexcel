@@ -60,6 +60,14 @@ const elements = {
   legendPos: document.getElementById('legend-pos'),
   scaleMode: document.getElementById('scale-mode'),
   fitMethodsBySeries: document.getElementById('fit-methods-by-series'),
+  convertNoiseControls: document.getElementById('convert-noise-controls'),
+  convertSmoothMode: document.getElementById('convert-smooth-mode'),
+  convertSmoothWindow: document.getElementById('convert-smooth-window'),
+  convertSmoothWindowValue: document.getElementById('convert-smooth-window-value'),
+  convertSmoothWindowField: document.getElementById('convert-smooth-window-field'),
+  convertFilterCutoff: document.getElementById('convert-filter-cutoff'),
+  convertFilterCutoffValue: document.getElementById('convert-filter-cutoff-value'),
+  convertFilterCutoffField: document.getElementById('convert-filter-cutoff-field'),
   latexPreviewBtn: document.getElementById('latex-preview-btn'),
   latexLoading: document.getElementById('latex-loading'),
   latexStatus: document.getElementById('latex-status'),
@@ -174,7 +182,13 @@ const getDataOptions = () => ({
 
 const AUTO_PREVIEW_COOLDOWN_SECONDS = 15;
 const AUTO_PREVIEW_COOLDOWN_MS = AUTO_PREVIEW_COOLDOWN_SECONDS * 1000;
+const LARGE_DATA_THRESHOLD = 300;
+const LARGE_DATA_PREVIEW_ROWS = 8;
 let pdfPreviewCooldownActive = false;
+let convertLargeDataMode = false;
+let convertSmoothMode = 'none';
+let convertSmoothWindow = 5;
+let convertFilterCutoff = 30;
 
 const fitMethodOptions = [
   ['none', 'なし（近似なし）'],
@@ -219,6 +233,231 @@ const computeStats = (rawData, hasHeader, cleanInput) => {
   });
 };
 
+const parseInputRows = (rawData, cleanInput = true) => {
+  const text = cleanInput ? rawData.normalize('NFKC') : rawData;
+  const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  if (lines.length === 0) return [];
+  const delimiter = lines[0].includes('\t') ? '\t' : ',';
+  const width = Math.max(...lines.map((line) => line.split(delimiter).length));
+  return lines.map((line) => {
+    const cells = line.split(delimiter).map((cell) => cell.trim());
+    return Array.from({ length: width }, (_, i) => cells[i] || '');
+  });
+};
+
+const applyConvertMovingAverage = (arr, w) => {
+  if (w <= 1 || arr.length === 0) return arr;
+  const half = Math.floor(w / 2);
+  return arr.map((_, i) => {
+    const from = Math.max(0, i - half);
+    const to = Math.min(arr.length - 1, i + half);
+    const vals = arr.slice(from, to + 1).filter((v) => Number.isFinite(v));
+    return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : NaN;
+  });
+};
+
+const applyConvertMedianFilter = (arr, w) => {
+  if (w <= 1 || arr.length === 0) return arr;
+  const half = Math.floor(w / 2);
+  return arr.map((_, i) => {
+    const from = Math.max(0, i - half);
+    const to = Math.min(arr.length - 1, i + half);
+    const vals = arr.slice(from, to + 1).filter((v) => Number.isFinite(v)).sort((a, b) => a - b);
+    if (!vals.length) return NaN;
+    const mid = Math.floor(vals.length / 2);
+    return vals.length % 2 === 0 ? (vals[mid - 1] + vals[mid]) / 2 : vals[mid];
+  });
+};
+
+const applyConvertLowPassFilter = (arr, cutoffPercent) => {
+  if (arr.length === 0) return arr;
+  const cutoff = Math.min(99, Math.max(1, cutoffPercent)) / 100;
+  const fc = cutoff * 0.5;
+  const alpha = 1 / ((1 / (2 * Math.PI * fc)) + 1);
+  let prev = null;
+  return arr.map((v) => {
+    if (!Number.isFinite(v)) return NaN;
+    prev = prev === null ? v : prev + alpha * (v - prev);
+    return prev;
+  });
+};
+
+const convertFftTransform = (re, im, inverse = false) => {
+  const n = re.length;
+  if (n <= 1) return;
+  const evenRe = [], evenIm = [], oddRe = [], oddIm = [];
+  for (let i = 0; i < n; i += 2) {
+    evenRe.push(re[i]);
+    evenIm.push(im[i]);
+    oddRe.push(re[i + 1] ?? 0);
+    oddIm.push(im[i + 1] ?? 0);
+  }
+  convertFftTransform(evenRe, evenIm, inverse);
+  convertFftTransform(oddRe, oddIm, inverse);
+  const direction = inverse ? 1 : -1;
+  for (let k = 0; k < n / 2; k += 1) {
+    const angle = direction * 2 * Math.PI * k / n;
+    const cr = Math.cos(angle);
+    const ci = Math.sin(angle);
+    const tr = cr * oddRe[k] - ci * oddIm[k];
+    const ti = cr * oddIm[k] + ci * oddRe[k];
+    re[k] = evenRe[k] + tr;
+    im[k] = evenIm[k] + ti;
+    re[k + n / 2] = evenRe[k] - tr;
+    im[k + n / 2] = evenIm[k] - ti;
+  }
+};
+
+const convertNextPowerOfTwo = (n) => 2 ** Math.ceil(Math.log2(Math.max(1, n)));
+
+const applyConvertFftLowPassFilter = (arr, cutoffPercent) => {
+  if (arr.length < 4) return arr;
+  const finite = arr.filter(Number.isFinite);
+  const fallback = finite.length ? finite.reduce((a, b) => a + b, 0) / finite.length : 0;
+  let last = fallback;
+  const filled = arr.map((v) => {
+    if (Number.isFinite(v)) {
+      last = v;
+      return v;
+    }
+    return last;
+  });
+  const n = convertNextPowerOfTwo(filled.length);
+  const mean = filled.reduce((a, b) => a + b, 0) / filled.length;
+  const re = Array.from({ length: n }, (_, i) => (filled[i] ?? mean) - mean);
+  const im = Array(n).fill(0);
+  convertFftTransform(re, im, false);
+  const cutoffBin = Math.max(1, Math.floor((Math.min(99, Math.max(1, cutoffPercent)) / 100) * (n / 2)));
+  for (let i = cutoffBin + 1; i < n - cutoffBin; i += 1) {
+    re[i] = 0;
+    im[i] = 0;
+  }
+  convertFftTransform(re, im, true);
+  return arr.map((v, i) => (Number.isFinite(v) ? (re[i] / n) + mean : NaN));
+};
+
+const updateConvertNoiseSettings = () => {
+  convertSmoothMode = elements.convertSmoothMode?.value || 'none';
+  convertSmoothWindow = parseInt(elements.convertSmoothWindow?.value || '5', 10);
+  convertFilterCutoff = parseInt(elements.convertFilterCutoff?.value || '30', 10);
+  if (elements.convertSmoothWindowField) {
+    elements.convertSmoothWindowField.hidden = !['moving-avg', 'median'].includes(convertSmoothMode);
+  }
+  if (elements.convertFilterCutoffField) {
+    elements.convertFilterCutoffField.hidden = !['low-pass', 'fft-low-pass'].includes(convertSmoothMode);
+  }
+};
+
+const rowsToTsv = (rows) => rows.map((row) => row.join('\t')).join('\n');
+
+const buildLargeDataGraphInput = (rawData) => {
+  updateConvertNoiseSettings();
+  if (!convertLargeDataMode || convertSmoothMode === 'none') return rawData;
+  const { hasHeader, cleanInput } = getDataOptions();
+  const rows = parseInputRows(rawData, cleanInput);
+  if (rows.length === 0) return rawData;
+  const headerRows = hasHeader ? rows.slice(0, 1) : [];
+  const bodyRows = hasHeader ? rows.slice(1) : rows;
+  if (bodyRows.length === 0) return rawData;
+
+  const width = rows[0]?.length || 0;
+  const output = bodyRows.map((row) => [...row]);
+  const filters = {
+    'moving-avg': (col) => applyConvertMovingAverage(col, convertSmoothWindow),
+    median: (col) => applyConvertMedianFilter(col, convertSmoothWindow),
+    'low-pass': (col) => applyConvertLowPassFilter(col, convertFilterCutoff),
+    'fft-low-pass': (col) => applyConvertFftLowPassFilter(col, convertFilterCutoff),
+  };
+  const filter = filters[convertSmoothMode];
+  if (!filter) return rawData;
+
+  for (let c = 1; c < width; c += 1) {
+    const original = bodyRows.map((row) => Number.parseFloat(row[c]));
+    const filtered = filter(original);
+    filtered.forEach((v, r) => {
+      if (Number.isFinite(v)) output[r][c] = Number(v.toPrecision(12)).toString();
+    });
+  }
+  return rowsToTsv([...headerRows, ...output]);
+};
+
+const setInputEditorHidden = (hidden) => {
+  const aceField = textareas.input?.nextElementSibling?.classList?.contains('ace-field')
+    ? textareas.input.nextElementSibling
+    : null;
+  if (aceField) aceField.hidden = hidden;
+  if (textareas.input) {
+    textareas.input.hidden = hidden;
+    textareas.input.readOnly = hidden;
+  }
+};
+
+const renderConvertLargeDataPreview = (rows, hasHeader) => {
+  const preview = document.getElementById('convert-large-data-preview');
+  if (!preview) return;
+  preview.textContent = '';
+
+  const banner = document.createElement('div');
+  banner.className = 'large-data-banner';
+  banner.textContent = `大容量データ: ${rows.length} 行 - 読み取り専用プレビューを表示しています`;
+  preview.appendChild(banner);
+
+  const table = document.createElement('table');
+  table.className = 'data-grid data-grid--preview';
+  const bodyRows = hasHeader ? rows.slice(1) : rows;
+
+  if (hasHeader && rows[0]) {
+    const thead = document.createElement('thead');
+    const tr = document.createElement('tr');
+    rows[0].forEach((cell) => {
+      const th = document.createElement('th');
+      th.textContent = cell;
+      tr.appendChild(th);
+    });
+    thead.appendChild(tr);
+    table.appendChild(thead);
+  }
+
+  const tbody = document.createElement('tbody');
+  bodyRows.slice(0, LARGE_DATA_PREVIEW_ROWS).forEach((row) => {
+    const tr = document.createElement('tr');
+    row.forEach((cell) => {
+      const td = document.createElement('td');
+      td.textContent = cell;
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+
+  if (bodyRows.length > LARGE_DATA_PREVIEW_ROWS) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = rows[0]?.length || 1;
+    td.className = 'large-data-more';
+    td.textContent = `さらに ${bodyRows.length - LARGE_DATA_PREVIEW_ROWS} 行`;
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+  }
+
+  table.appendChild(tbody);
+  preview.appendChild(table);
+};
+
+const updateConvertLargeDataMode = () => {
+  const preview = document.getElementById('convert-large-data-preview');
+  if (!preview) return;
+  const rawData = elements.input.value;
+  const { hasHeader, cleanInput } = getDataOptions();
+  const rows = parseInputRows(rawData, cleanInput);
+  convertLargeDataMode = rows.length > LARGE_DATA_THRESHOLD;
+  preview.hidden = !convertLargeDataMode;
+  if (elements.convertNoiseControls) elements.convertNoiseControls.hidden = !convertLargeDataMode;
+  setInputEditorHidden(convertLargeDataMode);
+  if (convertLargeDataMode) {
+    renderConvertLargeDataPreview(rows, hasHeader);
+  }
+};
+
 const formatStat = (val) => {
   if (val === null || !Number.isFinite(val)) return '—';
   return Number(val.toPrecision(4)).toString();
@@ -246,6 +485,10 @@ const detectSeriesCount = () => {
 };
 
 const getFitMethodsBySeries = () => {
+  if (convertLargeDataMode) {
+    const count = Math.max(1, detectSeriesCount());
+    return Array.from({ length: count }, () => 'none').join(',');
+  }
   const selects = [...(elements.fitMethodsBySeries?.querySelectorAll('select[data-fit-series]') || [])];
   if (selects.length === 0) {
     return 'auto';
@@ -287,7 +530,8 @@ const updateFitMethodControls = () => {
       option.textContent = label;
       select.appendChild(option);
     });
-    select.value = previous.get(String(i)) || defaultMethod;
+    select.value = convertLargeDataMode ? 'none' : (previous.get(String(i)) || defaultMethod);
+    select.disabled = convertLargeDataMode;
     row.appendChild(name);
     row.appendChild(select);
     elements.fitMethodsBySeries.appendChild(row);
@@ -558,13 +802,16 @@ elements.latexPreviewBtn?.addEventListener('click', () => {
   submitLatexForm('latex-form', wrapLatexDocument(texCode), 'uplatex');
 });
 
-const updateInputDependents = () => { updateFitMethodControls(); updateStatsDisplay(); };
+const updateInputDependents = () => {
+  updateConvertLargeDataMode();
+  updateFitMethodControls();
+  updateStatsDisplay();
+};
 elements.input.editor?.session.on('change', updateInputDependents);
 textareas.input?.addEventListener('input', updateInputDependents);
 elements.hasHeader?.addEventListener('change', updateStatsDisplay);
 elements.cleanInput?.addEventListener('change', updateStatsDisplay);
-updateFitMethodControls();
-updateStatsDisplay();
+updateInputDependents();
 
 ConvertModule().then((module) => {
   const takeString = (ptr) => {
@@ -584,6 +831,10 @@ ConvertModule().then((module) => {
     csvAttachment: wrapExport('gen_csv_attachment', 'number', ['string', 'number', 'number']),
   };
   let lastGeneratedTikz = '';
+  let lastGraphSourceData = '';
+  let tikzDirty = false;
+  let updatingTikzProgrammatically = false;
+  let tikzPreviewCompiledOnce = false;
   let autoPreviewTimer = null;
   let autoPreviewCooldownTimer = null;
   let autoPreviewCountdownTimer = null;
@@ -594,6 +845,23 @@ ConvertModule().then((module) => {
     elements.input.editor?.setReadOnly(locked);
     if (textareas.input) textareas.input.disabled = locked;
     elements.tikzPreviewBtn && (elements.tikzPreviewBtn.disabled = locked || pdfPreviewCooldownActive);
+  };
+
+  const setTikzValue = (value, { generated = false } = {}) => {
+    updatingTikzProgrammatically = true;
+    elements.tikz.value = value;
+    updatingTikzProgrammatically = false;
+    if (generated) {
+      lastGeneratedTikz = value;
+      tikzDirty = false;
+    }
+  };
+
+  const markTikzEdited = () => {
+    if (updatingTikzProgrammatically) return;
+    const currentBase = applyFigureNumber((elements.tikz.value || '').trim(), 0).trim();
+    const generatedBase = applyFigureNumber((lastGeneratedTikz || '').trim(), 0).trim();
+    tikzDirty = Boolean(currentBase) && currentBase !== generatedBase;
   };
 
   const setCooldownStatus = (message) => {
@@ -711,27 +979,40 @@ ConvertModule().then((module) => {
     return elements.csv.value;
   };
 
+  const makeLargeDataSmoothPlot = (tikzCode) => (
+    tikzCode.replace(
+      /\\addplot \[[^\]]*only marks[^\]]*\]/g,
+      '\\addplot [smooth, mark=none, color=black, thick]',
+    )
+  );
+
   const generateTikzFromInput = (data) => {
     const { sigFigs, figureNumber, legendPos, scaleMode, fitMethods } = getGraphOptions();
     const { hasHeader, cleanInput } = getDataOptions();
     const filename = elements.filename.value.trim() || 'data';
-    const tikzCode = takeString(wasm.tikzGraphConfig(
-      data,
+    const graphData = buildLargeDataGraphInput(data);
+    let tikzCode = takeString(wasm.tikzGraphConfig(
+      graphData,
       filename,
       sigFigs,
       legendPos,
       scaleMode,
-      fitMethods,
+      convertLargeDataMode ? Array.from({ length: Math.max(1, detectSeriesCount()) }, () => 'none').join(',') : fitMethods,
       hasHeader ? 1 : 0,
       cleanInput ? 1 : 0,
       figureNumber,
     ));
-    elements.tikz.value = tikzCode;
-    lastGeneratedTikz = tikzCode;
+    lastGraphSourceData = graphData;
+    if (convertLargeDataMode) {
+      tikzCode = makeLargeDataSmoothPlot(tikzCode);
+    }
+    setTikzValue(tikzCode, { generated: true });
     return tikzCode;
   };
 
   const shouldRegenerateTikzForPreview = (sourceData, currentTikz) => {
+    if (!currentTikz) return Boolean(sourceData);
+    if (tikzDirty) return false;
     if (!sourceData || !lastGeneratedTikz) return false;
     const currentBaseTikz = applyFigureNumber(currentTikz, 0).trim();
     const lastBaseTikz = applyFigureNumber(lastGeneratedTikz.trim(), 0).trim();
@@ -743,7 +1024,7 @@ ConvertModule().then((module) => {
     const extraFiles = [];
     if (csvReferences.length === 0) return extraFiles;
 
-    const data = elements.input.value.trim();
+    const data = (convertLargeDataMode && lastGraphSourceData ? lastGraphSourceData : elements.input.value).trim();
     if (!data) {
       if (showAlerts) {
         alert('This PGFPlots code references a CSV file. Keep the source data in the input editor before previewing.');
@@ -772,8 +1053,10 @@ ConvertModule().then((module) => {
       return false;
     }
 
-    elements.tikz.value = tikzCode;
-    lastGeneratedTikz = tikzCode;
+    setTikzValue(tikzCode, { generated: shouldRegenerate });
+    if (!shouldRegenerate) {
+      tikzDirty = true;
+    }
 
     const extraFiles = buildCsvAttachments(tikzCode, showAlerts);
     if (extraFiles === null) return false;
@@ -787,6 +1070,7 @@ ConvertModule().then((module) => {
       log: elements.tikzLog,
     });
     submitLatexForm('tikz-form', wrapTikzDocument(tikzCode), 'uplatex', extraFiles);
+    tikzPreviewCompiledOnce = true;
     return true;
   };
 
@@ -800,12 +1084,19 @@ ConvertModule().then((module) => {
   const runAutoOutputAndPreview = async () => {
     const data = elements.input.value.trim();
     if (!isAutoPreviewCandidate(data)) return;
-    if (!(await ensureAutoPreviewConsent())) return;
 
     generateLatexFromInput(data);
     generateCsvFromInput(data);
-    generateTikzFromInput(data);
-    if (previewTikzPdf({ showAlerts: false, forceRegenerate: true })) {
+    if (!tikzDirty || !elements.tikz.value.trim()) {
+      generateTikzFromInput(data);
+    }
+
+    if (convertLargeDataMode && !tikzPreviewCompiledOnce) {
+      return;
+    }
+
+    if (!(await ensureAutoPreviewConsent())) return;
+    if (previewTikzPdf({ showAlerts: false, forceRegenerate: false })) {
       startPdfCooldown();
     }
   };
@@ -817,7 +1108,7 @@ ConvertModule().then((module) => {
 
   elements.fitMethodsBySeries?.addEventListener('change', () => {
     const sourceData = elements.input.value.trim();
-    if (sourceData) {
+    if (sourceData && !tikzDirty) {
       generateTikzFromInput(sourceData);
       scheduleAutoOutputAndPreview();
     }
@@ -829,18 +1120,45 @@ ConvertModule().then((module) => {
       if (!(await ensureAutoPreviewConsent())) return;
       generateLatexFromInput(data);
       generateCsvFromInput(data);
-      generateTikzFromInput(data);
-      if (previewTikzPdf({ showAlerts: true, forceRegenerate: true })) {
+      if (!tikzDirty || !elements.tikz.value.trim()) {
+        generateTikzFromInput(data);
+      }
+      if (previewTikzPdf({ showAlerts: true, forceRegenerate: false })) {
         startPdfCooldown();
       }
     });
   });
 
-  elements.input.editor?.session.on('change', scheduleAutoOutputAndPreview);
-  textareas.input?.addEventListener('input', scheduleAutoOutputAndPreview);
+  elements.tikz.editor?.session.on('change', markTikzEdited);
+  textareas.tikz?.addEventListener('input', markTikzEdited);
+  elements.convertSmoothMode?.addEventListener('change', () => {
+    updateConvertNoiseSettings();
+    if (!tikzDirty) scheduleAutoOutputAndPreview();
+  });
+  elements.convertSmoothWindow?.addEventListener('input', () => {
+    if (elements.convertSmoothWindowValue) elements.convertSmoothWindowValue.textContent = elements.convertSmoothWindow.value;
+    updateConvertNoiseSettings();
+    if (!tikzDirty) scheduleAutoOutputAndPreview();
+  });
+  elements.convertFilterCutoff?.addEventListener('input', () => {
+    if (elements.convertFilterCutoffValue) elements.convertFilterCutoffValue.textContent = elements.convertFilterCutoff.value;
+    updateConvertNoiseSettings();
+    if (!tikzDirty) scheduleAutoOutputAndPreview();
+  });
+  const onInputAutoChange = () => {
+    if (convertLargeDataMode) {
+      tikzPreviewCompiledOnce = false;
+    }
+    scheduleAutoOutputAndPreview();
+  };
+  elements.input.editor?.session.on('change', onInputAutoChange);
+  textareas.input?.addEventListener('input', onInputAutoChange);
   [elements.hasHeader, elements.cleanInput, elements.decimals, elements.sigFigs, elements.filename, elements.figureNumber, elements.legendPos, elements.scaleMode]
     .filter(Boolean)
-    .forEach((element) => element.addEventListener('change', scheduleAutoOutputAndPreview));
+    .forEach((element) => element.addEventListener('change', () => {
+      updateInputDependents();
+      scheduleAutoOutputAndPreview();
+    }));
   document.querySelectorAll('input[name="round-mode"]').forEach((element) => {
     element.addEventListener('change', scheduleAutoOutputAndPreview);
   });
