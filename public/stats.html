@@ -94,6 +94,32 @@
           <option value="line">折れ線</option>
         </select>
       </div>
+      <div class="field">
+        <label for="smooth-mode">ノイズ除去</label>
+        <select id="smooth-mode">
+          <option value="none">なし</option>
+          <option value="moving-avg">移動平均</option>
+          <option value="median">メジアンフィルタ</option>
+          <option value="low-pass">低域通過(IIR)</option>
+          <option value="fft-low-pass">FFT低域通過</option>
+        </select>
+      </div>
+      <div class="field" id="smooth-window-field" hidden>
+        <label for="smooth-window">窓幅 <span id="smooth-window-value">5</span>点</label>
+        <input type="range" id="smooth-window" min="3" max="101" step="2" value="5">
+      </div>
+      <div class="field" id="filter-cutoff-field" hidden>
+        <label for="filter-cutoff">カットオフ <span id="filter-cutoff-value">30</span>%</label>
+        <input type="range" id="filter-cutoff" min="1" max="99" step="1" value="30">
+      </div>
+      <div class="field">
+        <label>表示操作</label>
+        <div class="chart-action-group" aria-label="グラフ表示操作">
+          <button type="button" data-chart-action="zoom" class="is-active">拡大</button>
+          <button type="button" data-chart-action="pan">移動</button>
+          <button type="button" data-chart-action="reset">戻す</button>
+        </div>
+      </div>
     </div>
     <div id="main-chart" class="plotly-chart"></div>
   </section>
@@ -134,6 +160,7 @@
       <label><input type="checkbox" value="poly" checked> 多項式</label>
       <label><input type="checkbox" value="exp" checked> 指数</label>
       <label><input type="checkbox" value="power" checked> べき乗</label>
+      <label><input type="checkbox" value="sin"> 三角関数</label>
     </div>
     <div class="fit-degree-control">
       <label for="poly-degree">多項式次数 <span id="poly-degree-value">2</span></label>

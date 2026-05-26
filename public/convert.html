@@ -81,6 +81,27 @@
           </div>
           <label for="input">Excel / TSV / CSV</label>
           <textarea id="input" rows="7" placeholder="列データ&#10;x&#9;y1&#9;y2&#10;1&#9;2.3&#9;4.5&#10;2&#9;3.1&#9;5.2"></textarea>
+          <div id="convert-large-data-preview" class="grid-wrap convert-large-data-preview" hidden></div>
+          <div id="convert-noise-controls" class="convert-noise-controls" hidden>
+            <div class="field">
+              <label for="convert-smooth-mode">ノイズ除去</label>
+              <select id="convert-smooth-mode">
+                <option value="none">なし</option>
+                <option value="moving-avg">移動平均</option>
+                <option value="median">メジアンフィルタ</option>
+                <option value="low-pass">低域通過(IIR)</option>
+                <option value="fft-low-pass">FFT低域通過</option>
+              </select>
+            </div>
+            <div class="field" id="convert-smooth-window-field" hidden>
+              <label for="convert-smooth-window">窓幅 <span id="convert-smooth-window-value">5</span>点</label>
+              <input type="range" id="convert-smooth-window" min="3" max="101" step="2" value="5">
+            </div>
+            <div class="field" id="convert-filter-cutoff-field" hidden>
+              <label for="convert-filter-cutoff">カットオフ <span id="convert-filter-cutoff-value">30</span>%</label>
+              <input type="range" id="convert-filter-cutoff" min="1" max="99" step="1" value="30">
+            </div>
+          </div>
 
           <div class="options-row conversion-options" aria-label="変換設定">
             <div class="option-panel option-panel--wide">

@@ -14,6 +14,8 @@ const MIN_GRID_ROWS = 3;
 const DEFAULT_HEADERS = ['x', 'A', 'B', 'C'];
 const DEFAULT_DATA_ROWS = 5;
 const SAVE_STATUS_MS = 1500;
+const LARGE_DATA_THRESHOLD = 300;  // rows (including header) above which grid editing is disabled
+const LTTB_DISPLAY_MAX = 5000;     // max points per series shown in chart (LTTB applied above this)
 const CHART_THEME = {
   colors: ['#107c41', '#005fb8', '#c16800', '#8c6c00', '#7f52b8'],
   markers: ['circle', 'square', 'diamond', 'triangle-up', 'cross'],
@@ -59,11 +61,24 @@ const chartLayout = (overrides = {}) => ({
   ...overrides,
 });
 
-const chartConfig = { responsive: true, displayModeBar: false };
+const chartConfig = {
+  responsive: true,
+  displayModeBar: true,
+  scrollZoom: true,
+  displaylogo: false,
+  modeBarButtonsToRemove: ['lasso2d', 'select2d'],
+};
 
 let gridRows = [];
 let gridChangeTimer = null;
 let saveStatusTimer = null;
+
+let isLargeDataMode = false;
+let largeDataRows = [];
+
+let smoothingMode = 'none';
+let smoothingWindow = 5;
+let filterCutoff = 30;
 
 const showGridStatus = (message) => {
   const status = document.getElementById('save-status');
@@ -120,17 +135,114 @@ const focusCell = (rowIdx, colIdx) => {
 };
 
 const snapshotGridRows = () => {
+  if (isLargeDataMode) return largeDataRows;
   const table = document.getElementById('data-grid');
   if (!table) return normalizeGridRows(gridRows);
   return [...table.rows].map((tr) => [...tr.cells].map((td) => td.querySelector('input')?.value ?? ''));
+};
+
+const renderLargeDataBanner = (numDataRows, numCols) => {
+  const wrap = document.getElementById('grid-wrap');
+  if (!wrap) return;
+  let banner = document.getElementById('large-data-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'large-data-banner';
+    banner.className = 'large-data-banner';
+    wrap.prepend(banner);
+  }
+  banner.textContent = `大容量データ: ${numDataRows} 行 × ${numCols} 列 — グリッド編集は無効です（CSV読み込みで置き換えできます）`;
+};
+
+const removeLargeDataBanner = () => {
+  document.getElementById('large-data-banner')?.remove();
+};
+
+const updateToolbarForLargeData = (large) => {
+  const editIds = ['add-row-btn', 'add-col-btn', 'del-row-btn', 'del-col-btn'];
+  editIds.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = large;
+  });
+};
+
+const renderLargeDataPreview = (rows, table) => {
+  const PREVIEW = 8;
+  const numCols = rows[0]?.length || 0;
+  const numDataRows = rows.length - 1;
+
+  renderLargeDataBanner(numDataRows, numCols);
+
+  table.textContent = '';
+  table.className = 'data-grid data-grid--preview';
+
+  const headerRow = rows[0] || [];
+  const thead = document.createElement('thead');
+  const thTr = document.createElement('tr');
+  headerRow.forEach((h) => {
+    const th = document.createElement('th');
+    th.textContent = h;
+    thTr.appendChild(th);
+  });
+  thead.appendChild(thTr);
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+  rows.slice(1, PREVIEW + 1).forEach((row) => {
+    const tr = document.createElement('tr');
+    row.forEach((cell) => {
+      const td = document.createElement('td');
+      td.textContent = cell;
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+
+  if (numDataRows > PREVIEW) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = numCols;
+    td.className = 'large-data-more';
+    td.textContent = `… さらに ${numDataRows - PREVIEW} 行`;
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+  }
+  table.appendChild(tbody);
+};
+
+const normalizeRawRows = (rows) => {
+  if (!Array.isArray(rows) || rows.length === 0) return [];
+  const colCount = Math.max(...rows.map((r) => (Array.isArray(r) ? r.length : 0)));
+  return rows.map((row) => Array.from({ length: colCount }, (_, c) => {
+    const v = Array.isArray(row) ? row[c] : '';
+    return v == null ? '' : String(v);
+  }));
 };
 
 const renderDataGrid = (rows = gridRows) => {
   const table = document.getElementById('data-grid');
   if (!table) return;
 
-  gridRows = normalizeGridRows(rows);
+  // Use raw normalization (no min-col padding) for large data detection
+  const rawNorm = normalizeRawRows(Array.isArray(rows) ? rows : []);
+  if (rawNorm.length > LARGE_DATA_THRESHOLD) {
+    isLargeDataMode = true;
+    largeDataRows = rawNorm;
+    gridRows = rawNorm;
+    updateToolbarForLargeData(true);
+    renderLargeDataPreview(rawNorm, table);
+    return;
+  }
+
+  isLargeDataMode = false;
+  largeDataRows = [];
+  removeLargeDataBanner();
+  updateToolbarForLargeData(false);
+
+  const normalized = normalizeGridRows(rows);
+  gridRows = normalized;
   table.textContent = '';
+  table.className = 'data-grid';
 
   gridRows.forEach((row, rowIdx) => {
     const tr = document.createElement('tr');
@@ -171,10 +283,13 @@ const readGridData = () => {
 };
 
 const saveGridToStorage = () => {
+  if (isLargeDataMode) {
+    showGridStatus(`${largeDataRows.length - 1} 行（ローカル保存なし）`);
+    return;
+  }
   const rows = snapshotGridRows();
   const [headers = [], ...dataRows] = rows;
   localStorage.setItem(GRID_STORAGE_KEY, JSON.stringify({ headers, rows: dataRows }));
-
   showGridStatus('保存済み');
 };
 
@@ -234,11 +349,13 @@ const copyGridForExcel = async () => {
 
 const onGridChange = () => {
   const { headers, columns } = readGridData();
-  state = { headers, columns };
+  getSmoothingSettings();
+  const smoothed = applySmoothing(columns);
+  state = { headers, columns: smoothed };
   saveGridToStorage();
   updateColumnSelectors();
-  renderDescStats(headers, columns);
-  renderCorrHeatmap(headers, columns);
+  renderDescStats(headers, smoothed);
+  renderCorrHeatmap(headers, smoothed);
   onChartOptionsChange();
   runFits();
 };
@@ -418,6 +535,167 @@ const welchT = (a, b) => {
   };
 };
 
+// ─── Noise Smoothing ──────────────────────────────────────────
+
+const applyMovingAverage = (arr, w) => {
+  if (w <= 1 || arr.length === 0) return arr;
+  const half = Math.floor(w / 2);
+  return arr.map((_, i) => {
+    const from = Math.max(0, i - half);
+    const to = Math.min(arr.length - 1, i + half);
+    const vals = arr.slice(from, to + 1).filter((v) => v !== null && Number.isFinite(v));
+    return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+  });
+};
+
+const applyMedianFilter = (arr, w) => {
+  if (w <= 1 || arr.length === 0) return arr;
+  const half = Math.floor(w / 2);
+  return arr.map((_, i) => {
+    const from = Math.max(0, i - half);
+    const to = Math.min(arr.length - 1, i + half);
+    const vals = arr.slice(from, to + 1)
+      .filter((v) => v !== null && Number.isFinite(v))
+      .sort((a, b) => a - b);
+    if (vals.length === 0) return null;
+    const mid = Math.floor(vals.length / 2);
+    return vals.length % 2 === 0 ? (vals[mid - 1] + vals[mid]) / 2 : vals[mid];
+  });
+};
+
+const applyLowPassFilter = (arr, cutoffPercent) => {
+  if (arr.length === 0) return arr;
+  const cutoff = Math.min(99, Math.max(1, cutoffPercent)) / 100;
+  const fc = cutoff * 0.5;
+  const alpha = 1 / ((1 / (2 * Math.PI * fc)) + 1);
+  let prev = null;
+
+  return arr.map((v) => {
+    if (v === null || !Number.isFinite(v)) return null;
+    prev = prev === null ? v : prev + alpha * (v - prev);
+    return prev;
+  });
+};
+
+const fftTransform = (re, im, inverse = false) => {
+  const n = re.length;
+  if (n <= 1) return;
+  const evenRe = [], evenIm = [], oddRe = [], oddIm = [];
+  for (let i = 0; i < n; i += 2) {
+    evenRe.push(re[i]);
+    evenIm.push(im[i]);
+    oddRe.push(re[i + 1] ?? 0);
+    oddIm.push(im[i + 1] ?? 0);
+  }
+  fftTransform(evenRe, evenIm, inverse);
+  fftTransform(oddRe, oddIm, inverse);
+  const direction = inverse ? 1 : -1;
+  for (let k = 0; k < n / 2; k += 1) {
+    const angle = direction * 2 * Math.PI * k / n;
+    const cr = Math.cos(angle);
+    const ci = Math.sin(angle);
+    const tr = cr * oddRe[k] - ci * oddIm[k];
+    const ti = cr * oddIm[k] + ci * oddRe[k];
+    re[k] = evenRe[k] + tr;
+    im[k] = evenIm[k] + ti;
+    re[k + n / 2] = evenRe[k] - tr;
+    im[k + n / 2] = evenIm[k] - ti;
+  }
+};
+
+const nextPowerOfTwo = (n) => 2 ** Math.ceil(Math.log2(Math.max(1, n)));
+
+const fillMissingForFilter = (arr) => {
+  const finite = arr.filter((v) => v !== null && Number.isFinite(v));
+  const fallback = finite.length ? finite.reduce((a, b) => a + b, 0) / finite.length : 0;
+  let last = fallback;
+  return arr.map((v) => {
+    if (v !== null && Number.isFinite(v)) {
+      last = v;
+      return v;
+    }
+    return last;
+  });
+};
+
+const applyFftLowPassFilter = (arr, cutoffPercent) => {
+  if (arr.length < 4) return arr;
+  const n = nextPowerOfTwo(arr.length);
+  const filled = fillMissingForFilter(arr);
+  const mean = filled.reduce((a, b) => a + b, 0) / filled.length;
+  const re = Array.from({ length: n }, (_, i) => (filled[i] ?? mean) - mean);
+  const im = Array(n).fill(0);
+  fftTransform(re, im, false);
+
+  const cutoffBin = Math.max(1, Math.floor((Math.min(99, Math.max(1, cutoffPercent)) / 100) * (n / 2)));
+  for (let i = cutoffBin + 1; i < n - cutoffBin; i += 1) {
+    re[i] = 0;
+    im[i] = 0;
+  }
+
+  fftTransform(re, im, true);
+  return arr.map((v, i) => (v === null || !Number.isFinite(v) ? null : (re[i] / n) + mean));
+};
+
+const getSmoothingSettings = () => {
+  smoothingMode = document.getElementById('smooth-mode')?.value || 'none';
+  smoothingWindow = parseInt(document.getElementById('smooth-window')?.value || '5', 10);
+  filterCutoff = parseInt(document.getElementById('filter-cutoff')?.value || '30', 10);
+};
+
+const applySmoothing = (columns) => {
+  if (smoothingMode === 'none') return columns;
+  const fn = {
+    median: (col) => applyMedianFilter(col, smoothingWindow),
+    'moving-avg': (col) => applyMovingAverage(col, smoothingWindow),
+    'low-pass': (col) => applyLowPassFilter(col, filterCutoff),
+    'fft-low-pass': (col) => applyFftLowPassFilter(col, filterCutoff),
+  }[smoothingMode];
+  if (!fn) return columns;
+  return columns.map((col, idx) => (idx === 0 ? col : fn(col)));
+};
+
+// ─── LTTB Downsampling ────────────────────────────────────────
+
+// Largest-Triangle-Three-Buckets: reduces N points to `threshold` while preserving shape
+const lttbDownsample = (xs, ys, threshold) => {
+  const n = xs.length;
+  if (n <= threshold) return { xs, ys };
+
+  const outX = [xs[0]];
+  const outY = [ys[0]];
+  const bucketSize = (n - 2) / (threshold - 2);
+  let a = 0;
+
+  for (let i = 0; i < threshold - 2; i += 1) {
+    const avgStart = Math.floor((i + 1) * bucketSize) + 1;
+    const avgEnd = Math.min(Math.floor((i + 2) * bucketSize) + 1, n);
+    const avgLen = avgEnd - avgStart;
+    let avgX = 0;
+    let avgY = 0;
+    for (let j = avgStart; j < avgEnd; j += 1) { avgX += xs[j]; avgY += ys[j]; }
+    avgX /= avgLen; avgY /= avgLen;
+
+    const rangeStart = Math.floor(i * bucketSize) + 1;
+    const rangeEnd = Math.min(Math.floor((i + 1) * bucketSize) + 1, n);
+    let maxArea = -1;
+    let selected = rangeStart;
+    for (let j = rangeStart; j < rangeEnd; j += 1) {
+      const area = Math.abs(
+        (xs[a] - avgX) * (ys[j] - ys[a]) - (xs[a] - xs[j]) * (avgY - ys[a]),
+      );
+      if (area > maxArea) { maxArea = area; selected = j; }
+    }
+    outX.push(xs[selected]);
+    outY.push(ys[selected]);
+    a = selected;
+  }
+
+  outX.push(xs[n - 1]);
+  outY.push(ys[n - 1]);
+  return { xs: outX, ys: outY };
+};
+
 // ─── Rendering ────────────────────────────────────────────────
 
 const fmt = (v) => (Number.isFinite(v) ? Number(v.toPrecision(4)).toString() : '—');
@@ -564,21 +842,35 @@ const renderMainChart = (headers, columns, xIdx, yIdxList, chartType) => {
       .filter(([x, y]) => x !== null && y !== null && Number.isFinite(x) && Number.isFinite(y))
       .sort((a, b) => a[0] - b[0]);
 
+    let dispX = pairs.map((p) => p[0]);
+    let dispY = pairs.map((p) => p[1]);
+
+    // LTTB downsampling for display when point count is very large
+    if (dispX.length > LTTB_DISPLAY_MAX) {
+      const down = lttbDownsample(dispX, dispY, LTTB_DISPLAY_MAX);
+      dispX = down.xs;
+      dispY = down.ys;
+    }
+
+    // Use WebGL-accelerated scattergl for large datasets
+    const useWebGL = dispX.length > 2000;
+    const markerSize = dispX.length > 1000 ? 3 : 8;
+
     return {
-      x: pairs.map((p) => p[0]),
-      y: pairs.map((p) => p[1]),
-      mode: chartType === 'line' ? 'lines+markers' : 'markers',
-      type: 'scatter',
+      x: dispX,
+      y: dispY,
+      mode: chartType === 'line' ? 'lines' : 'markers',
+      type: useWebGL ? 'scattergl' : 'scatter',
       name: headers[yi] || `列${yi + 1}`,
       marker: {
-        size: 8,
+        size: markerSize,
         color: CHART_THEME.colors[ti % CHART_THEME.colors.length],
         symbol: CHART_THEME.markers[ti % CHART_THEME.markers.length],
-        line: { width: 1.2, color: '#ffffff' },
+        line: { width: markerSize > 4 ? 1.2 : 0, color: '#ffffff' },
       },
       line: {
         color: CHART_THEME.colors[ti % CHART_THEME.colors.length],
-        width: chartType === 'line' ? 2.4 : 0,
+        width: 1.6,
       },
       hovertemplate: `${headers[xIdx] || 'x'}=%{x}<br>${headers[yi] || 'y'}=%{y}<extra>%{fullData.name}</extra>`,
     };
@@ -589,6 +881,24 @@ const renderMainChart = (headers, columns, xIdx, yIdxList, chartType) => {
     xaxis: { ...base.xaxis, title: headers[xIdx] || '' },
     yaxis: { ...base.yaxis },
   }), chartConfig);
+};
+
+const setMainChartDragMode = (mode) => {
+  const el = document.getElementById('main-chart');
+  if (!el || !window.Plotly) return;
+  Plotly.relayout(el, { dragmode: mode });
+  document.querySelectorAll('[data-chart-action="zoom"], [data-chart-action="pan"]').forEach((btn) => {
+    btn.classList.toggle('is-active', btn.dataset.chartAction === mode);
+  });
+};
+
+const resetMainChartScale = () => {
+  const el = document.getElementById('main-chart');
+  if (!el || !window.Plotly) return;
+  Plotly.relayout(el, {
+    'xaxis.autorange': true,
+    'yaxis.autorange': true,
+  });
 };
 
 // ─── UI State ─────────────────────────────────────────────────
@@ -721,6 +1031,7 @@ const FIT_MODEL_META = {
   poly: { label: '多項式', color: '#005fb8', dash: 'solid' },
   exp: { label: '指数', k: 2, color: '#c16800', dash: 'dash' },
   power: { label: 'べき乗', k: 2, color: '#8c6c00', dash: 'dot' },
+  sin: { label: '三角関数', k: 4, color: '#008bf2', dash: 'longdash' },
 };
 
 const fitFinite = (value) => Number.isFinite(value);
@@ -803,6 +1114,75 @@ const fitPower = (xs, ys) => {
   const [b, logA] = beta;
   const a = Math.exp(logA);
   return { model: 'power', params: { a, b }, formula: 'y = a x^b', predict: (x) => (x > 0 ? a * x ** b : NaN) };
+};
+
+const gaussNewtonFit = (fn, jacobian, params0, xs, ys, maxIter = 80) => {
+  let params = [...params0];
+  let lambda = 1e-6;
+  for (let iter = 0; iter < maxIter; iter += 1) {
+    const J = [];
+    const r = [];
+    xs.forEach((x, i) => {
+      const pred = fn(x, params);
+      if (!fitFinite(pred)) return;
+      J.push(jacobian(x, params));
+      r.push(ys[i] - pred);
+    });
+    if (J.length < params.length) break;
+    const JTJ = Array.from({ length: params.length }, () => Array(params.length).fill(0));
+    const JTr = Array(params.length).fill(0);
+    J.forEach((row, i) => {
+      row.forEach((v, a) => {
+        JTr[a] += v * r[i];
+        row.forEach((w, b) => { JTJ[a][b] += v * w; });
+      });
+    });
+    for (let i = 0; i < params.length; i += 1) JTJ[i][i] += lambda;
+    const delta = solveLinearSystem(JTJ, JTr);
+    if (!delta) break;
+    const next = params.map((p, i) => p + delta[i]);
+    if (delta.every((d) => Math.abs(d) < 1e-8)) {
+      params = next;
+      break;
+    }
+    params = next.map((v) => (fitFinite(v) ? v : 0));
+  }
+  return params;
+};
+
+const fitSinusoidal = (xs, ys) => {
+  if (xs.length < 4) return null;
+  const n = nextPowerOfTwo(xs.length);
+  const mean = ys.reduce((a, b) => a + b, 0) / ys.length;
+  const re = Array.from({ length: n }, (_, i) => (ys[i] ?? mean) - mean);
+  const im = Array(n).fill(0);
+  fftTransform(re, im, false);
+
+  let peak = 1;
+  for (let i = 2; i < n / 2; i += 1) {
+    if (Math.hypot(re[i], im[i]) > Math.hypot(re[peak], im[peak])) peak = i;
+  }
+
+  const span = Math.max(...xs) - Math.min(...xs) || 1;
+  const omega0 = 2 * Math.PI * peak / span;
+  const amp0 = (Math.max(...ys) - Math.min(...ys)) / 2 || 1;
+  const params = gaussNewtonFit(
+    (x, [A, omega, phi, C]) => A * Math.sin(omega * x + phi) + C,
+    (x, [A, omega, phi]) => {
+      const arg = omega * x + phi;
+      return [Math.sin(arg), A * x * Math.cos(arg), A * Math.cos(arg), 1];
+    },
+    [amp0, omega0, 0, mean],
+    xs,
+    ys,
+  );
+  const [A, omega, phi, C] = params;
+  return {
+    model: 'sin',
+    params: { A, omega, phi, C },
+    formula: 'y = A sin(ωx + φ) + C',
+    predict: (x) => A * Math.sin(omega * x + phi) + C,
+  };
 };
 
 const calcR2 = (ys, predicted) => {
@@ -892,6 +1272,7 @@ const runFits = () => {
       if (model === 'poly') return evaluateFit(fitPolynomial(xs, ys, degree), xs, ys);
       if (model === 'exp') return evaluateFit(fitExponential(xs, ys), xs, ys);
       if (model === 'power') return evaluateFit(fitPower(xs, ys), xs, ys);
+      if (model === 'sin') return evaluateFit(fitSinusoidal(xs, ys), xs, ys);
     } catch {
       return null;
     }
@@ -912,11 +1293,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const pastedRows = text.split(/\r?\n/).filter((l) => l !== '').map((l) => l.split('\t'));
     if (pastedRows.length === 0) return;
 
-    const active = document.activeElement;
-    const startRow = parseInt(active?.dataset?.row ?? '0', 10);
-    const startCol = parseInt(active?.dataset?.col ?? '0', 10);
+    // If pasted data itself is large, merge starting from row 0 and switch to large data mode
+    if (pastedRows.length > LARGE_DATA_THRESHOLD) {
+      renderDataGrid(pastedRows);
+      onGridChange();
+      return;
+    }
 
-    const currentRows = snapshotGridRows();
+    const active = document.activeElement;
+    const startRow = isLargeDataMode ? 0 : parseInt(active?.dataset?.row ?? '0', 10);
+    const startCol = isLargeDataMode ? 0 : parseInt(active?.dataset?.col ?? '0', 10);
+
+    const currentRows = isLargeDataMode ? [] : snapshotGridRows();
     const newRowCount = Math.max(currentRows.length, startRow + pastedRows.length);
     const newColCount = Math.max(
       currentRows[0]?.length ?? 0,
@@ -1021,6 +1409,36 @@ document.addEventListener('DOMContentLoaded', () => {
     const tsv = rows.map((row) => row.join('\t')).join('\n');
     localStorage.setItem('convertexcel-transfer-data', tsv);
     window.location.href = 'convert.html';
+  });
+
+  document.getElementById('smooth-mode')?.addEventListener('change', () => {
+    const windowField = document.getElementById('smooth-window-field');
+    const cutoffField = document.getElementById('filter-cutoff-field');
+    const mode = document.getElementById('smooth-mode').value;
+    if (windowField) windowField.hidden = !['moving-avg', 'median'].includes(mode);
+    if (cutoffField) cutoffField.hidden = !['low-pass', 'fft-low-pass'].includes(mode);
+    onGridChange();
+  });
+  document.getElementById('smooth-window')?.addEventListener('input', () => {
+    const val = document.getElementById('smooth-window').value;
+    const display = document.getElementById('smooth-window-value');
+    if (display) display.textContent = val;
+    onGridChange();
+  });
+  document.getElementById('filter-cutoff')?.addEventListener('input', () => {
+    const val = document.getElementById('filter-cutoff').value;
+    const display = document.getElementById('filter-cutoff-value');
+    if (display) display.textContent = val;
+    onGridChange();
+  });
+  document.querySelectorAll('[data-chart-action]').forEach((button) => {
+    button.addEventListener('click', () => {
+      if (button.dataset.chartAction === 'reset') {
+        resetMainChartScale();
+      } else {
+        setMainChartDragMode(button.dataset.chartAction);
+      }
+    });
   });
 
   document.getElementById('x-col-select')?.addEventListener('change', onChartOptionsChange);
