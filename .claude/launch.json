@@ -3,9 +3,13 @@
   "configurations": [
     {
       "name": "converTeXcel",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["serve", "-p", "5500", "."],
-      "port": 5500
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["scripts/serve-local.js"],
+      "port": 4173,
+      "env": {
+        "PORT": "4173",
+        "HOST": "127.0.0.1"
+      }
     }
   ]
 }

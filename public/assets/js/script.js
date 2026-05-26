@@ -77,6 +77,89 @@ const elements = {
   pdfConsentCancel: document.getElementById('pdf-consent-cancel'),
 };
 
+const initWorkbenchNavigation = () => {
+  const controls = [...document.querySelectorAll('[data-workbench-target]')];
+  if (!controls.length) return;
+
+  const allPanels = [...document.querySelectorAll('.ide-panel')];
+
+  /** 指定パネル内の Ace エディタを再描画する */
+  const refreshAceInPanel = (panelId) => {
+    if (!window.ace) return;
+    const panel = document.getElementById(panelId);
+    if (!panel) return;
+    // ace-field (.ace_editor) を持つ要素を resize
+    panel.querySelectorAll('.ace-field, .ace_editor').forEach((el) => {
+      try { ace.edit(el).resize(true); } catch (_) { /* ignore */ }
+    });
+  };
+
+  /** 指定 id のパネルだけ表示し、他を隠す */
+  const showPanel = (panelId) => {
+    allPanels.forEach((p) => {
+      p.hidden = p.id !== panelId;
+    });
+    // hidden 解除後、レイアウト確定を待って Ace を再描画
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => refreshAceInPanel(panelId));
+    });
+  };
+
+  /** タブ / アクティビティアイコンのアクティブ状態を更新 */
+  const setActive = (button) => {
+    if (button.classList.contains('editor-tab')) {
+      document.querySelectorAll('.editor-tab').forEach((tab) =>
+        tab.classList.toggle('is-active', tab === button),
+      );
+    }
+    if (button.classList.contains('activity-icon')) {
+      document.querySelectorAll('.activity-icon').forEach((icon) =>
+        icon.classList.toggle('is-active', icon === button),
+      );
+    }
+  };
+
+  controls.forEach((button) => {
+    button.addEventListener('click', () => {
+      const targetId = button.dataset.workbenchTarget;
+      const target = document.getElementById(targetId);
+      if (!target) return;
+
+      setActive(button);
+
+      if (target.classList.contains('ide-panel')) {
+        // エディタ内パネルの切り替え
+        showPanel(targetId);
+
+        // アクティビティアイコン → 対応するエディタタブも同期
+        if (button.classList.contains('activity-icon')) {
+          const tab = document.querySelector(
+            `.editor-tab[data-workbench-target="${targetId}"]`,
+          );
+          if (tab) {
+            document.querySelectorAll('.editor-tab').forEach((t) =>
+              t.classList.toggle('is-active', t === tab),
+            );
+          }
+        }
+      } else {
+        // PDF プレビューペイン等はスクロールで移動
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
+
+  // 初期表示: is-active なタブのパネルだけ見せる
+  const activeTab = document.querySelector('.editor-tab.is-active');
+  if (activeTab) {
+    showPanel(activeTab.dataset.workbenchTarget);
+  } else if (allPanels.length) {
+    showPanel(allPanels[0].id);
+  }
+};
+
+initWorkbenchNavigation();
+
 const readNumber = (element, fallback) => parseInt(element.value, 10) || fallback;
 
 const getRoundMode = () => {
@@ -761,4 +844,34 @@ ConvertModule().then((module) => {
   document.querySelectorAll('input[name="round-mode"]').forEach((element) => {
     element.addEventListener('change', scheduleAutoOutputAndPreview);
   });
+  window.dispatchEvent(new Event('convertexcel-converter-ready'));
 });
+
+// 統計ページからのデータ転送を受け取る
+(() => {
+  const transferred = localStorage.getItem('convertexcel-transfer-data');
+  if (!transferred) return;
+  localStorage.removeItem('convertexcel-transfer-data');
+
+  // Ace Editor が初期化されていれば setValue、なければ textarea に直接セット
+  const setInputValue = (value) => {
+    if (elements?.input?.value !== undefined) {
+      elements.input.value = value;
+    } else {
+      const ta = document.getElementById('input');
+      if (ta) ta.value = value;
+    }
+  };
+
+  // ConvertModule の初期化を待ってから適用
+  const applyTransfer = () => {
+    setInputValue(transferred);
+    if (typeof scheduleAutoOutputAndPreview === 'function') {
+      scheduleAutoOutputAndPreview();
+    } else {
+      textareas?.input?.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  };
+
+  window.addEventListener('convertexcel-converter-ready', applyTransfer, { once: true });
+})();

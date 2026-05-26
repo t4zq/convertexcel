@@ -2,7 +2,7 @@ const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const root = path.resolve(__dirname, '..');
+const root = path.resolve(__dirname, '..', 'public');
 const port = Number(process.env.PORT || 4173);
 const host = process.env.HOST || '127.0.0.1';
 
@@ -11,6 +11,7 @@ const contentTypes = {
   '.js': 'text/javascript; charset=utf-8',
   '.wasm': 'application/wasm',
   '.css': 'text/css; charset=utf-8',
+  '.png': 'image/png',
 };
 
 const server = http.createServer((request, response) => {

@@ -1,6 +1,6 @@
 param(
-  [string]$Source = "convert.cpp",
-  [string]$OutDir = "dist"
+  [string]$Source = "src\convert.cpp",
+  [string]$OutDir = "public\dist"
 )
 
 $ErrorActionPreference = "Stop"

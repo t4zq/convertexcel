@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-source_file="${1:-convert.cpp}"
-out_dir="${2:-dist}"
+source_file="${1:-src/convert.cpp}"
+out_dir="${2:-public/dist}"
 
 if ! command -v emcc >/dev/null 2>&1; then
   local_emsdk_env="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/tools/emsdk/emsdk_env.sh"
