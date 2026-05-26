@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>曲線フィッティング - converTeXcel</title>
+<meta http-equiv="refresh" content="0; url=stats.html#fit-analysis">
+<link rel="stylesheet" href="assets/css/style.css">
+<script>window.location.replace('stats.html#fit-analysis');</script>
+</head>
+<body>
+
+<header class="site-header">
+  <a class="brand" href="stats.html">
+    <img class="logo" src="assets/img/logo.png" alt="converTeXcel">
+  </a>
+  <span class="tagline">曲線フィッティング - 実験データへの自動フィット</span>
+  <nav class="header-nav" aria-label="ツール切替">
+    <a class="tool-link is-active" href="stats.html#fit-analysis" aria-current="page"><span>統計探索</span><small>検定 / fit</small></a>
+    <a class="tool-link" href="circuit.html"><span>回路解析</span><small>Bode / τ</small></a>
+    <a class="tool-link" href="convert.html"><span>変換</span><small>LaTeX / CSV</small></a>
+    <a class="utility-link" href="privacy.html" aria-label="プライバシーポリシー">Privacy</a>
+  </nav>
+</header>
+
+<main class="fit-main">
+  <section class="page-intro full-width" aria-labelledby="fit-title">
+    <div>
+      <p class="eyebrow">Curve Fitting</p>
+      <h1 id="fit-title">実験データに、複数モデルを一括フィット。</h1>
+      <p>線形、多項式、指数、べき乗、ロジスティック、正弦を自動推定し、R²・RMSE・AICで比較します。</p>
+    </div>
+  </section>
+
+  <section class="card full-width">
+    <div class="section-heading">
+      <h2>入力データ</h2>
+      <p>1行目を列名として扱います。Excelから貼り付けて、X列とY列を選んでください。</p>
+    </div>
+    <div class="grid-toolbar">
+      <div class="toolbar-group" aria-label="表を編集">
+        <span class="toolbar-label">編集</span>
+        <button class="secondary tool-action" id="add-row-btn" data-icon="+">行</button>
+        <button class="secondary tool-action" id="add-col-btn" data-icon="+">列</button>
+        <button class="secondary tool-action" id="del-row-btn" data-icon="-">末尾行</button>
+        <button class="secondary tool-action" id="del-col-btn" data-icon="-">末尾列</button>
+        <button class="secondary tool-action danger" id="clear-btn" data-icon="×">クリア</button>
+      </div>
+      <div class="toolbar-group" aria-label="データ入出力">
+        <span class="toolbar-label">入出力</span>
+        <button class="secondary tool-action" id="copy-excel-btn" data-icon="□">Excelへコピー</button>
+        <button class="secondary tool-action" id="save-csv-btn" data-icon="↓">CSV保存</button>
+        <label class="secondary btn-file-label tool-action" id="load-csv-label" data-icon="↑">
+          CSV読み込み
+          <input type="file" id="load-csv-input" accept=".csv" style="display:none">
+        </label>
+      </div>
+      <div class="toolbar-group toolbar-group--send" aria-label="別ツールへ送る">
+        <span class="toolbar-label">送る</span>
+        <button class="secondary tool-action accent" id="send-to-convert-btn" data-icon="→">変換ツールで開く</button>
+      </div>
+      <span class="grid-save-status" id="save-status"></span>
+    </div>
+    <div class="grid-wrap" id="grid-wrap">
+      <table class="data-grid" id="data-grid"></table>
+    </div>
+    <div class="fit-column-controls">
+      <div class="field">
+        <label for="x-col-select">X列</label>
+        <select id="x-col-select"></select>
+      </div>
+      <div class="field">
+        <label for="y-col-select">Y列</label>
+        <select id="y-col-select"></select>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="section-heading">
+      <h2>フィット設定</h2>
+      <p>比較したいモデルを選び、必要に応じて多項式次数を調整します。</p>
+    </div>
+    <div class="fit-model-select" aria-label="フィットモデル">
+      <label><input type="checkbox" value="linear" checked> 線形</label>
+      <label><input type="checkbox" value="poly" checked> 多項式</label>
+      <label><input type="checkbox" value="exp" checked> 指数</label>
+      <label><input type="checkbox" value="power" checked> べき乗</label>
+      <label><input type="checkbox" value="logistic"> ロジスティック</label>
+      <label><input type="checkbox" value="sin"> 正弦</label>
+    </div>
+    <div class="fit-degree-control">
+      <label for="poly-degree">多項式次数 <span id="poly-degree-value">2</span></label>
+      <input type="range" id="poly-degree" min="1" max="8" value="2">
+    </div>
+    <button class="primary" id="run-fit-btn">フィット実行</button>
+  </section>
+
+  <section class="card">
+    <div class="section-heading">
+      <h2>推奨モデル</h2>
+      <p>AICが最小のモデルを推奨として表示します。</p>
+    </div>
+    <div id="fit-summary" class="fit-summary">
+      <p class="stats-empty">フィットを実行すると表示されます。</p>
+    </div>
+  </section>
+
+  <section class="card full-width">
+    <div class="section-heading">
+      <h2>フィット曲線</h2>
+      <p>実測値と選択モデルの推定曲線を重ねて表示します。</p>
+    </div>
+    <div id="fit-chart" class="plotly-chart fit-chart"></div>
+  </section>
+
+  <section class="card full-width">
+    <div class="section-heading">
+      <h2>残差プロット</h2>
+      <p>y_obs - y_fit をxに対して表示します。</p>
+    </div>
+    <div id="residual-chart" class="plotly-chart plotly-chart--small"></div>
+  </section>
+
+  <section class="card full-width">
+    <div class="section-heading">
+      <h2>モデル比較</h2>
+      <p>R²、RMSE、AIC、推定パラメータを一覧します。</p>
+    </div>
+    <div id="fit-results" class="fit-results">
+      <p class="stats-empty">結果がここに表示されます。</p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <span>converTeXcel - 実験データへ曲線をフィットする</span>
+  <div class="footer-tool-links">
+    <a href="stats.html">統計探索・フィットへ</a>
+    <a href="circuit.html">回路解析へ</a>
+    <a href="convert.html">変換へ</a>
+    <a class="footer-utility" href="privacy.html">プライバシー</a>
+  </div>
+</footer>
+
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="assets/js/fit.js"></script>
+</body>
+</html>

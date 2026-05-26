@@ -2,8 +2,27 @@
 
 ## Local build
 
-This project builds `convert.cpp` into `dist/convert.js` and `dist/convert.wasm`
+This project builds `src/convert.cpp` into `public/dist/convert.js` and `public/dist/convert.wasm`
 with Emscripten.
+
+## Project structure
+
+```text
+.
+├── public/                 # static files served in production
+│   ├── index.html          # data conversion tool
+│   ├── stats.html          # statistics exploration tool
+│   ├── privacy.html
+│   ├── assets/
+│   │   ├── css/style.css
+│   │   ├── img/logo.png
+│   │   └── js/
+│   │       ├── script.js
+│   │       └── stats.js
+│   └── dist/               # generated WASM bundle
+├── src/convert.cpp         # WASM conversion engine
+└── scripts/                # build and local server helpers
+```
 
 ## Build and serve locally
 

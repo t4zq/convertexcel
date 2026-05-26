@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>converTeXcel - Excelデータ変換ツール</title>
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a class="brand" href="stats.html">
+    <img class="logo" src="assets/img/logo.png" alt="converTeXcel">
+  </a>
+  <span class="tagline">Excel / TSVデータを論文・レポート用の表とグラフに整形</span>
+  <nav class="header-nav" aria-label="ツール切替">
+    <a class="tool-link" href="stats.html">
+      <span>統計探索</span>
+      <small>検定 / fit</small>
+    </a>
+    <a class="tool-link" href="circuit.html">
+      <span>回路解析</span>
+      <small>Bode / τ</small>
+    </a>
+    <a class="tool-link is-active" href="convert.html" aria-current="page">
+      <span>変換</span>
+      <small>LaTeX / CSV</small>
+    </a>
+    <a class="utility-link" href="privacy.html" aria-label="プライバシーポリシー">Privacy</a>
+  </nav>
+</header>
+
+<main class="convert-main">
+  <section class="page-intro full-width" aria-labelledby="page-title">
+    <div>
+      <p class="eyebrow">Table, CSV, PGFPlots</p>
+      <h1 id="page-title">Excelの数値データを、論文・レポートに使いやすい形へ。</h1>
+      <p>貼り付けた表からLaTeX表、CSV、TikZ/PGFPlotsコードを自動生成します。プレビュー前に外部送信の確認を挟むので、手元で内容を確かめながら作業できます。</p>
+    </div>
+  </section>
+
+  <details class="usage-card card full-width">
+    <summary>使い方</summary>
+    <ol class="usage-steps">
+      <li>Excelやスプレッドシートの表をそのまま入力欄へ貼り付けます。1列目をx、2列目以降をy系列として扱います。</li>
+      <li>ヘッダー行、入力クリーニング、丸め方法を必要に応じて設定します。</li>
+      <li>入力後、表・CSV・グラフコードが自動で生成されます。</li>
+      <li>LaTeX / TikZは論文やレポートに貼り込みやすい記法です。</li>
+      <li>グラフでは図番号、凡例位置、軸スケール、系列ごとの近似方法を調整できます。</li>
+      <li>PDFプレビューはtexlive.netで作成します。送信前の確認ダイアログをご確認ください。</li>
+    </ol>
+  </details>
+
+  <section class="convert-workbench full-width" aria-label="変換ワークベンチ">
+    <div class="workbench-titlebar">
+      <span class="workbench-dot"></span>
+      <span class="workbench-title">converTeXcel.workspace</span>
+      <span class="workbench-spacer"></span>
+      <span class="workbench-pill">LaTeX</span>
+      <span class="workbench-pill">PDF Preview</span>
+    </div>
+
+    <div class="workbench-shell">
+      <aside class="workbench-activity" aria-label="ワークスペース">
+        <button class="activity-icon is-active" type="button" data-workbench-target="latex-panel" title="TeX">TeX</button>
+        <button class="activity-icon" type="button" data-workbench-target="csv-panel" title="CSV">CSV</button>
+        <button class="activity-icon" type="button" data-workbench-target="pdf-preview-panel" title="PDF">PDF</button>
+      </aside>
+
+      <div class="workbench-editor">
+        <div class="editor-toolbar">
+          <button class="editor-tab is-active" type="button" data-workbench-target="input-panel">input.tsv</button>
+          <button class="editor-tab" type="button" data-workbench-target="latex-panel">table.tex</button>
+          <button class="editor-tab" type="button" data-workbench-target="tikz-panel">plot.pgfplots</button>
+        </div>
+
+        <section class="ide-panel" id="input-panel">
+          <div class="section-heading">
+            <h2>入力データ</h2>
+            <p>タブ区切りまたはカンマ区切りの表を貼り付けてください。</p>
+          </div>
+          <label for="input">Excel / TSV / CSV</label>
+          <textarea id="input" rows="7" placeholder="列データ&#10;x&#9;y1&#9;y2&#10;1&#9;2.3&#9;4.5&#10;2&#9;3.1&#9;5.2"></textarea>
+
+          <div class="options-row conversion-options" aria-label="変換設定">
+            <div class="option-panel option-panel--wide">
+              <span class="option-panel-title">丸め</span>
+              <div class="radio-group segmented-options" aria-label="丸め方法">
+                <label><input type="radio" name="round-mode" value="none" checked><span>なし</span></label>
+                <label><input type="radio" name="round-mode" value="decimal"><span>小数点</span></label>
+                <label><input type="radio" name="round-mode" value="sig-figs"><span>有効数字</span></label>
+              </div>
+            </div>
+            <div class="option-panel">
+              <span class="option-panel-title">入力処理</span>
+              <div class="switch-stack">
+                <label class="option-check switch-option"><input type="checkbox" id="has-header" checked><span>ヘッダー行あり</span></label>
+                <label class="option-check switch-option"><input type="checkbox" id="clean-input" checked><span>入力を正規化</span></label>
+              </div>
+            </div>
+            <div class="option-panel precision-panel">
+              <span class="option-panel-title">桁数</span>
+              <div class="number-field">
+                <label for="decimals">小数点</label>
+                <input type="number" id="decimals" min="0" value="2">
+              </div>
+              <div class="number-field">
+                <label for="sig-figs">有効数字</label>
+                <input type="number" id="sig-figs" min="1" value="3">
+              </div>
+            </div>
+          </div>
+
+          <div class="auto-preview-consent" hidden>
+            <span id="auto-preview-cooldown-status" class="cooldown-status" aria-live="polite"></span>
+          </div>
+
+          <details id="stats-details" hidden>
+            <summary>簡易統計</summary>
+            <div id="stats-table-container"></div>
+          </details>
+        </section>
+
+        <section class="ide-panel" id="latex-panel">
+          <div class="section-heading output-heading">
+            <h2>LaTeX表</h2>
+            <button class="copy-btn" data-target="latex">コピー</button>
+          </div>
+          <textarea id="latex" rows="10" placeholder="論文・レポート向けの表コードが出力されます" readonly></textarea>
+        </section>
+
+        <section class="ide-panel ide-panel--compact" id="csv-panel">
+          <div class="section-heading output-heading">
+            <h2>CSV出力</h2>
+            <button class="copy-btn" data-target="csv">コピー</button>
+          </div>
+          <textarea id="csv" rows="8" placeholder="CSV形式で出力されます" readonly></textarea>
+        </section>
+
+        <section class="ide-panel" id="tikz-panel">
+          <div class="section-heading">
+            <h2>グラフコード</h2>
+            <p>PGFPlotsコードとPDFプレビューを作成します。</p>
+          </div>
+
+          <div class="tikz-controls">
+            <div class="field">
+              <label for="filename">データファイル名</label>
+              <input type="text" id="filename" value="data" placeholder="data">
+            </div>
+            <div class="field">
+              <label for="figure-number">図番号</label>
+              <input type="number" id="figure-number" min="1" placeholder="自動">
+            </div>
+            <div class="field">
+              <label for="legend-pos">凡例位置</label>
+              <select id="legend-pos">
+                <option value="north west">north west</option>
+                <option value="north east">north east</option>
+                <option value="south west">south west</option>
+                <option value="south east">south east</option>
+                <option value="north">north</option>
+                <option value="south">south</option>
+                <option value="east">east</option>
+                <option value="west">west</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="scale-mode">軸スケール</label>
+              <select id="scale-mode">
+                <option value="linear">線形</option>
+                <option value="semilog">片対数</option>
+                <option value="loglog">両対数</option>
+              </select>
+            </div>
+            <div class="field fit-methods-field">
+              <label>系列ごとの近似方法</label>
+              <div id="fit-methods-by-series" class="fit-methods-by-series"></div>
+            </div>
+          </div>
+
+          <div class="section-heading output-heading compact">
+            <h2>TikZ / PGFPlots</h2>
+            <button class="copy-btn" data-target="tikz">コピー</button>
+          </div>
+          <textarea id="tikz" rows="12" placeholder="PDFプレビュー用のグラフコードが出力されます"></textarea>
+        </section>
+      </div>
+
+      <aside class="workbench-preview" id="pdf-preview-panel" aria-label="PDFプレビュー">
+        <div class="preview-toolbar">
+          <span class="preview-title">PDF Preview</span>
+          <button id="tikz-preview-btn" class="primary">更新</button>
+        </div>
+        <span id="tikz-loading" class="loading-indicator">PDFをコンパイル中...</span>
+        <div class="preview-empty">
+          <strong>PDFプレビュー</strong>
+          <span>左のコードを更新すると、ここにコンパイル結果を表示します。</span>
+        </div>
+        <div id="latex-status" class="compile-status" role="status" aria-live="polite"></div>
+        <pre id="latex-log" class="compile-log" hidden></pre>
+        <form id="latex-form" style="display:none;" method="post" action="https://texlive.net/cgi-bin/latexcgi" target="latex-iframe" enctype="multipart/form-data"></form>
+        <div id="latex-pdf-preview" class="pdf-preview-pane" style="display:none;">
+          <iframe id="latex-iframe" name="latex-iframe" class="pdf-iframe" title="LaTeX PDF preview"></iframe>
+        </div>
+
+        <div id="tikz-status" class="compile-status" role="status" aria-live="polite"></div>
+        <pre id="tikz-log" class="compile-log" hidden></pre>
+        <form id="tikz-form" style="display:none;" method="post" action="https://texlive.net/cgi-bin/latexcgi" target="tikz-iframe" enctype="multipart/form-data"></form>
+        <div id="tikz-pdf-preview" class="pdf-preview-pane" style="display:none;">
+          <iframe id="tikz-iframe" name="tikz-iframe" class="pdf-iframe" title="TikZ PDF preview"></iframe>
+        </div>
+      </aside>
+    </div>
+  </section>
+</main>
+
+<div id="pdf-consent-modal" class="modal-backdrop" hidden>
+  <div class="consent-dialog" role="dialog" aria-modal="true" aria-labelledby="pdf-consent-title">
+    <h2 id="pdf-consent-title">PDFプレビューの送信確認</h2>
+    <p>PDFプレビューを作成するため、入力データと生成したグラフコードをtexlive.netへ送信します。</p>
+    <p>同意後はすぐに送信し、連続送信を避けるため15秒のクールダウンを設けます。</p>
+    <div class="consent-actions">
+      <button id="pdf-consent-cancel" class="secondary" type="button">キャンセル</button>
+      <button id="pdf-consent-accept" class="primary" type="button">同意して送信</button>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <span>converTeXcel - Excelデータを論文・レポート用の表とグラフに整形するツール</span>
+  <div class="footer-tool-links">
+    <a href="stats.html">統計探索・フィットへ</a>
+    <a href="circuit.html">回路解析へ</a>
+    <a class="footer-utility" href="privacy.html">プライバシー</a>
+  </div>
+</footer>
+
+<script src="dist/convert.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.35.5/ace.js"></script>
+<script src="assets/js/script.js"></script>
+</body>
+</html>
