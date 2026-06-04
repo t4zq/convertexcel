@@ -1,60 +1,111 @@
 # converTeXcel
 
-## Local build
+## ローカルビルド
 
-This project builds `src/convert.cpp` into `public/dist/convert.js` and `public/dist/convert.wasm`
-with Emscripten.
+このプロジェクトは `src/convert.cpp` を Emscripten でビルドし、
+`public/dist/convert.js` と `public/dist/convert.wasm` を生成します。
 
-## Project structure
+## プロジェクト構成
 
 ```text
 .
-├── public/                 # static files served in production
-│   ├── index.html          # data conversion tool
-│   ├── stats.html          # statistics exploration tool
+├── docker-compose.yml      # emscripten/emsdk コンテナでの WASM ビルド定義
+├── public/                 # 本番で配布する静的ファイル
+│   ├── index.html          # データ変換ツール (UI)
+│   ├── convert.html
+│   ├── fit.html
+│   ├── circuit.html
+│   ├── stats.html          # 統計表示ツール
 │   ├── privacy.html
 │   ├── assets/
 │   │   ├── css/style.css
 │   │   ├── img/logo.png
 │   │   └── js/
 │   │       ├── script.js
+│   │       ├── fit.js
+│   │       ├── circuit.js
 │   │       └── stats.js
-│   └── dist/               # generated WASM bundle
-├── src/convert.cpp         # WASM conversion engine
-└── scripts/                # build and local server helpers
+│   └── dist/               # 生成された WASM バンドル
+├── src/convert.cpp         # WASM 変換エンジン
+└── scripts/                # ビルドとローカルサーバのヘルパースクリプト
 ```
 
-## Build and serve locally
+## ローカルでのビルドと起動
 
-Build WASM and start a local server in one command:
+1つのコマンドで WASM をビルドし、ローカルサーバを起動できます:
 
 ```powershell
 .\scripts\dev.ps1
 ```
 
-Open:
+ブラウザで次を開きます:
 
 ```text
 http://127.0.0.1:4173
 ```
 
-Press `Ctrl+C` to stop the server.
+停止するには `Ctrl+C` を押してください。
 
-Use a different port if needed:
+別ポートを使う場合:
 
 ```powershell
 .\scripts\dev.ps1 -Port 4174
 ```
 
-On macOS / Linux:
+ホスト環境の Emscripten を使わず、Docker Desktop の `emscripten/emsdk:latest` イメージでビルドすることもできます:
+
+```powershell
+.\scripts\build-wasm-container.ps1
+.\scripts\dev.ps1 -Container
+```
+
+または Docker Compose を使う場合:
+
+```powershell
+docker compose run --rm wasm-build
+```
+
+コンテナはこのリポジトリをコンテナ内の `/src` にマウントし、次のファイルを書き出します:
+
+```text
+public/dist/convert.js
+public/dist/convert.wasm
+```
+
+macOS / Linux の場合:
 
 ```bash
 bash scripts/dev.sh
 ```
 
+macOS / Linux でコンテナビルドする例:
+
+```bash
+bash scripts/build-wasm-container.sh
+USE_CONTAINER=1 bash scripts/dev.sh
+```
+
+macOS / Linux でも Docker Compose は同様に動作します:
+
+```bash
+docker compose run --rm wasm-build
+```
+
+必要に応じて別イメージタグやランタイムを指定できます:
+
+```powershell
+.\scripts\build-wasm-container.ps1 -Image emscripten/emsdk:latest -Runtime docker
+```
+
+または:
+
+```bash
+EMSDK_IMAGE=emscripten/emsdk:latest CONTAINER_RUNTIME=docker bash scripts/build-wasm-container.sh
+```
+
 ### Windows PowerShell
 
-Install and activate Emscripten:
+Emscripten をインストールして有効化する手順:
 
 ```powershell
 git clone https://github.com/emscripten-core/emsdk.git
@@ -64,17 +115,17 @@ cd emsdk
 .\emsdk_env.ps1
 ```
 
-Build from the project root:
+プロジェクトルートからビルドします:
 
 ```powershell
 .\scripts\build-wasm.ps1
 ```
 
-If `tools/emsdk` exists in this project, the script activates it automatically.
+プロジェクト内に `tools/emsdk` が存在する場合、スクリプトはそれを自動で有効化します。
 
 ### macOS / Linux
 
-Install and activate Emscripten:
+Emscripten をインストールして有効化する手順:
 
 ```bash
 git clone https://github.com/emscripten-core/emsdk.git
@@ -84,13 +135,13 @@ cd emsdk
 source ./emsdk_env.sh
 ```
 
-Build from the project root:
+プロジェクトルートからビルドします:
 
 ```bash
 bash scripts/build-wasm.sh
 ```
 
-If `tools/emsdk` exists in this project, the script activates it automatically.
+プロジェクト内に `tools/emsdk` が存在する場合、スクリプトはそれを自動で有効化します。
 
-The GitHub Actions workflow uses the same shell script, so local builds and CI
-builds export the same WASM functions.
+GitHub Actions のワークフローは同じシェルスクリプトを使うため、ローカルと CI で同じ WASM 関数がエクスポートされます。
+

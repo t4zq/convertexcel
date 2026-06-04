@@ -1,13 +1,18 @@
 param(
   [int]$Port = 4173,
-  [string]$HostName = "127.0.0.1"
+  [string]$HostName = "127.0.0.1",
+  [switch]$Container
 )
 
 $ErrorActionPreference = "Stop"
 
 Push-Location (Join-Path $PSScriptRoot "..")
 try {
-  & (Join-Path $PSScriptRoot "build-wasm.ps1")
+  if ($Container) {
+    & (Join-Path $PSScriptRoot "build-wasm-container.ps1")
+  } else {
+    & (Join-Path $PSScriptRoot "build-wasm.ps1")
+  }
 
   $env:PORT = $Port.ToString()
   $env:HOST = $HostName
