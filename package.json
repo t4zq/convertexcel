@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/cloudflare-build.mjs",
-    "build:cloudflare": "node scripts/cloudflare-build.mjs"
+    "build:cloudflare": "node scripts/cloudflare-build.mjs",
+    "deploy": "npm run build && npx wrangler versions upload",
+    "deploy:cloudflare": "npm run build && npx wrangler versions upload"
   }
 }

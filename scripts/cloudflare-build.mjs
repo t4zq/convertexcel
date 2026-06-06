@@ -4,6 +4,7 @@ import { spawnSync } from "node:child_process"
 
 const wasmPackVersion = process.env.WASM_PACK_VERSION ?? "0.15.0"
 const isWindows = process.platform === "win32"
+let engineBuilt = false
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
@@ -30,21 +31,25 @@ function hasCommand(command) {
 
 if (!hasCommand("cargo")) {
   if (isWindows) {
-    throw new Error("cargo was not found. Install Rust locally or run this build in Cloudflare/Linux.")
+    run("docker", ["compose", "run", "--rm", "engine"])
+    engineBuilt = true
+  } else {
+    run("sh", ["-c", "curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal"])
+    process.env.PATH = `${join(homedir(), ".cargo", "bin")}${delimiter}${process.env.PATH ?? ""}`
   }
-  run("sh", ["-c", "curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal"])
-  process.env.PATH = `${join(homedir(), ".cargo", "bin")}${delimiter}${process.env.PATH ?? ""}`
 }
 
-run("rustup", ["target", "add", "wasm32-unknown-unknown"])
+if (!engineBuilt) {
+  run("rustup", ["target", "add", "wasm32-unknown-unknown"])
 
-if (!output("wasm-pack", ["--version"]).includes(wasmPackVersion)) {
-  run("cargo", ["install", "wasm-pack", "--version", wasmPackVersion, "--locked"])
+  if (!output("wasm-pack", ["--version"]).includes(wasmPackVersion)) {
+    run("cargo", ["install", "wasm-pack", "--version", wasmPackVersion, "--locked"])
+  }
+
+  run("wasm-pack", ["build", "--target", "web", "--out-dir", "../frontend/src/engine/pkg"], {
+    cwd: "engine",
+  })
 }
-
-run("wasm-pack", ["build", "--target", "web", "--out-dir", "../frontend/src/engine/pkg"], {
-  cwd: "engine",
-})
 
 run("npm", ["ci"], { cwd: "frontend" })
 run("npm", ["run", "build"], { cwd: "frontend" })

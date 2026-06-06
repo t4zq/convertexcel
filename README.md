@@ -76,3 +76,12 @@ Cloudflare Pages ではリポジトリルートを root directory として使�
 `npm run build` は `scripts/cloudflare-build.mjs` を呼び出し、Rust/WASM エンジンを
 `frontend/src/engine/pkg` に生成してから Vite build を実行します。
 
+### Cloudflare Workers Builds
+
+Workers Builds で `wrangler versions upload` を使う場合、先に `frontend/dist` を生成する必要があります。
+
+- Deploy command: `npm run deploy`
+
+`npm run deploy` は `npm run build && npx wrangler versions upload` を実行します。
+`npx wrangler versions upload` だけを指定すると、`frontend/dist` が存在しないため失敗します。
+
