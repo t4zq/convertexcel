@@ -1,0 +1,12 @@
+.git
+.bundle
+log
+tmp
+storage/*.json
+
+.env
+.env.*
+!.env.example
+
+node_modules
+*.log

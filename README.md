@@ -1,147 +1,68 @@
 # converTeXcel
 
-## ローカルビルド
+## 新アーキテクチャ (TypeScript / Rust / Ruby on Rails)
 
-このプロジェクトは `src/convert.cpp` を Emscripten でビルドし、
-`public/dist/convert.js` と `public/dist/convert.wasm` を生成します。
+React UI、Rust/WASM 計算エンジン、Rails API の 3 レイヤ構成です。
 
-## プロジェクト構成
+| レイヤ | 技術 | ディレクトリ |
+| --- | --- | --- |
+| 画面 (UI) | React 19 + Vite + TS + Tailwind v4 + **shadcn/ui** + react-router + **Plotly** | `frontend/` |
+| 計算エンジン | **Rust** → WebAssembly (`wasm-pack`) | `engine/` |
+| API | **Ruby on Rails** 7 (API-only, 薄い) | `api/` |
 
-```text
-.
-├── docker-compose.yml      # emscripten/emsdk コンテナでの WASM ビルド定義
-├── public/                 # 本番で配布する静的ファイル
-│   ├── index.html          # データ変換ツール (UI)
-│   ├── convert.html
-│   ├── fit.html
-│   ├── circuit.html
-│   ├── stats.html          # 統計表示ツール
-│   ├── privacy.html
-│   ├── assets/
-│   │   ├── css/style.css
-│   │   ├── img/logo.png
-│   │   └── js/
-│   │       ├── script.js
-│   │       ├── fit.js
-│   │       ├── circuit.js
-│   │       └── stats.js
-│   └── dist/               # 生成された WASM バンドル
-├── src/convert.cpp         # WASM 変換エンジン
-└── scripts/                # ビルドとローカルサーバのヘルパースクリプト
-```
+数値計算はすべて **Rust(WASM)** がブラウザ内で実行します。Rails は計算を持たず、
+health とデータセット(grid)の永続化のみを担う薄い API です。
 
-## ローカルでのビルドと起動
+### 画面 (frontend/src/pages)
+- **統計探索** `/` — 記述統計 / Pearson 相関ヒートマップ / グラフ(散布・折れ線＋スムージング) / 曲線フィット(線形・多項式・指数・べき乗・三角, AIC 最小推奨) / Welch の t 検定
+- **回路解析** `/circuit` — 周波数特性(Bode, -3dB カットオフ・傾き・τ) / 過渡応答(時定数) / インピーダンス(共振)
+- **変換** `/convert` — LaTeX 表 / CSV / TikZ(PGFPlots) 生成、texlive.net による PDF プレビュー(同意ダイアログ＋15秒クールダウン)
+- **プライバシー** `/privacy`
 
-1つのコマンドで WASM をビルドし、ローカルサーバを起動できます:
+### エンジン (engine/src)
+- `convert.rs` — LaTeX/CSV/TikZ/近似の生成
+- `stats.rs` — 曲線フィット / Welch t 検定 / 記述統計
+- `signal.rs` — スムージング(移動平均/メジアン/IIR低域/FFT低域) / LTTB 間引き
+- `circuit.rs` — Bode / 過渡応答 / インピーダンス解析
+
+### Docker で起動 (推奨)
+
+ローカルに Rust / Ruby を入れずに、すべて Docker で完結します。
 
 ```powershell
-.\scripts\dev.ps1
+# 1) Rust → WASM を frontend/src/engine/pkg に生成 (フロント起動の前に必須)
+docker compose run --rm engine
+
+# 2) API とフロントを起動
+docker compose up api frontend
 ```
 
-ブラウザで次を開きます:
+- フロント: <http://localhost:5173>
+- API: <http://localhost:3000/api/health>
 
-```text
-http://127.0.0.1:4173
-```
-
-停止するには `Ctrl+C` を押してください。
-
-別ポートを使う場合:
+データセット API の確認:
 
 ```powershell
-.\scripts\dev.ps1 -Port 4174
+curl -X POST http://localhost:3000/api/datasets `
+  -H "Content-Type: application/json" `
+  -d '{"name":"sample","rows":[["x","y"],["1","2"]]}'
+curl http://localhost:3000/api/datasets
+curl http://localhost:3000/api/datasets/sample
 ```
 
-ホスト環境の Emscripten を使わず、Docker Desktop の `emscripten/emsdk:latest` イメージでビルドすることもできます:
+### フロントのみローカル実行 (Node)
 
 ```powershell
-.\scripts\build-wasm-container.ps1
-.\scripts\dev.ps1 -Container
+cd frontend
+npm install
+# 先に engine ビルドで src/engine/pkg を生成しておくこと (docker compose run --rm engine)
+npm run dev      # http://localhost:5173
+npm run build    # 型チェック + 本番ビルド
 ```
 
-または Docker Compose を使う場合:
+> 注: WASM の glue/wasm は `frontend/src/engine/pkg/` に生成され Vite が処理します。
+> フロントのビルド/起動の前に必ず engine ビルドを実行してください。
 
-```powershell
-docker compose run --rm wasm-build
-```
-
-コンテナはこのリポジトリをコンテナ内の `/src` にマウントし、次のファイルを書き出します:
-
-```text
-public/dist/convert.js
-public/dist/convert.wasm
-```
-
-macOS / Linux の場合:
-
-```bash
-bash scripts/dev.sh
-```
-
-macOS / Linux でコンテナビルドする例:
-
-```bash
-bash scripts/build-wasm-container.sh
-USE_CONTAINER=1 bash scripts/dev.sh
-```
-
-macOS / Linux でも Docker Compose は同様に動作します:
-
-```bash
-docker compose run --rm wasm-build
-```
-
-必要に応じて別イメージタグやランタイムを指定できます:
-
-```powershell
-.\scripts\build-wasm-container.ps1 -Image emscripten/emsdk:latest -Runtime docker
-```
-
-または:
-
-```bash
-EMSDK_IMAGE=emscripten/emsdk:latest CONTAINER_RUNTIME=docker bash scripts/build-wasm-container.sh
-```
-
-### Windows PowerShell
-
-Emscripten をインストールして有効化する手順:
-
-```powershell
-git clone https://github.com/emscripten-core/emsdk.git
-cd emsdk
-.\emsdk install latest
-.\emsdk activate latest
-.\emsdk_env.ps1
-```
-
-プロジェクトルートからビルドします:
-
-```powershell
-.\scripts\build-wasm.ps1
-```
-
-プロジェクト内に `tools/emsdk` が存在する場合、スクリプトはそれを自動で有効化します。
-
-### macOS / Linux
-
-Emscripten をインストールして有効化する手順:
-
-```bash
-git clone https://github.com/emscripten-core/emsdk.git
-cd emsdk
-./emsdk install latest
-./emsdk activate latest
-source ./emsdk_env.sh
-```
-
-プロジェクトルートからビルドします:
-
-```bash
-bash scripts/build-wasm.sh
-```
-
-プロジェクト内に `tools/emsdk` が存在する場合、スクリプトはそれを自動で有効化します。
-
-GitHub Actions のワークフローは同じシェルスクリプトを使うため、ローカルと CI で同じ WASM 関数がエクスポートされます。
+shadcn の設定は `frontend/components.json` (style: new-york / baseColor: neutral)。
+コンポーネント追加は `npx shadcn@latest add <name>` で `frontend/src/components/ui/` に入ります。
 
