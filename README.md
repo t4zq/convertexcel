@@ -66,3 +66,13 @@ npm run build    # 型チェック + 本番ビルド
 shadcn の設定は `frontend/components.json` (style: new-york / baseColor: neutral)。
 コンポーネント追加は `npx shadcn@latest add <name>` で `frontend/src/components/ui/` に入ります。
 
+### Cloudflare Pages
+
+Cloudflare Pages ではリポジトリルートを root directory として使い、次を設定します。
+
+- Build command: `npm run build`
+- Build output directory: `frontend/dist`
+
+`npm run build` は `scripts/cloudflare-build.mjs` を呼び出し、Rust/WASM エンジンを
+`frontend/src/engine/pkg` に生成してから Vite build を実行します。
+

@@ -1,0 +1,10 @@
+{
+  "name": "convertexcel",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/cloudflare-build.mjs",
+    "build:cloudflare": "node scripts/cloudflare-build.mjs"
+  }
+}
