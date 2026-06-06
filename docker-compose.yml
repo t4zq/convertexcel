@@ -1,22 +1,41 @@
 services:
-  wasm-build:
-    image: emscripten/emsdk:latest
-    working_dir: /src
+  # ── Rust → WASM 計算エンジン (ワンショット・ビルド) ───────────
+  # 出力を frontend/src/engine/pkg に書き出し、フロントが静的読込する。
+  engine:
+    build: ./engine
+    working_dir: /workspace/engine
     volumes:
-      - .:/src
-    command:
-      - emcc
-      - src/convert.cpp
-      - -O3
-      - -s
-      - WASM=1
-      - -s
-      - MODULARIZE=1
-      - -s
-      - EXPORT_NAME=ConvertModule
-      - -s
-      - EXPORTED_FUNCTIONS=[_gen_latex,_gen_csv,_gen_csv_rounded,_gen_csv_sig_figs,_gen_latex_rounded,_gen_latex_sig_figs,_gen_tikz_graph,_gen_tikz_graph_preview,_gen_latex_config,_gen_csv_config,_gen_tikz_graph_config,_gen_csv_attachment,_free]
-      - -s
-      - EXPORTED_RUNTIME_METHODS=["cwrap","UTF8ToString"]
-      - -o
-      - public/dist/convert.js
+      - .:/workspace
+      - cargo-registry:/usr/local/cargo/registry
+    command: >
+      wasm-pack build --target web
+      --out-dir /workspace/frontend/src/engine/pkg
+
+  # ── Rails API ────────────────────────────────────────────────
+  api:
+    build: ./api
+    working_dir: /app
+    volumes:
+      - ./api:/app
+    environment:
+      RAILS_ENV: development
+    ports:
+      - "3000:3000"
+
+  # ── フロント (Vite dev server) ───────────────────────────────
+  frontend:
+    image: node:24-bookworm
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      # コンテナ専用 node_modules (ホストの Windows バイナリと混ざらないように)
+      - /app/node_modules
+    command: sh -c "npm install && npm run dev -- --host"
+    ports:
+      - "5173:5173"
+    depends_on:
+      engine:
+        condition: service_completed_successfully
+
+volumes:
+  cargo-registry:
