@@ -1,5 +1,4 @@
 import type {
-  CircuitResult,
   FitOutput,
   Grid,
   SmoothMode,
@@ -23,7 +22,6 @@ export interface EngineModule {
   welch_ttest: (json: string) => string
   smooth_series: (json: string) => string
   lttb_downsample: (json: string) => string
-  analyze_circuit: (json: string) => string
   // convert
   gen_latex: (input: string) => string
   gen_csv: (input: string) => string
@@ -136,21 +134,6 @@ export async function lttbDownsample(
     x: number[]
     y: number[]
   }
-}
-
-// ─── 回路 ──────────────────────────────────────────────────
-
-export interface CircuitRequest {
-  mode: string
-  a: number[]
-  b: number[]
-  c?: number[]
-  b_is_linear?: boolean
-}
-
-export async function analyzeCircuit(req: CircuitRequest): Promise<CircuitResult> {
-  const e = await require_engine()
-  return JSON.parse(e.analyze_circuit(JSON.stringify(req))) as CircuitResult
 }
 
 // ─── 変換 (convert) ────────────────────────────────────────

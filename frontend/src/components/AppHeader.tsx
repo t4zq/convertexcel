@@ -3,9 +3,8 @@ import { NavLink } from "react-router-dom"
 import { cn } from "@/lib/utils"
 
 const TOOLS = [
-  { to: "/", label: "統計探索", sub: "検定 / fit", end: true },
-  { to: "/circuit", label: "回路解析", sub: "Bode / τ" },
-  { to: "/convert", label: "変換", sub: "LaTeX / CSV" },
+  { to: "/", label: "変換", sub: "LaTeX / CSV", end: true },
+  { to: "/stats", label: "統計探索", sub: "検定 / fit" },
 ]
 
 export function AppHeader() {

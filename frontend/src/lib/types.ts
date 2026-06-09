@@ -63,19 +63,6 @@ export interface TTestResult {
   p_value: number
 }
 
-// ─── 回路解析 ──────────────────────────────────────────────
-export interface CircuitResult {
-  mode: string
-  cutoff_fc?: number
-  max_gain_db?: number
-  slope_db_per_decade?: number
-  tau?: number
-  final_value?: number
-  z_min?: number
-  z_max?: number
-  resonance_fc?: number
-}
-
 export type SmoothMode =
   | "none"
   | "moving-avg"

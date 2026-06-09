@@ -9,9 +9,8 @@ use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
 pub mod convert;
-pub mod signal;
 pub mod stats;
-pub mod circuit;
+pub mod signal;
 
 #[derive(Serialize)]
 struct ColumnStats {

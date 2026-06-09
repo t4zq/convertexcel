@@ -5,11 +5,12 @@ services:
     build: ./engine
     working_dir: /workspace/engine
     volumes:
-      - .:/workspace
+      - ./engine:/workspace/engine
+      - ./frontend/src/engine/pkg:/workspace/pkg
       - cargo-registry:/usr/local/cargo/registry
     command: >
-      wasm-pack build --target web
-      --out-dir /workspace/frontend/src/engine/pkg
+      wasm-pack build /workspace/engine --target web
+      --out-dir /workspace/pkg
 
   # ── Rails API ────────────────────────────────────────────────
   api:
