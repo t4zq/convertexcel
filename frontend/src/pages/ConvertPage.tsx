@@ -1,4 +1,7 @@
 import {
+  type CSSProperties,
+  type KeyboardEvent,
+  type PointerEvent,
   useEffect,
   useMemo,
   useRef,
@@ -219,6 +222,9 @@ export default function ConvertPage() {
   const [hasHeader, setHasHeader] = useState(true)
   const [cleanInput, setCleanInput] = useState(true)
   const [booktabs, setBooktabs] = useState(true)
+  const [showInput, setShowInput] = useState(true)
+  const [inputHeight, setInputHeight] = useState(260)
+  const [isInputResizing, setIsInputResizing] = useState(false)
 
   const [filename, setFilename] = useState("data")
   const [figureNumber, setFigureNumber] = useState("")
@@ -229,6 +235,7 @@ export default function ConvertPage() {
   const [yLabel, setYLabel] = useState("y軸")
   const [graphCaption, setGraphCaption] = useState("図題")
   const [graphLabel, setGraphLabel] = useState("fig:label")
+  const [showTikzSettings, setShowTikzSettings] = useState(true)
 
   const [latexOut, setLatexOut] = useState("")
   const [csvOut, setCsvOut] = useState("")
@@ -236,7 +243,11 @@ export default function ConvertPage() {
 
   const [cooldown, setCooldown] = useState(0)
   const [pending, setPending] = useState<null | "latex" | "tikz">(null)
+  const [resultWidth, setResultWidth] = useState(56)
+  const [isResizing, setIsResizing] = useState(false)
   const iframeRef = useRef<HTMLIFrameElement>(null)
+  const splitRef = useRef<HTMLDivElement>(null)
+  const inputResizeYRef = useRef(0)
 
   const mode: RoundMode = roundMode === "decimal" ? 1 : roundMode === "sig-figs" ? 2 : 0
   const diagnostics = useMemo(
@@ -319,6 +330,89 @@ export default function ConvertPage() {
     setPending(kind)
   }
 
+  function updateSplit(clientX: number) {
+    const rect = splitRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const next = ((clientX - rect.left) / rect.width) * 100
+    setResultWidth(Math.min(75, Math.max(35, Math.round(next))))
+  }
+
+  function startResize(e: PointerEvent<HTMLDivElement>) {
+    setIsResizing(true)
+    e.currentTarget.setPointerCapture(e.pointerId)
+    updateSplit(e.clientX)
+  }
+
+  function resize(e: PointerEvent<HTMLDivElement>) {
+    if (!isResizing) return
+    updateSplit(e.clientX)
+  }
+
+  function stopResize(e: PointerEvent<HTMLDivElement>) {
+    setIsResizing(false)
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    }
+  }
+
+  function resizeWithKeyboard(e: KeyboardEvent<HTMLDivElement>) {
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return
+    e.preventDefault()
+    setResultWidth((value) => {
+      const next = value + (e.key === "ArrowRight" ? 2 : -2)
+      return Math.min(75, Math.max(35, next))
+    })
+  }
+
+  function startInputResize(e: PointerEvent<HTMLDivElement>) {
+    setIsInputResizing(true)
+    if (!showInput) {
+      setShowInput(true)
+      setInputHeight(120)
+    }
+    inputResizeYRef.current = e.clientY
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+
+  function resizeInput(e: PointerEvent<HTMLDivElement>) {
+    if (!isInputResizing) return
+    const delta = e.clientY - inputResizeYRef.current
+    inputResizeYRef.current = e.clientY
+    setInputHeight((value) => {
+      const next = Math.min(520, Math.max(90, value + delta))
+      if (next <= 105) {
+        setShowInput(false)
+        return 120
+      }
+      return Math.round(next)
+    })
+  }
+
+  function stopInputResize(e: PointerEvent<HTMLDivElement>) {
+    setIsInputResizing(false)
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    }
+  }
+
+  function resizeInputWithKeyboard(e: KeyboardEvent<HTMLDivElement>) {
+    if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return
+    e.preventDefault()
+    if (!showInput && e.key === "ArrowDown") {
+      setShowInput(true)
+      setInputHeight(120)
+      return
+    }
+    setInputHeight((value) => {
+      const next = Math.min(520, Math.max(90, value + (e.key === "ArrowDown" ? 20 : -20)))
+      if (next <= 105) {
+        setShowInput(false)
+        return 120
+      }
+      return next
+    })
+  }
+
   async function acceptConsent() {
     const kind = pending
     setPending(null)
@@ -340,57 +434,94 @@ export default function ConvertPage() {
       <div className="space-y-4">
         <Card>
           <CardHeader>
-            <CardTitle>入力データ</CardTitle>
-            <CardDescription>タブ区切り / カンマ区切りの表を貼り付けてください。</CardDescription>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <CardTitle>入力データ</CardTitle>
+                <CardDescription>タブ区切り / カンマ区切りの表を貼り付けてください。</CardDescription>
+              </div>
+            </div>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <Textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              rows={12}
-              spellCheck={false}
-              className="min-h-[260px] font-mono text-xs xl:min-h-[360px]"
-            />
-            <InputDiagnosticsPanel diagnostics={diagnostics} />
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>丸め</Label>
-                <RadioGroup
-                  value={roundMode}
-                  onValueChange={(v) => setRoundMode(v as typeof roundMode)}
-                  className="flex flex-wrap gap-4"
-                >
-                  {[
-                    ["none", "なし"],
-                    ["decimal", "小数点"],
-                    ["sig-figs", "有効数字"],
-                  ].map(([v, label]) => (
-                    <label key={v} className="flex items-center gap-1.5 text-sm">
-                      <RadioGroupItem value={v} /> {label}
-                    </label>
-                  ))}
-                </RadioGroup>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label htmlFor="decimals">小数点桁</Label>
-                  <Input id="decimals" type="number" min={0} value={decimals} onChange={(e) => setDecimals(Number(e.target.value))} />
+          {showInput && (
+            <CardContent
+              className="space-y-4 overflow-auto"
+              style={{ maxHeight: `${inputHeight}px` }}
+            >
+              <Textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                rows={6}
+                spellCheck={false}
+                className="min-h-[120px] font-mono text-xs xl:min-h-[150px]"
+              />
+              <InputDiagnosticsPanel diagnostics={diagnostics} />
+              <div className="grid gap-4 md:grid-cols-[minmax(220px,0.8fr)_minmax(260px,1fr)_minmax(220px,0.8fr)]">
+                <div className="space-y-2">
+                  <Label>丸め</Label>
+                  <RadioGroup
+                    value={roundMode}
+                    onValueChange={(v) => setRoundMode(v as typeof roundMode)}
+                    className="flex flex-wrap gap-4"
+                  >
+                    {[
+                      ["none", "なし"],
+                      ["decimal", "小数点"],
+                      ["sig-figs", "有効数字"],
+                    ].map(([v, label]) => (
+                      <label key={v} className="flex items-center gap-1.5 text-sm">
+                        <RadioGroupItem value={v} /> {label}
+                      </label>
+                    ))}
+                  </RadioGroup>
                 </div>
-                <div className="space-y-1">
-                  <Label htmlFor="sigfigs">有効数字</Label>
-                  <Input id="sigfigs" type="number" min={1} value={sigFigs} onChange={(e) => setSigFigs(Number(e.target.value))} />
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="decimals">小数点桁</Label>
+                    <Input id="decimals" type="number" min={0} value={decimals} onChange={(e) => setDecimals(Number(e.target.value))} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="sigfigs">有効数字</Label>
+                    <Input id="sigfigs" type="number" min={1} value={sigFigs} onChange={(e) => setSigFigs(Number(e.target.value))} />
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <label className="flex items-center gap-2 text-sm"><Switch checked={hasHeader} onCheckedChange={setHasHeader} /> ヘッダー行あり</label>
+                  <label className="flex items-center gap-2 text-sm"><Switch checked={cleanInput} onCheckedChange={setCleanInput} /> 入力を正規化</label>
+                  <label className="flex items-center gap-2 text-sm"><Switch checked={booktabs} onCheckedChange={setBooktabs} /> booktabs 表</label>
                 </div>
               </div>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="flex items-center gap-2 text-sm"><Switch checked={hasHeader} onCheckedChange={setHasHeader} /> ヘッダー行あり</label>
-              <label className="flex items-center gap-2 text-sm"><Switch checked={cleanInput} onCheckedChange={setCleanInput} /> 入力を正規化</label>
-              <label className="flex items-center gap-2 text-sm"><Switch checked={booktabs} onCheckedChange={setBooktabs} /> booktabs 表</label>
-            </div>
-          </CardContent>
+            </CardContent>
+          )}
         </Card>
 
-        <div className="grid gap-4 xl:grid-cols-[minmax(560px,1fr)_minmax(420px,0.85fr)]">
+        <div
+          role="separator"
+          aria-label="入力データと作業エリアの高さを調整"
+          aria-orientation="horizontal"
+          aria-valuemin={90}
+          aria-valuemax={520}
+          aria-valuenow={showInput ? inputHeight : 0}
+          tabIndex={0}
+          onPointerDown={startInputResize}
+          onPointerMove={resizeInput}
+          onPointerUp={stopInputResize}
+          onPointerCancel={stopInputResize}
+          onKeyDown={resizeInputWithKeyboard}
+          className={`flex h-5 cursor-row-resize touch-none items-center justify-center rounded-md transition-colors ${
+            isInputResizing ? "bg-primary/15" : "hover:bg-accent"
+          }`}
+          title="下にドラッグして入力欄を表示、上下にドラッグして高さを調整"
+        >
+          <span className="h-1 w-full max-w-5xl rounded-full bg-border" />
+        </div>
+
+        <div
+          ref={splitRef}
+          className="grid gap-4 xl:[grid-template-columns:minmax(460px,var(--result-width))_0.75rem_minmax(360px,var(--pdf-width))]"
+          style={{
+            "--result-width": `${resultWidth}%`,
+            "--pdf-width": `${100 - resultWidth}%`,
+          } as CSSProperties}
+        >
         <Card>
           <CardHeader>
             <CardTitle>変換結果</CardTitle>
@@ -410,75 +541,105 @@ export default function ConvertPage() {
                 <OutputArea kind="csv" value={csvOut} onChange={setCsvOut} rows={13} />
               </TabsContent>
               <TabsContent value="tikz" className="space-y-3">
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                  <div className="space-y-1">
-                    <Label htmlFor="fn">ファイル名</Label>
-                    <Input id="fn" value={filename} onChange={(e) => setFilename(e.target.value)} />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="fig">図番号</Label>
-                    <Input id="fig" type="number" min={1} placeholder="自動" value={figureNumber} onChange={(e) => setFigureNumber(e.target.value)} />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>凡例位置</Label>
-                    <Select value={legendPos} onValueChange={setLegendPos}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {LEGEND_POS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label>軸スケール</Label>
-                    <Select value={scaleMode} onValueChange={setScaleMode}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="linear">線形</SelectItem>
-                        <SelectItem value="semilog">片対数</SelectItem>
-                        <SelectItem value="loglog">両対数</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label>近似</Label>
-                    <Select value={fitMethod} onValueChange={setFitMethod}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">なし</SelectItem>
-                        <SelectItem value="auto">自動</SelectItem>
-                        <SelectItem value="linear">線形</SelectItem>
-                        <SelectItem value="quadratic">2次</SelectItem>
-                        <SelectItem value="cubic">3次</SelectItem>
-                        <SelectItem value="exponential">指数</SelectItem>
-                        <SelectItem value="logarithmic">対数</SelectItem>
-                        <SelectItem value="power">べき乗</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="flex justify-end">
+                  <Button type="button" variant="secondary" size="sm" onClick={() => setShowTikzSettings((v) => !v)}>
+                    {showTikzSettings ? "簡易設定を隠す" : "簡易設定を表示"}
+                  </Button>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  <div className="space-y-1">
-                    <Label htmlFor="xlabel">x軸ラベル</Label>
-                    <Input id="xlabel" value={xLabel} onChange={(e) => setXLabel(e.target.value)} />
+                {showTikzSettings && (
+                  <div className="space-y-3">
+                    <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(8.5rem,1fr))]">
+                      <div className="min-w-0 space-y-1">
+                        <Label htmlFor="fn">ファイル名</Label>
+                        <Input id="fn" value={filename} onChange={(e) => setFilename(e.target.value)} />
+                      </div>
+                      <div className="min-w-0 space-y-1">
+                        <Label htmlFor="fig">図番号</Label>
+                        <Input id="fig" type="number" min={1} placeholder="自動" value={figureNumber} onChange={(e) => setFigureNumber(e.target.value)} />
+                      </div>
+                      <div className="min-w-0 space-y-1">
+                        <Label>凡例位置</Label>
+                        <Select value={legendPos} onValueChange={setLegendPos}>
+                          <SelectTrigger className="w-full min-w-0"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {LEGEND_POS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="min-w-0 space-y-1">
+                        <Label>軸スケール</Label>
+                        <Select value={scaleMode} onValueChange={setScaleMode}>
+                          <SelectTrigger className="w-full min-w-0"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="linear">線形</SelectItem>
+                            <SelectItem value="semilog">片対数</SelectItem>
+                            <SelectItem value="loglog">両対数</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="min-w-0 space-y-1">
+                        <Label>近似</Label>
+                        <Select value={fitMethod} onValueChange={setFitMethod}>
+                          <SelectTrigger className="w-full min-w-0"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">なし</SelectItem>
+                            <SelectItem value="auto">自動</SelectItem>
+                            <SelectItem value="linear">線形</SelectItem>
+                            <SelectItem value="quadratic">2次</SelectItem>
+                            <SelectItem value="cubic">3次</SelectItem>
+                            <SelectItem value="exponential">指数</SelectItem>
+                            <SelectItem value="logarithmic">対数</SelectItem>
+                            <SelectItem value="power">べき乗</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(8.5rem,1fr))]">
+                      <div className="min-w-0 space-y-1">
+                        <Label htmlFor="xlabel">x軸ラベル</Label>
+                        <Input id="xlabel" value={xLabel} onChange={(e) => setXLabel(e.target.value)} />
+                      </div>
+                      <div className="min-w-0 space-y-1">
+                        <Label htmlFor="ylabel">y軸ラベル</Label>
+                        <Input id="ylabel" value={yLabel} onChange={(e) => setYLabel(e.target.value)} />
+                      </div>
+                      <div className="min-w-0 space-y-1">
+                        <Label htmlFor="caption">キャプション</Label>
+                        <Input id="caption" value={graphCaption} onChange={(e) => setGraphCaption(e.target.value)} />
+                      </div>
+                      <div className="min-w-0 space-y-1">
+                        <Label htmlFor="label">ラベル</Label>
+                        <Input id="label" value={graphLabel} onChange={(e) => setGraphLabel(e.target.value)} />
+                      </div>
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="ylabel">y軸ラベル</Label>
-                    <Input id="ylabel" value={yLabel} onChange={(e) => setYLabel(e.target.value)} />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="caption">キャプション</Label>
-                    <Input id="caption" value={graphCaption} onChange={(e) => setGraphCaption(e.target.value)} />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="label">ラベル</Label>
-                    <Input id="label" value={graphLabel} onChange={(e) => setGraphLabel(e.target.value)} />
-                  </div>
-                </div>
+                )}
                 <OutputArea kind="tikz" value={tikzOut} onChange={setTikzOut} rows={13} />
               </TabsContent>
             </Tabs>
           </CardContent>
         </Card>
+
+        <div
+          role="separator"
+          aria-label="変換結果とPDFプレビューの幅を調整"
+          aria-orientation="vertical"
+          aria-valuemin={35}
+          aria-valuemax={75}
+          aria-valuenow={resultWidth}
+          tabIndex={0}
+          onPointerDown={startResize}
+          onPointerMove={resize}
+          onPointerUp={stopResize}
+          onPointerCancel={stopResize}
+          onKeyDown={resizeWithKeyboard}
+          className={`hidden cursor-col-resize touch-none items-stretch justify-center rounded-md transition-colors xl:flex ${
+            isResizing ? "bg-primary/15" : "hover:bg-accent"
+          }`}
+          title="左右にドラッグして幅を調整"
+        >
+          <span className="my-4 w-1 rounded-full bg-border" />
+        </div>
 
         <Card>
           <CardHeader>
@@ -526,38 +687,15 @@ export default function ConvertPage() {
 }
 
 function InputDiagnosticsPanel({ diagnostics }: { diagnostics: InputDiagnostics }) {
-  const plotSeries = diagnostics.numericColumns.filter((col) => col.index > 0)
-  const statusTone = diagnostics.warnings.length > 0
-    ? "border-amber-200 bg-amber-50 text-amber-950"
-    : "border-emerald-200 bg-emerald-50 text-emerald-950"
+  if (diagnostics.warnings.length === 0) return null
 
   return (
-    <div className={`rounded-md border p-3 text-sm ${statusTone}`}>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-        <span>行 {diagnostics.rowCount}</span>
-        <span>列 {diagnostics.maxCols}</span>
-        <span>数値列 {diagnostics.numericColumns.length}</span>
-        <span>系列 {plotSeries.length}</span>
-      </div>
-      {diagnostics.numericColumns.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {diagnostics.numericColumns.map((col) => (
-            <span
-              key={col.index}
-              className="rounded border border-current/20 bg-white/50 px-2 py-0.5 text-xs"
-            >
-              {col.name}: {col.count}
-            </span>
-          ))}
-        </div>
-      )}
-      {diagnostics.warnings.length > 0 && (
-        <ul className="mt-2 list-disc space-y-1 pl-5">
-          {diagnostics.warnings.map((warning) => (
-            <li key={warning}>{warning}</li>
-          ))}
-        </ul>
-      )}
+    <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+      <ul className="list-disc space-y-1 pl-5">
+        {diagnostics.warnings.map((warning) => (
+          <li key={warning}>{warning}</li>
+        ))}
+      </ul>
     </div>
   )
 }
