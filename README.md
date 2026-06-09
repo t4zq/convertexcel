@@ -6,7 +6,7 @@ React UI、Rust/WASM 計算エンジン、Rails API の 3 レイヤ構成です�
 
 | レイヤ | 技術 | ディレクトリ |
 | --- | --- | --- |
-| 画面 (UI) | React 19 + Vite + TS + Tailwind v4 + **shadcn/ui** + react-router + **Plotly** | `frontend/` |
+| 画面 (UI) | React 19 + Vite + TS + Tailwind v4 + **shadcn/ui** + react-router | `frontend/` |
 | 計算エンジン | **Rust** → WebAssembly (`wasm-pack`) | `engine/` |
 | API | **Ruby on Rails** 7 (API-only, 薄い) | `api/` |
 
@@ -14,16 +14,11 @@ React UI、Rust/WASM 計算エンジン、Rails API の 3 レイヤ構成です�
 health とデータセット(grid)の永続化のみを担う薄い API です。
 
 ### 画面 (frontend/src/pages)
-- **統計探索** `/` — 記述統計 / Pearson 相関ヒートマップ / グラフ(散布・折れ線＋スムージング) / 曲線フィット(線形・多項式・指数・べき乗・三角, AIC 最小推奨) / Welch の t 検定
-- **回路解析** `/circuit` — 周波数特性(Bode, -3dB カットオフ・傾き・τ) / 過渡応答(時定数) / インピーダンス(共振)
-- **変換** `/convert` — LaTeX 表 / CSV / TikZ(PGFPlots) 生成、texlive.net による PDF プレビュー(同意ダイアログ＋15秒クールダウン)
+- **変換** `/` `/convert` — LaTeX 表 / CSV / TikZ(PGFPlots) 生成、texlive.net による PDF プレビュー(同意ダイアログ＋15秒クールダウン)
 - **プライバシー** `/privacy`
 
 ### エンジン (engine/src)
 - `convert.rs` — LaTeX/CSV/TikZ/近似の生成
-- `stats.rs` — 曲線フィット / Welch t 検定 / 記述統計
-- `signal.rs` — スムージング(移動平均/メジアン/IIR低域/FFT低域) / LTTB 間引き
-- `circuit.rs` — Bode / 過渡応答 / インピーダンス解析
 
 ### Docker で起動 (推奨)
 

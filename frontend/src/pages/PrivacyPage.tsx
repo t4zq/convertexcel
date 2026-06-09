@@ -79,7 +79,7 @@ export default function PrivacyPage() {
       </Card>
 
       <p className="text-sm">
-        <Link to="/" className="underline underline-offset-4">統計探索に戻る</Link>
+        <Link to="/" className="underline underline-offset-4">変換に戻る</Link>
       </p>
     </div>
   )

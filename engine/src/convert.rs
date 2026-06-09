@@ -206,7 +206,20 @@ fn escape(s: &str) -> String {
     out
 }
 
+fn escape_label_arg(s: &str) -> String {
+    s.chars().filter(|c| !matches!(c, '{' | '}')).collect()
+}
+
 fn to_latex_formatted(t: &Table, format_cell: &dyn Fn(&str) -> String) -> String {
+    to_latex_formatted_style(t, format_cell, false, false)
+}
+
+fn to_latex_formatted_style(
+    t: &Table,
+    format_cell: &dyn Fn(&str) -> String,
+    has_header: bool,
+    booktabs: bool,
+) -> String {
     if t.is_empty() {
         return String::new();
     }
@@ -214,7 +227,10 @@ fn to_latex_formatted(t: &Table, format_cell: &dyn Fn(&str) -> String) -> String
         "\\begin{{tabular}}{{{}}}\n\\hline\n",
         "c".repeat(t[0].len())
     );
-    for row in t {
+    if booktabs {
+        out = format!("\\begin{{tabular}}{{{}}}\n\\toprule\n", "c".repeat(t[0].len()));
+    }
+    for (row_index, row) in t.iter().enumerate() {
         for (i, cell) in row.iter().enumerate() {
             if i > 0 {
                 out.push_str(" & ");
@@ -222,8 +238,15 @@ fn to_latex_formatted(t: &Table, format_cell: &dyn Fn(&str) -> String) -> String
             out.push_str(&escape(&format_cell(cell)));
         }
         out.push_str(" \\\\\n");
+        if booktabs && has_header && row_index == 0 {
+            out.push_str("\\midrule\n");
+        }
     }
-    out.push_str("\\hline\n\\end{tabular}");
+    if booktabs {
+        out.push_str("\\bottomrule\n\\end{tabular}");
+    } else {
+        out.push_str("\\hline\n\\end{tabular}");
+    }
     out
 }
 
@@ -269,11 +292,23 @@ fn to_graph_csv(t: &Table) -> String {
     to_csv_formatted(t, &|c| if is_number(c) { c.to_string() } else { "nan".to_string() })
 }
 
-fn to_latex_mode(t: &Table, mode: i32, decimals: i32, sig_figs: i32) -> String {
+fn to_latex_mode_style(
+    t: &Table,
+    mode: i32,
+    decimals: i32,
+    sig_figs: i32,
+    has_header: bool,
+    booktabs: bool,
+) -> String {
     match mode {
-        ROUND_DECIMAL => to_latex_rounded(t, decimals),
-        ROUND_SIG_FIGS => to_latex_sig_figs(t, sig_figs),
-        _ => to_latex(t),
+        ROUND_DECIMAL => to_latex_formatted_style(t, &|c| round_number(c, decimals), has_header, booktabs),
+        ROUND_SIG_FIGS => to_latex_formatted_style(
+            t,
+            &|c| round_significant_figures(c, sig_figs),
+            has_header,
+            booktabs,
+        ),
+        _ => to_latex_formatted_style(t, &identity, has_header, booktabs),
     }
 }
 fn to_csv_mode(t: &Table, mode: i32, decimals: i32, sig_figs: i32) -> String {
@@ -638,6 +673,10 @@ fn to_tikz_graph(
     figure_number: i32,
     fit_methods: &str,
     headers: &[String],
+    x_label: &str,
+    y_label: &str,
+    caption: &str,
+    label: &str,
 ) -> String {
     if t.is_empty() {
         return String::new();
@@ -686,8 +725,13 @@ fn to_tikz_graph(
         out.push_str("            ymode=log,\n");
     }
 
-    out.push_str("            xlabel={x軸},\n");
-    out.push_str("            ylabel={y軸},\n");
+    let x_label = if x_label.trim().is_empty() { "x軸" } else { x_label.trim() };
+    let y_label = if y_label.trim().is_empty() { "y軸" } else { y_label.trim() };
+    let caption = if caption.trim().is_empty() { "図題" } else { caption.trim() };
+    let label = if label.trim().is_empty() { "fig:label" } else { label.trim() };
+
+    out.push_str(&format!("            xlabel={{{}}},\n", escape(x_label)));
+    out.push_str(&format!("            ylabel={{{}}},\n", escape(y_label)));
     out.push_str(&format!("            xmin={}, xmax={},\n", xmin_val, xmax_val));
     out.push_str(&format!("            ymin={}, ymax={},\n", ymin_val, ymax_val));
 
@@ -735,7 +779,7 @@ fn to_tikz_graph(
         } else {
             format!("data {}", col)
         };
-        out.push_str(&format!("            \\addlegendentry{{{}}}\n", legend_text));
+        out.push_str(&format!("            \\addlegendentry{{{}}}\n", escape(&legend_text)));
 
         let fit_method = fit_method_for_series(fit_methods, col - 1);
         let fit = select_fit(&points_for_column(t, col), &fit_method);
@@ -756,8 +800,8 @@ fn to_tikz_graph(
     if figure_number > 0 {
         out.push_str(&format!("    \\setcounter{{figure}}{{{}}}\n", figure_number - 1));
     }
-    out.push_str("    \\caption{図題}\n");
-    out.push_str("    \\label{fig:label}\n");
+    out.push_str(&format!("    \\caption{{{}}}\n", escape(caption)));
+    out.push_str(&format!("    \\label{{{}}}\n", escape_label_arg(label)));
     out.push_str("\\end{figure}\n");
     for fe in &fit_equations {
         out.push_str(&format!("{} : $R^2={}$\n", fe.legend, format_double(fe.r2)));
@@ -883,16 +927,24 @@ pub fn gen_latex_sig_figs(input: &str, sig_figs: i32) -> String {
 }
 #[wasm_bindgen]
 pub fn gen_tikz_graph(input: &str, filename: &str, sig_figs: i32, legend_pos: &str, scale_mode: &str) -> String {
-    to_tikz_graph(&parse(input), filename, sig_figs, legend_pos, scale_mode, 0, "auto", &[])
+    to_tikz_graph(&parse(input), filename, sig_figs, legend_pos, scale_mode, 0, "auto", &[], "", "", "", "")
 }
 #[wasm_bindgen]
 pub fn gen_tikz_graph_preview(input: &str, sig_figs: i32, legend_pos: &str, scale_mode: &str) -> String {
     to_tikz_graph_preview(&parse(input), sig_figs, legend_pos, scale_mode)
 }
 #[wasm_bindgen]
-pub fn gen_latex_config(input: &str, mode: i32, decimals: i32, sig_figs: i32, has_header: i32, clean_input: i32) -> String {
+pub fn gen_latex_config(
+    input: &str,
+    mode: i32,
+    decimals: i32,
+    sig_figs: i32,
+    has_header: i32,
+    clean_input: i32,
+    booktabs: i32,
+) -> String {
     let t = prepare_table(input, has_header != 0, clean_input != 0, true);
-    to_latex_mode(&t, mode, decimals, sig_figs)
+    to_latex_mode_style(&t, mode, decimals, sig_figs, has_header != 0, booktabs != 0)
 }
 #[wasm_bindgen]
 pub fn gen_csv_config(input: &str, mode: i32, decimals: i32, sig_figs: i32, has_header: i32, clean_input: i32) -> String {
@@ -911,6 +963,10 @@ pub fn gen_tikz_graph_config(
     has_header: i32,
     clean_input: i32,
     figure_number: i32,
+    x_label: &str,
+    y_label: &str,
+    caption: &str,
+    label: &str,
 ) -> String {
     let t = prepare_table(input, has_header != 0, clean_input != 0, false);
     let headers = if has_header != 0 {
@@ -919,7 +975,20 @@ pub fn gen_tikz_graph_config(
     } else {
         Vec::new()
     };
-    to_tikz_graph(&t, filename, sig_figs, legend_pos, scale_mode, figure_number, fit_method, &headers)
+    to_tikz_graph(
+        &t,
+        filename,
+        sig_figs,
+        legend_pos,
+        scale_mode,
+        figure_number,
+        fit_method,
+        &headers,
+        x_label,
+        y_label,
+        caption,
+        label,
+    )
 }
 #[wasm_bindgen]
 pub fn gen_csv_attachment(input: &str, has_header: i32, clean_input: i32) -> String {
@@ -961,5 +1030,37 @@ mod tests {
         assert!(out.contains("\\begin{figure}[H]"));
         assert!(out.contains("\\addplot"));
         assert!(out.contains("R^2="));
+    }
+
+    #[test]
+    fn latex_booktabs_config() {
+        let out = gen_latex_config("x,y\n1,2", 0, 2, 3, 1, 1, 1);
+        assert!(out.contains("\\toprule"));
+        assert!(out.contains("\\midrule"));
+        assert!(out.contains("\\bottomrule"));
+        assert!(!out.contains("\\hline"));
+    }
+
+    #[test]
+    fn tikz_uses_labels_and_caption() {
+        let out = gen_tikz_graph_config(
+            "x,y\n1,2\n2,4",
+            "data",
+            3,
+            "north west",
+            "linear",
+            "linear",
+            1,
+            1,
+            0,
+            "Voltage V",
+            "Current A",
+            "IV curve",
+            "fig:iv_curve",
+        );
+        assert!(out.contains("xlabel={Voltage V}"));
+        assert!(out.contains("ylabel={Current A}"));
+        assert!(out.contains("\\caption{IV curve}"));
+        assert!(out.contains("\\label{fig:iv_curve}"));
     }
 }
