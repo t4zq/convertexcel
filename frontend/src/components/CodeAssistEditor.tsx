@@ -1,11 +1,20 @@
 import { useEffect, useMemo, useRef } from "react"
 import { autocompletion, closeBrackets, type CompletionContext } from "@codemirror/autocomplete"
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands"
-import { bracketMatching, foldGutter, indentOnInput, syntaxHighlighting, defaultHighlightStyle } from "@codemirror/language"
+import {
+  bracketMatching,
+  defaultHighlightStyle,
+  foldGutter,
+  foldService,
+  HighlightStyle,
+  indentOnInput,
+  syntaxHighlighting,
+} from "@codemirror/language"
 import { StreamLanguage } from "@codemirror/language"
 import { stex } from "@codemirror/legacy-modes/mode/stex"
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search"
 import { EditorState, type Extension } from "@codemirror/state"
+import { tags as t } from "@lezer/highlight"
 import {
   drawSelection,
   dropCursor,
@@ -18,6 +27,11 @@ import {
 } from "@codemirror/view"
 
 type CodeKind = "latex" | "csv" | "tikz"
+
+interface EnvironmentToken {
+  env: string
+  type: "begin" | "end"
+}
 
 interface CodeAssistEditorProps {
   kind: CodeKind
@@ -61,6 +75,58 @@ const PGFPLOTS_OPTIONS = [
   { label: "mark=", apply: "mark=*", detail: "プロット記号" },
   { label: "smooth", apply: "smooth", detail: "曲線化" },
 ]
+
+const texHighlightStyle = HighlightStyle.define([
+  { tag: t.keyword, color: "#1d4ed8", fontWeight: "600" },
+  { tag: t.controlKeyword, color: "#1d4ed8", fontWeight: "600" },
+  { tag: t.atom, color: "#0f766e" },
+  { tag: t.name, color: "#0f766e" },
+  { tag: t.variableName, color: "#047857" },
+  { tag: t.propertyName, color: "#9333ea" },
+  { tag: t.number, color: "#b45309" },
+  { tag: t.string, color: "#be123c" },
+  { tag: t.escape, color: "#0369a1", fontWeight: "600" },
+  { tag: t.operator, color: "#475569" },
+  { tag: t.punctuation, color: "#64748b" },
+  { tag: t.bracket, color: "#334155" },
+  { tag: t.comment, color: "#64748b", fontStyle: "italic" },
+  { tag: t.invalid, color: "#dc2626", textDecoration: "underline" },
+])
+
+function environmentToken(line: string): EnvironmentToken | null {
+  const match = line.match(/\\(begin|end)\s*\{([^{}]+)\}/)
+  if (!match) return null
+  return {
+    type: match[1] === "begin" ? "begin" : "end",
+    env: match[2],
+  }
+}
+
+const texEnvironmentFolding = foldService.of((state, lineStart, lineEnd) => {
+  const doc = state.doc
+  const startLine = doc.lineAt(lineStart)
+  const token = environmentToken(startLine.text)
+
+  if (!token || token.type !== "begin") return null
+
+  let depth = 0
+  for (let lineNumber = startLine.number; lineNumber <= doc.lines; lineNumber += 1) {
+    const line = doc.line(lineNumber)
+    const next = environmentToken(line.text)
+    if (!next || next.env !== token.env) continue
+
+    if (next.type === "begin") depth += 1
+    if (next.type === "end") depth -= 1
+
+    if (depth === 0 && lineNumber > startLine.number) {
+      const from = lineEnd
+      const to = line.from
+      return from < to ? { from, to } : null
+    }
+  }
+
+  return null
+})
 
 function codeCompletions(kind: CodeKind) {
   return (context: CompletionContext) => {
@@ -122,8 +188,10 @@ export function CodeAssistEditor({
     bracketMatching(),
     closeBrackets(),
     indentOnInput(),
-    syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
     kind === "csv" ? [] : StreamLanguage.define(stex),
+    kind === "csv" ? [] : texEnvironmentFolding,
+    syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+    syntaxHighlighting(texHighlightStyle),
     autocompletion({
       activateOnTyping: true,
       closeOnBlur: false,

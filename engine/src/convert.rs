@@ -618,16 +618,33 @@ fn points_for_column(t: &Table, col: usize) -> Vec<Point> {
 
 fn plot_mark_style(index: usize) -> &'static str {
     const STYLES: [&str; 8] = [
-        "only marks, color=black, mark=*,         mark size=2pt",
-        "only marks, color=black, mark=square*,   mark size=2pt",
+        "only marks, color=black, mark=*, mark size=2pt",
+        "only marks, color=black, mark=square*, mark size=2pt",
         "only marks, color=black, mark=triangle*, mark size=3pt",
-        "only marks, color=black, mark=diamond*,  mark size=3pt",
-        "only marks, color=black, mark=o,         mark size=2pt",
-        "only marks, color=black, mark=square,    mark size=2pt",
-        "only marks, color=black, mark=triangle,  mark size=3pt",
-        "only marks, color=black, mark=diamond,   mark size=3pt",
+        "only marks, color=black, mark=diamond*, mark size=3pt",
+        "only marks, color=black, mark=o, mark size=2pt",
+        "only marks, color=black, mark=square, mark size=2pt",
+        "only marks, color=black, mark=triangle, mark size=3pt",
+        "only marks, color=black, mark=diamond, mark size=3pt",
     ];
     STYLES[index % 8]
+}
+
+fn push_pgfplots_options(out: &mut String, indent: &str, options: &str) {
+    let parts: Vec<&str> = options.split(", ").collect();
+    for (index, part) in parts.iter().enumerate() {
+        out.push_str(indent);
+        out.push_str(part);
+        if index + 1 < parts.len() {
+            out.push_str(",\n");
+        } else {
+            out.push('\n');
+        }
+    }
+}
+
+fn multiline_plot_expression(expression: &str) -> String {
+    expression.replace(" + ", "\n                + ")
 }
 
 struct FitEquation {
@@ -696,7 +713,13 @@ fn to_tikz_graph(
     out.push_str("            width=0.8\\textwidth,\n");
     out.push_str("            height=0.6\\textwidth,\n");
     out.push_str("            minor tick num=1,\n");
-    out.push_str("            tick style={major tick length=5pt, minor tick length=3pt, tick pos=both, color=black, line width=0.5pt},\n");
+    out.push_str("            tick style={\n");
+    out.push_str("                major tick length=5pt,\n");
+    out.push_str("                minor tick length=3pt,\n");
+    out.push_str("                tick pos=both,\n");
+    out.push_str("                color=black,\n");
+    out.push_str("                line width=0.5pt\n");
+    out.push_str("            },\n");
     out.push_str("            tick align=inside,\n");
     out.push_str("            xmajorgrids=false,\n");
     out.push_str("            ymajorgrids=false,\n");
@@ -768,12 +791,14 @@ fn to_tikz_graph(
     out.push_str("        ]\n");
 
     for col in 1..num_cols {
-        out.push_str("            \\addplot [");
-        out.push_str(plot_mark_style(col - 1));
-        out.push_str(&format!(
-            "] table [col sep=comma, x index=0, y index={}] {{{}.csv}};\n",
-            col, filename
-        ));
+        out.push_str("            \\addplot [\n");
+        push_pgfplots_options(&mut out, "                ", plot_mark_style(col - 1));
+        out.push_str("            ]\n");
+        out.push_str("            table [\n");
+        out.push_str("                col sep=comma,\n");
+        out.push_str("                x index=0,\n");
+        out.push_str(&format!("                y index={}\n", col));
+        out.push_str(&format!("            ] {{{}.csv}};\n", filename));
         let legend_text = if headers.len() > col && !headers[col].is_empty() {
             headers[col].clone()
         } else {
@@ -784,10 +809,21 @@ fn to_tikz_graph(
         let fit_method = fit_method_for_series(fit_methods, col - 1);
         let fit = select_fit(&points_for_column(t, col), &fit_method);
         if fit.ok {
-            out.push_str(&format!(
-                "            \\addplot [forget plot, color=black, domain={}:{}, samples=100, no markers, thick] {{{}}};\n",
-                xmin_val, xmax_val, fit.expression
-            ));
+            out.push_str("            \\addplot [\n");
+            push_pgfplots_options(
+                &mut out,
+                "                ",
+                &format!(
+                    "forget plot, color=black, domain={}:{}, samples=100, no markers, thick",
+                    xmin_val, xmax_val
+                ),
+            );
+            out.push_str("            ]\n");
+            out.push_str("            {\n");
+            out.push_str("                ");
+            out.push_str(&multiline_plot_expression(&fit.expression));
+            out.push_str("\n");
+            out.push_str("            };\n");
             fit_equations.push(FitEquation {
                 legend: legend_text,
                 equation: format!("y_{{{}}} = {}", col, fit.tex_expression),
@@ -828,7 +864,13 @@ fn to_tikz_graph_preview(t: &Table, sig_figs: i32, legend_pos: &str, scale_mode:
     out.push_str("    width=0.8\\textwidth,\n");
     out.push_str("    height=0.6\\textwidth,\n");
     out.push_str("    minor tick num=1,\n");
-    out.push_str("    tick style={major tick length=5pt, minor tick length=3pt, tick pos=both, color=black, line width=0.5pt},\n");
+    out.push_str("    tick style={\n");
+    out.push_str("      major tick length=5pt,\n");
+    out.push_str("      minor tick length=3pt,\n");
+    out.push_str("      tick pos=both,\n");
+    out.push_str("      color=black,\n");
+    out.push_str("      line width=0.5pt\n");
+    out.push_str("    },\n");
     out.push_str("    tick align=inside,\n");
     out.push_str("    xmajorgrids=false,\n");
     out.push_str("    ymajorgrids=false,\n");

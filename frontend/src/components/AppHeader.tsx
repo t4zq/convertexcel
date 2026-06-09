@@ -10,7 +10,7 @@ const TOOLS = [
 export function AppHeader() {
   return (
     <header className="border-b">
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3 sm:px-6">
+      <div className="flex w-full flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3 sm:px-6">
         <NavLink to="/" className="shrink-0" aria-label="converTeXcel">
           <img src={logo} alt="converTeXcel" className="h-9 w-auto" />
         </NavLink>

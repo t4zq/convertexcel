@@ -422,7 +422,7 @@ export default function ConvertPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-4 p-4 sm:p-6">
+    <div className="w-full space-y-4 p-4 sm:p-6">
       <header className="space-y-1">
         <p className="text-muted-foreground text-sm font-medium tracking-wide uppercase">
           Table · CSV · PGFPlots
