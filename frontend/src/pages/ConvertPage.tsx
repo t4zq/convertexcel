@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react"
+import { Copy, Download, FileText, Settings2 } from "lucide-react"
 
 import { CodeAssistEditor } from "@/components/CodeAssistEditor"
 import { Button } from "@/components/ui/button"
@@ -225,6 +226,7 @@ export default function ConvertPage() {
   const [showInput, setShowInput] = useState(true)
   const [inputHeight, setInputHeight] = useState(260)
   const [isInputResizing, setIsInputResizing] = useState(false)
+  const [showInputSettings, setShowInputSettings] = useState(false)
 
   const [filename, setFilename] = useState("data")
   const [figureNumber, setFigureNumber] = useState("")
@@ -235,7 +237,7 @@ export default function ConvertPage() {
   const [yLabel, setYLabel] = useState("y軸")
   const [graphCaption, setGraphCaption] = useState("図題")
   const [graphLabel, setGraphLabel] = useState("fig:label")
-  const [showTikzSettings, setShowTikzSettings] = useState(true)
+  const [showTikzSettings, setShowTikzSettings] = useState(false)
 
   const [latexOut, setLatexOut] = useState("")
   const [csvOut, setCsvOut] = useState("")
@@ -454,41 +456,55 @@ export default function ConvertPage() {
                 className="min-h-[120px] font-mono text-xs xl:min-h-[150px]"
               />
               <InputDiagnosticsPanel diagnostics={diagnostics} />
-              <div className="grid gap-4 md:grid-cols-[minmax(220px,0.8fr)_minmax(260px,1fr)_minmax(220px,0.8fr)]">
-                <div className="space-y-2">
-                  <Label>丸め</Label>
-                  <RadioGroup
-                    value={roundMode}
-                    onValueChange={(v) => setRoundMode(v as typeof roundMode)}
-                    className="flex flex-wrap gap-4"
-                  >
-                    {[
-                      ["none", "なし"],
-                      ["decimal", "小数点"],
-                      ["sig-figs", "有効数字"],
-                    ].map(([v, label]) => (
-                      <label key={v} className="flex items-center gap-1.5 text-sm">
-                        <RadioGroupItem value={v} /> {label}
-                      </label>
-                    ))}
-                  </RadioGroup>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label htmlFor="decimals">小数点桁</Label>
-                    <Input id="decimals" type="number" min={0} value={decimals} onChange={(e) => setDecimals(Number(e.target.value))} />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="sigfigs">有効数字</Label>
-                    <Input id="sigfigs" type="number" min={1} value={sigFigs} onChange={(e) => setSigFigs(Number(e.target.value))} />
-                  </div>
-                </div>
-                <div className="grid gap-2">
-                  <label className="flex items-center gap-2 text-sm"><Switch checked={hasHeader} onCheckedChange={setHasHeader} /> ヘッダー行あり</label>
-                  <label className="flex items-center gap-2 text-sm"><Switch checked={cleanInput} onCheckedChange={setCleanInput} /> 入力を正規化</label>
-                  <label className="flex items-center gap-2 text-sm"><Switch checked={booktabs} onCheckedChange={setBooktabs} /> booktabs 表</label>
-                </div>
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="icon"
+                  onClick={() => setShowInputSettings((v) => !v)}
+                  title={showInputSettings ? "入力設定を隠す" : "入力設定を表示"}
+                >
+                  <Settings2 className="h-4 w-4" />
+                  <span className="sr-only">{showInputSettings ? "入力設定を隠す" : "入力設定を表示"}</span>
+                </Button>
               </div>
+              {showInputSettings && (
+                <div className="grid gap-4 md:grid-cols-[minmax(220px,0.8fr)_minmax(260px,1fr)_minmax(220px,0.8fr)]">
+                  <div className="space-y-2">
+                    <Label>丸め</Label>
+                    <RadioGroup
+                      value={roundMode}
+                      onValueChange={(v) => setRoundMode(v as typeof roundMode)}
+                      className="flex flex-wrap gap-4"
+                    >
+                      {[
+                        ["none", "なし"],
+                        ["decimal", "小数点"],
+                        ["sig-figs", "有効数字"],
+                      ].map(([v, label]) => (
+                        <label key={v} className="flex items-center gap-1.5 text-sm">
+                          <RadioGroupItem value={v} /> {label}
+                        </label>
+                      ))}
+                    </RadioGroup>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="decimals">小数点桁</Label>
+                      <Input id="decimals" type="number" min={0} value={decimals} onChange={(e) => setDecimals(Number(e.target.value))} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="sigfigs">有効数字</Label>
+                      <Input id="sigfigs" type="number" min={1} value={sigFigs} onChange={(e) => setSigFigs(Number(e.target.value))} />
+                    </div>
+                  </div>
+                  <div className="grid gap-2">
+                    <label className="flex items-center gap-2 text-sm"><Switch checked={hasHeader} onCheckedChange={setHasHeader} /> ヘッダー行あり</label>
+                    <label className="flex items-center gap-2 text-sm"><Switch checked={cleanInput} onCheckedChange={setCleanInput} /> 入力を正規化</label>
+                    <label className="flex items-center gap-2 text-sm"><Switch checked={booktabs} onCheckedChange={setBooktabs} /> booktabs 表</label>
+                  </div>
+                </div>
+              )}
             </CardContent>
           )}
         </Card>
@@ -528,23 +544,41 @@ export default function ConvertPage() {
             <CardDescription>生成コードは編集できます。PDF プレビューには編集後の内容を使います。</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <CsvActions value={csvOut} />
             <Tabs defaultValue="latex">
               <TabsList className="flex w-full justify-start overflow-x-auto">
                 <TabsTrigger value="latex">table.tex</TabsTrigger>
-                <TabsTrigger value="csv">CSV</TabsTrigger>
                 <TabsTrigger value="tikz">plot.pgfplots</TabsTrigger>
               </TabsList>
               <TabsContent value="latex" className="space-y-2">
-                <OutputArea kind="latex" value={latexOut} onChange={setLatexOut} rows={13} />
-              </TabsContent>
-              <TabsContent value="csv" className="space-y-2">
-                <OutputArea kind="csv" value={csvOut} onChange={setCsvOut} rows={13} />
+                <div className="flex flex-wrap justify-end gap-2">
+                  <Button size="icon" onClick={() => requestPreview("latex")} disabled={cooldown > 0 || !latexOut.trim()} title="表PDFを作成">
+                    <FileText className="h-4 w-4" />
+                    <span className="sr-only">表PDFを作成</span>
+                  </Button>
+                  <CopyButton value={latexOut} label="table.texをコピー" />
+                  {cooldown > 0 && <span className="text-muted-foreground self-center text-sm">次の送信まで {cooldown} 秒</span>}
+                </div>
+                <OutputArea kind="latex" value={latexOut} onChange={setLatexOut} rows={13} showCopy={false} />
               </TabsContent>
               <TabsContent value="tikz" className="space-y-3">
-                <div className="flex justify-end">
-                  <Button type="button" variant="secondary" size="sm" onClick={() => setShowTikzSettings((v) => !v)}>
-                    {showTikzSettings ? "簡易設定を隠す" : "簡易設定を表示"}
+                <div className="flex flex-wrap justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="icon"
+                    onClick={() => setShowTikzSettings((v) => !v)}
+                    title={showTikzSettings ? "簡易設定を隠す" : "簡易設定を表示"}
+                  >
+                    <Settings2 className="h-4 w-4" />
+                    <span className="sr-only">{showTikzSettings ? "簡易設定を隠す" : "簡易設定を表示"}</span>
                   </Button>
+                  <Button size="icon" onClick={() => requestPreview("tikz")} disabled={cooldown > 0 || !tikzOut.trim()} title="グラフPDFを作成">
+                    <FileText className="h-4 w-4" />
+                    <span className="sr-only">グラフPDFを作成</span>
+                  </Button>
+                  <CopyButton value={tikzOut} label="plot.pgfplotsをコピー" />
+                  {cooldown > 0 && <span className="text-muted-foreground self-center text-sm">次の送信まで {cooldown} 秒</span>}
                 </div>
                 {showTikzSettings && (
                   <div className="space-y-3">
@@ -614,7 +648,7 @@ export default function ConvertPage() {
                     </div>
                   </div>
                 )}
-                <OutputArea kind="tikz" value={tikzOut} onChange={setTikzOut} rows={13} />
+                <OutputArea kind="tikz" value={tikzOut} onChange={setTikzOut} rows={13} showCopy={false} />
               </TabsContent>
             </Tabs>
           </CardContent>
@@ -646,16 +680,7 @@ export default function ConvertPage() {
             <CardTitle>PDF プレビュー</CardTitle>
             <CardDescription>左の生成コードを texlive.net で PDF にします。</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex flex-wrap gap-2">
-              <Button onClick={() => requestPreview("latex")} disabled={cooldown > 0 || !latexOut.trim()}>
-                表PDFを作成
-              </Button>
-              <Button onClick={() => requestPreview("tikz")} disabled={cooldown > 0 || !tikzOut.trim()}>
-                グラフPDFを作成
-              </Button>
-              {cooldown > 0 && <span className="text-muted-foreground self-center text-sm">次の送信まで {cooldown} 秒</span>}
-            </div>
+          <CardContent>
             <iframe
               ref={iframeRef}
               name="tex-iframe"
@@ -686,6 +711,59 @@ export default function ConvertPage() {
   )
 }
 
+function CsvActions({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false)
+
+  const copy = async () => {
+    await navigator.clipboard.writeText(value)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
+  const download = () => {
+    const blob = new Blob([value], { type: "text/csv;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = "table.csv"
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
+  return (
+    <div className="flex flex-wrap items-center justify-end gap-1.5 text-xs text-muted-foreground">
+      <span className="mr-1 font-medium">CSV</span>
+      <div className="flex flex-wrap gap-2">
+        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={copy} disabled={!value} title={copied ? "コピー済み" : "CSVをコピー"}>
+          <Copy className="h-3.5 w-3.5" />
+          <span className="sr-only">{copied ? "コピー済み" : "CSVをコピー"}</span>
+        </Button>
+        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={download} disabled={!value} title="CSVをダウンロード">
+          <Download className="h-3.5 w-3.5" />
+          <span className="sr-only">CSVをダウンロード</span>
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function CopyButton({ value, label }: { value: string; label: string }) {
+  const [copied, setCopied] = useState(false)
+
+  const copy = async () => {
+    await navigator.clipboard.writeText(value)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
+  return (
+    <Button size="icon" variant="secondary" onClick={copy} disabled={!value} title={copied ? "コピー済み" : label}>
+      <Copy className="h-4 w-4" />
+      <span className="sr-only">{copied ? "コピー済み" : label}</span>
+    </Button>
+  )
+}
+
 function InputDiagnosticsPanel({ diagnostics }: { diagnostics: InputDiagnostics }) {
   if (diagnostics.warnings.length === 0) return null
 
@@ -705,26 +783,21 @@ function OutputArea({
   value,
   onChange,
   rows,
+  showCopy = true,
 }: {
   kind: CodeKind
   value: string
   onChange: (value: string) => void
   rows: number
+  showCopy?: boolean
 }) {
-  const [copied, setCopied] = useState(false)
-
-  const copy = async () => {
-    await navigator.clipboard.writeText(value)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
-  }
   return (
     <div className="space-y-2">
-      <div className="flex justify-end">
-        <Button size="sm" variant="secondary" onClick={copy} disabled={!value}>
-          {copied ? "コピー済み" : "コピー"}
-        </Button>
-      </div>
+      {showCopy && (
+        <div className="flex justify-end">
+          <CopyButton value={value} label="コードをコピー" />
+        </div>
+      )}
       <CodeAssistEditor
         kind={kind}
         value={value}
