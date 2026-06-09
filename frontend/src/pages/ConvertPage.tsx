@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react"
@@ -58,6 +59,89 @@ const LEGEND_POS = [
 ]
 
 type CodeKind = "latex" | "csv" | "tikz"
+
+interface InputDiagnostics {
+  rows: string[][]
+  rowCount: number
+  maxCols: number
+  expectedCols: number
+  unevenRows: number[]
+  numericColumns: { index: number; name: string; count: number; nonPositive: number }[]
+  warnings: string[]
+}
+
+function parseDiagnosticRows(text: string): string[][] {
+  const lines = text.replace(/\r\n?/g, "\n").split("\n")
+  while (lines.length > 0 && lines[lines.length - 1].trim() === "") {
+    lines.pop()
+  }
+  return lines
+    .filter((line) => line.trim() !== "")
+    .map((line) => {
+      const delimiter = line.includes("\t") ? "\t" : ","
+      return line.split(delimiter).map((cell) => cell.trim())
+    })
+}
+
+function isNumericCell(cell: string) {
+  return cell !== "" && Number.isFinite(Number(cell))
+}
+
+function diagnoseInput(input: string, hasHeader: boolean, scaleMode: string): InputDiagnostics {
+  const rows = parseDiagnosticRows(input)
+  const expectedCols = rows[0]?.length ?? 0
+  const maxCols = rows.reduce((max, row) => Math.max(max, row.length), 0)
+  const unevenRows = rows
+    .map((row, index) => ({ row, index }))
+    .filter(({ row }) => row.length !== expectedCols)
+    .map(({ index }) => index + 1)
+
+  const dataStart = hasHeader ? 1 : 0
+  const headers = hasHeader ? rows[0] ?? [] : []
+  const numericColumns = Array.from({ length: maxCols }, (_, index) => {
+    let count = 0
+    let nonPositive = 0
+    for (let r = dataStart; r < rows.length; r++) {
+      const cell = rows[r]?.[index] ?? ""
+      if (!isNumericCell(cell)) continue
+      const value = Number(cell)
+      count += 1
+      if (value <= 0) nonPositive += 1
+    }
+    return {
+      index,
+      name: headers[index] || `col${index + 1}`,
+      count,
+      nonPositive,
+    }
+  }).filter((col) => col.count > 0)
+
+  const warnings: string[] = []
+  if (rows.length === 0) warnings.push("入力が空です。")
+  if (expectedCols < 2) warnings.push("TikZ グラフには x 列と y 列の最低 2 列が必要です。")
+  if (unevenRows.length > 0) warnings.push(`列数がそろっていない行: ${unevenRows.join(", ")}`)
+  if (numericColumns.length < 2) warnings.push("数値列が 2 列未満のため、グラフ化できる系列が不足しています。")
+  if (scaleMode !== "linear") {
+    const xColumn = numericColumns.find((col) => col.index === 0)
+    const yColumns = numericColumns.filter((col) => col.index > 0)
+    if (scaleMode === "loglog" && xColumn?.nonPositive) {
+      warnings.push("両対数では x 列に 0 以下の値を使えません。")
+    }
+    if ((scaleMode === "semilog" || scaleMode === "loglog") && yColumns.some((col) => col.nonPositive > 0)) {
+      warnings.push("対数 y 軸では y 系列に 0 以下の値を使えません。")
+    }
+  }
+
+  return {
+    rows,
+    rowCount: rows.length,
+    maxCols,
+    expectedCols,
+    unevenRows,
+    numericColumns,
+    warnings,
+  }
+}
 
 // 旧 script.js の document ラッパを踏襲
 const wrapLatexDocument = (body: string) => `% !TEX uplatex
@@ -134,12 +218,17 @@ export default function ConvertPage() {
   const [sigFigs, setSigFigs] = useState(3)
   const [hasHeader, setHasHeader] = useState(true)
   const [cleanInput, setCleanInput] = useState(true)
+  const [booktabs, setBooktabs] = useState(true)
 
   const [filename, setFilename] = useState("data")
   const [figureNumber, setFigureNumber] = useState("")
   const [legendPos, setLegendPos] = useState("north west")
   const [scaleMode, setScaleMode] = useState("linear")
   const [fitMethod, setFitMethod] = useState("auto")
+  const [xLabel, setXLabel] = useState("x軸")
+  const [yLabel, setYLabel] = useState("y軸")
+  const [graphCaption, setGraphCaption] = useState("図題")
+  const [graphLabel, setGraphLabel] = useState("fig:label")
 
   const [latexOut, setLatexOut] = useState("")
   const [csvOut, setCsvOut] = useState("")
@@ -150,11 +239,15 @@ export default function ConvertPage() {
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
   const mode: RoundMode = roundMode === "decimal" ? 1 : roundMode === "sig-figs" ? 2 : 0
+  const diagnostics = useMemo(
+    () => diagnoseInput(input, hasHeader, scaleMode),
+    [input, hasHeader, scaleMode]
+  )
 
   // 入力・オプション変更で出力を自動生成
   useEffect(() => {
     let alive = true
-    const opts = { mode, decimals, sigFigs, hasHeader, cleanInput }
+    const opts = { mode, decimals, sigFigs, hasHeader, cleanInput, booktabs }
     Promise.all([
       genLatex(input, opts).catch(() => ""),
       genCsv(input, opts).catch(() => ""),
@@ -167,6 +260,10 @@ export default function ConvertPage() {
         hasHeader,
         cleanInput,
         figureNumber: Number(figureNumber) || 0,
+        xLabel,
+        yLabel,
+        caption: graphCaption,
+        label: graphLabel,
       }).catch(() => ""),
     ]).then(([l, c, t]) => {
       if (!alive) return
@@ -177,7 +274,24 @@ export default function ConvertPage() {
     return () => {
       alive = false
     }
-  }, [input, mode, decimals, sigFigs, hasHeader, cleanInput, filename, legendPos, scaleMode, fitMethod, figureNumber])
+  }, [
+    input,
+    mode,
+    decimals,
+    sigFigs,
+    hasHeader,
+    cleanInput,
+    booktabs,
+    filename,
+    legendPos,
+    scaleMode,
+    fitMethod,
+    figureNumber,
+    xLabel,
+    yLabel,
+    graphCaption,
+    graphLabel,
+  ])
 
   // クールダウン
   useEffect(() => {
@@ -223,7 +337,7 @@ export default function ConvertPage() {
         </p>
       </header>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(360px,0.85fr)_minmax(560px,1.15fr)]">
+      <div className="space-y-4">
         <Card>
           <CardHeader>
             <CardTitle>入力データ</CardTitle>
@@ -237,6 +351,7 @@ export default function ConvertPage() {
               spellCheck={false}
               className="min-h-[260px] font-mono text-xs xl:min-h-[360px]"
             />
+            <InputDiagnosticsPanel diagnostics={diagnostics} />
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>丸め</Label>
@@ -270,10 +385,12 @@ export default function ConvertPage() {
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="flex items-center gap-2 text-sm"><Switch checked={hasHeader} onCheckedChange={setHasHeader} /> ヘッダー行あり</label>
               <label className="flex items-center gap-2 text-sm"><Switch checked={cleanInput} onCheckedChange={setCleanInput} /> 入力を正規化</label>
+              <label className="flex items-center gap-2 text-sm"><Switch checked={booktabs} onCheckedChange={setBooktabs} /> booktabs 表</label>
             </div>
           </CardContent>
         </Card>
 
+        <div className="grid gap-4 xl:grid-cols-[minmax(560px,1fr)_minmax(420px,0.85fr)]">
         <Card>
           <CardHeader>
             <CardTitle>変換結果</CardTitle>
@@ -339,29 +456,54 @@ export default function ConvertPage() {
                     </Select>
                   </div>
                 </div>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="space-y-1">
+                    <Label htmlFor="xlabel">x軸ラベル</Label>
+                    <Input id="xlabel" value={xLabel} onChange={(e) => setXLabel(e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="ylabel">y軸ラベル</Label>
+                    <Input id="ylabel" value={yLabel} onChange={(e) => setYLabel(e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="caption">キャプション</Label>
+                    <Input id="caption" value={graphCaption} onChange={(e) => setGraphCaption(e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="label">ラベル</Label>
+                    <Input id="label" value={graphLabel} onChange={(e) => setGraphLabel(e.target.value)} />
+                  </div>
+                </div>
                 <OutputArea kind="tikz" value={tikzOut} onChange={setTikzOut} rows={13} />
               </TabsContent>
             </Tabs>
-
-            <div className="space-y-3 border-t pt-4">
-              <div className="flex flex-wrap gap-2">
-                <Button onClick={() => requestPreview("latex")} disabled={cooldown > 0 || !latexOut.trim()}>
-                  表PDFを作成
-                </Button>
-                <Button onClick={() => requestPreview("tikz")} disabled={cooldown > 0 || !tikzOut.trim()}>
-                  グラフPDFを作成
-                </Button>
-                {cooldown > 0 && <span className="text-muted-foreground self-center text-sm">次の送信まで {cooldown} 秒</span>}
-              </div>
-              <iframe
-                ref={iframeRef}
-                name="tex-iframe"
-                title="LaTeX PDF preview"
-                className="h-[320px] w-full rounded-md border xl:h-[360px]"
-              />
-            </div>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>PDF プレビュー</CardTitle>
+            <CardDescription>左の生成コードを texlive.net で PDF にします。</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={() => requestPreview("latex")} disabled={cooldown > 0 || !latexOut.trim()}>
+                表PDFを作成
+              </Button>
+              <Button onClick={() => requestPreview("tikz")} disabled={cooldown > 0 || !tikzOut.trim()}>
+                グラフPDFを作成
+              </Button>
+              {cooldown > 0 && <span className="text-muted-foreground self-center text-sm">次の送信まで {cooldown} 秒</span>}
+            </div>
+            <iframe
+              ref={iframeRef}
+              name="tex-iframe"
+              title="LaTeX PDF preview"
+              className="h-[420px] w-full rounded-md border xl:h-[760px]"
+            />
+          </CardContent>
+        </Card>
+        </div>
       </div>
 
       <Dialog open={pending !== null} onOpenChange={(o) => !o && setPending(null)}>
@@ -379,6 +521,43 @@ export default function ConvertPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  )
+}
+
+function InputDiagnosticsPanel({ diagnostics }: { diagnostics: InputDiagnostics }) {
+  const plotSeries = diagnostics.numericColumns.filter((col) => col.index > 0)
+  const statusTone = diagnostics.warnings.length > 0
+    ? "border-amber-200 bg-amber-50 text-amber-950"
+    : "border-emerald-200 bg-emerald-50 text-emerald-950"
+
+  return (
+    <div className={`rounded-md border p-3 text-sm ${statusTone}`}>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        <span>行 {diagnostics.rowCount}</span>
+        <span>列 {diagnostics.maxCols}</span>
+        <span>数値列 {diagnostics.numericColumns.length}</span>
+        <span>系列 {plotSeries.length}</span>
+      </div>
+      {diagnostics.numericColumns.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {diagnostics.numericColumns.map((col) => (
+            <span
+              key={col.index}
+              className="rounded border border-current/20 bg-white/50 px-2 py-0.5 text-xs"
+            >
+              {col.name}: {col.count}
+            </span>
+          ))}
+        </div>
+      )}
+      {diagnostics.warnings.length > 0 && (
+        <ul className="mt-2 list-disc space-y-1 pl-5">
+          {diagnostics.warnings.map((warning) => (
+            <li key={warning}>{warning}</li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }

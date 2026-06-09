@@ -4,7 +4,6 @@ import { cn } from "@/lib/utils"
 
 const TOOLS = [
   { to: "/", label: "変換", sub: "LaTeX / CSV", end: true },
-  { to: "/stats", label: "統計探索", sub: "検定 / fit" },
 ]
 
 export function AppHeader() {
