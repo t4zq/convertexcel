@@ -1,5 +1,6 @@
 import { NavLink } from "react-router-dom"
 
+import logo from "@/assets/logo.png"
 import { cn } from "@/lib/utils"
 
 const TOOLS = [
@@ -9,9 +10,9 @@ const TOOLS = [
 export function AppHeader() {
   return (
     <header className="border-b">
-      <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-3 px-6 py-3">
-        <NavLink to="/" className="text-lg font-semibold tracking-tight">
-          conver<span className="text-[#107c41]">TeX</span>cel
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3 sm:px-6">
+        <NavLink to="/" className="shrink-0" aria-label="converTeXcel">
+          <img src={logo} alt="converTeXcel" className="h-9 w-auto" />
         </NavLink>
         <nav className="flex flex-1 flex-wrap items-center gap-2" aria-label="ツール切替">
           {TOOLS.map((t) => (
