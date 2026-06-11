@@ -41,8 +41,9 @@ export function applySeriesStyles(
   let result = tikzCode
 
   // ── 色 ──────────────────────────────────────────────────────────────────
+  // \addplot [...] のオプションブロック内に限定して color=black を置換する。
+  // axis 設定（tick style 等）の color=black は書き換えない。
   if (colors.some((c) => c && c !== "black")) {
-    // 各系列が何回 \addplot を出すか（data 1回 + fit 0-1回）
     const map: number[] = []
     colors.forEach((_, si) => {
       map.push(si) // data plot
@@ -51,12 +52,46 @@ export function applySeriesStyles(
     })
 
     let occ = 0
-    result = result.replace(/^(\s+)(color=black)(,\s*)$/gm, (match, lead, _col, trail) => {
-      const si = map[occ++]
-      const color = si !== undefined ? colors[si] : undefined
-      if (!color || color === "black") return match
-      return `${lead}color=${color}${trail}`
-    })
+    let inAddplot = false
+    let addplotDepth = 0
+
+    result = result
+      .split("\n")
+      .map((line) => {
+        if (!inAddplot) {
+          // \addplot または \addplot+ の後に [ が出現 → オプションブロック開始を検出
+          if (/\\addplot\b/.test(line)) {
+            const start = line.indexOf("[")
+            if (start !== -1) {
+              let depth = 0
+              for (let i = start; i < line.length; i++) {
+                if (line[i] === "[") depth++
+                else if (line[i] === "]") depth--
+              }
+              if (depth > 0) {
+                inAddplot = true
+                addplotDepth = depth
+              }
+            }
+          }
+          return line
+        }
+
+        // \addplot オプションブロック内：ブラケット深度を追跡
+        for (const ch of line) {
+          if (ch === "[") addplotDepth++
+          else if (ch === "]") addplotDepth--
+        }
+        if (addplotDepth <= 0) inAddplot = false
+
+        return line.replace(/^(\s+)(color=black)(,\s*)$/, (match, lead, _col, trail) => {
+          const si = map[occ++]
+          const color = si !== undefined ? colors[si] : undefined
+          if (!color || color === "black") return match
+          return `${lead}color=${color}${trail}`
+        })
+      })
+      .join("\n")
   }
 
   // ── マーカー ─────────────────────────────────────────────────────────────
