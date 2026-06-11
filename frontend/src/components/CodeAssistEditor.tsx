@@ -13,7 +13,7 @@ import {
 import { StreamLanguage } from "@codemirror/language"
 import { stex } from "@codemirror/legacy-modes/mode/stex"
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search"
-import { EditorState, type Extension } from "@codemirror/state"
+import { Compartment, EditorState, type Extension } from "@codemirror/state"
 import { tags as t } from "@lezer/highlight"
 import {
   drawSelection,
@@ -93,6 +93,34 @@ const texHighlightStyle = HighlightStyle.define([
   { tag: t.invalid, color: "#dc2626", textDecoration: "underline" },
 ])
 
+const texHighlightStyleDark = HighlightStyle.define([
+  { tag: t.keyword, color: "#93c5fd", fontWeight: "600" },
+  { tag: t.controlKeyword, color: "#93c5fd", fontWeight: "600" },
+  { tag: t.atom, color: "#2dd4bf" },
+  { tag: t.name, color: "#2dd4bf" },
+  { tag: t.variableName, color: "#34d399" },
+  { tag: t.propertyName, color: "#c084fc" },
+  { tag: t.number, color: "#fbbf24" },
+  { tag: t.string, color: "#fb7185" },
+  { tag: t.escape, color: "#38bdf8", fontWeight: "600" },
+  { tag: t.operator, color: "#94a3b8" },
+  { tag: t.punctuation, color: "#64748b" },
+  { tag: t.bracket, color: "#cbd5e1" },
+  { tag: t.comment, color: "#6b7280", fontStyle: "italic" },
+  { tag: t.invalid, color: "#f87171", textDecoration: "underline" },
+])
+
+function buildSyntaxTheme(dark: boolean): Extension {
+  return [
+    EditorView.darkTheme.of(dark),
+    syntaxHighlighting(dark ? texHighlightStyleDark : texHighlightStyle),
+  ]
+}
+
+function isDarkMode() {
+  return document.documentElement.classList.contains("dark")
+}
+
 function environmentToken(line: string): EnvironmentToken | null {
   const match = line.match(/\\(begin|end)\s*\{([^{}]+)\}/)
   if (!match) return null
@@ -171,6 +199,7 @@ export function CodeAssistEditor({
   const viewRef = useRef<EditorView | null>(null)
   const onChangeRef = useRef(onChange)
   const valueRef = useRef(value)
+  const syntaxCompartment = useRef(new Compartment())
 
   onChangeRef.current = onChange
   valueRef.current = value
@@ -191,7 +220,7 @@ export function CodeAssistEditor({
     kind === "csv" ? [] : StreamLanguage.define(stex),
     kind === "csv" ? [] : texEnvironmentFolding,
     syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
-    syntaxHighlighting(texHighlightStyle),
+    syntaxCompartment.current.of(buildSyntaxTheme(isDarkMode())),
     autocompletion({
       activateOnTyping: true,
       closeOnBlur: false,
@@ -264,6 +293,18 @@ export function CodeAssistEditor({
       changes: { from: 0, to: view.state.doc.length, insert: value },
     })
   }, [value])
+
+  // MutationObserver でダークモード切替を検知し、シンタックステーマをホットスワップする。
+  useEffect(() => {
+    const compartment = syntaxCompartment.current
+    const observer = new MutationObserver(() => {
+      viewRef.current?.dispatch({
+        effects: compartment.reconfigure(buildSyntaxTheme(isDarkMode())),
+      })
+    })
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] })
+    return () => observer.disconnect()
+  }, [])
 
   return <div ref={hostRef} />
 }
