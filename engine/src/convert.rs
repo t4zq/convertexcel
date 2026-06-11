@@ -210,6 +210,36 @@ fn escape_label_arg(s: &str) -> String {
     s.chars().filter(|c| !matches!(c, '{' | '}')).collect()
 }
 
+/// `値 ± 誤差` を分解する。区切りは ±(U+00B1), +/-, +- を許容。
+/// 数値のみなら (値, None)、数値でもなければ None（テキスト扱い）。
+fn parse_value_error(cell: &str) -> Option<(String, Option<String>)> {
+    let c = cell.trim();
+    for sep in ["\u{00B1}", "+/-", "+-"] {
+        if let Some(idx) = c.find(sep) {
+            let value = c[..idx].trim();
+            let error = c[idx + sep.len()..].trim();
+            if is_number(value) && is_number(error) {
+                return Some((value.to_string(), Some(error.to_string())));
+            }
+        }
+    }
+    if is_number(c) {
+        Some((c.to_string(), None))
+    } else {
+        None
+    }
+}
+
+/// 通常（非 siunitx）の LaTeX セル。不確かさ付きセルは `$値 \pm 誤差$` にする。
+fn render_plain_cell(cell: &str, format_cell: &dyn Fn(&str) -> String, is_header: bool) -> String {
+    if !is_header {
+        if let Some((value, Some(error))) = parse_value_error(cell) {
+            return format!("${} \\pm {}$", format_cell(&value), format_cell(&error));
+        }
+    }
+    escape(&format_cell(cell))
+}
+
 fn to_latex_formatted(t: &Table, format_cell: &dyn Fn(&str) -> String) -> String {
     to_latex_formatted_style(t, format_cell, false, false)
 }
@@ -231,11 +261,12 @@ fn to_latex_formatted_style(
         out = format!("\\begin{{tabular}}{{{}}}\n\\toprule\n", "c".repeat(t[0].len()));
     }
     for (row_index, row) in t.iter().enumerate() {
+        let is_header = has_header && row_index == 0;
         for (i, cell) in row.iter().enumerate() {
             if i > 0 {
                 out.push_str(" & ");
             }
-            out.push_str(&escape(&format_cell(cell)));
+            out.push_str(&render_plain_cell(cell, format_cell, is_header));
         }
         out.push_str(" \\\\\n");
         if booktabs && has_header && row_index == 0 {
@@ -288,8 +319,270 @@ fn to_csv_rounded(t: &Table, decimals: i32) -> String {
 fn to_csv_sig_figs(t: &Table, sig_figs: i32) -> String {
     to_csv_formatted(t, &|c| round_significant_figures(c, sig_figs))
 }
+/// 各列に不確かさ付きセル（値±誤差）が 1 つでもあるか。
+fn uncertain_columns(t: &Table) -> Vec<bool> {
+    let cols = t.iter().map(|r| r.len()).max().unwrap_or(0);
+    (0..cols)
+        .map(|j| {
+            t.iter().any(|row| {
+                row.get(j)
+                    .map(|c| matches!(parse_value_error(c), Some((_, Some(_)))))
+                    .unwrap_or(false)
+            })
+        })
+        .collect()
+}
+
+/// 列 col の誤差値が、添付 CSV の何列目に入るか。元の列の後ろへ
+/// 不確かさ列を昇順で追加するため、CSV と plot で同じ規則を共有する。
+fn error_index_for(unc: &[bool], base_cols: usize, col: usize) -> Option<usize> {
+    if col >= unc.len() || !unc[col] {
+        return None;
+    }
+    let offset = unc[..col].iter().filter(|&&u| u).count();
+    Some(base_cols + offset)
+}
+
+/// グラフ添付用 CSV。値は数値部のみ、不確かさ列の誤差は末尾へ追加する。
 fn to_graph_csv(t: &Table) -> String {
-    to_csv_formatted(t, &|c| if is_number(c) { c.to_string() } else { "nan".to_string() })
+    let cols = t.iter().map(|r| r.len()).max().unwrap_or(0);
+    let unc = uncertain_columns(t);
+    let mut out = String::new();
+    for (i, row) in t.iter().enumerate() {
+        let mut fields: Vec<String> = Vec::with_capacity(cols);
+        for j in 0..cols {
+            let cell = row.get(j).map(|s| s.as_str()).unwrap_or("");
+            fields.push(match parse_value_error(cell) {
+                Some((v, _)) => v,
+                None => "nan".to_string(),
+            });
+        }
+        for j in 0..cols {
+            if !unc[j] {
+                continue;
+            }
+            let cell = row.get(j).map(|s| s.as_str()).unwrap_or("");
+            fields.push(match parse_value_error(cell) {
+                Some((_, Some(e))) => e,
+                Some((_, None)) => "0".to_string(),
+                None => "nan".to_string(),
+            });
+        }
+        out.push_str(&fields.join(","));
+        if i + 1 < t.len() {
+            out.push('\n');
+        }
+    }
+    out
+}
+
+// ─── siunitx 表 ────────────────────────────────────────────
+
+/// よく使う単位を siunitx マクロへ対応づける。前置詞の曖昧さ（m=ミリ/メートル等）を
+/// 避けるため複合単位を明示的に列挙し、未知の単位は None（リテラル表示へフォールバック）。
+fn siunitx_unit(unit: &str) -> Option<&'static str> {
+    let m = match unit.trim() {
+        "V" => "\\volt",
+        "mV" => "\\milli\\volt",
+        "kV" => "\\kilo\\volt",
+        "uV" | "\u{00B5}V" | "\u{03BC}V" => "\\micro\\volt",
+        "A" => "\\ampere",
+        "mA" => "\\milli\\ampere",
+        "uA" | "\u{00B5}A" | "\u{03BC}A" => "\\micro\\ampere",
+        "kA" => "\\kilo\\ampere",
+        "\u{03A9}" | "\u{2126}" | "ohm" => "\\ohm",
+        "m\u{03A9}" | "m\u{2126}" => "\\milli\\ohm",
+        "k\u{03A9}" | "k\u{2126}" => "\\kilo\\ohm",
+        "M\u{03A9}" | "M\u{2126}" => "\\mega\\ohm",
+        "W" => "\\watt",
+        "mW" => "\\milli\\watt",
+        "kW" => "\\kilo\\watt",
+        "Hz" => "\\hertz",
+        "kHz" => "\\kilo\\hertz",
+        "MHz" => "\\mega\\hertz",
+        "GHz" => "\\giga\\hertz",
+        "s" => "\\second",
+        "ms" => "\\milli\\second",
+        "us" | "\u{00B5}s" | "\u{03BC}s" => "\\micro\\second",
+        "ns" => "\\nano\\second",
+        "F" => "\\farad",
+        "mF" => "\\milli\\farad",
+        "uF" | "\u{00B5}F" | "\u{03BC}F" => "\\micro\\farad",
+        "nF" => "\\nano\\farad",
+        "pF" => "\\pico\\farad",
+        "H" => "\\henry",
+        "mH" => "\\milli\\henry",
+        "uH" | "\u{00B5}H" | "\u{03BC}H" => "\\micro\\henry",
+        "m" => "\\metre",
+        "cm" => "\\centi\\metre",
+        "mm" => "\\milli\\metre",
+        "um" | "\u{00B5}m" | "\u{03BC}m" => "\\micro\\metre",
+        "nm" => "\\nano\\metre",
+        "km" => "\\kilo\\metre",
+        "g" => "\\gram",
+        "kg" => "\\kilo\\gram",
+        "mg" => "\\milli\\gram",
+        "N" => "\\newton",
+        "J" => "\\joule",
+        "C" => "\\coulomb",
+        "K" => "\\kelvin",
+        "T" => "\\tesla",
+        "Pa" => "\\pascal",
+        "kPa" => "\\kilo\\pascal",
+        "dB" => "\\decibel",
+        "rad" => "\\radian",
+        "\u{00B0}C" | "\u{2103}" => "\\degreeCelsius",
+        "min" => "\\minute",
+        "h" => "\\hour",
+        _ => return None,
+    };
+    Some(m)
+}
+
+/// `名前 [単位]` 形式からラベルと単位を取り出す。単位が無ければ (名前, None)。
+fn split_header_unit(header: &str) -> (String, Option<String>) {
+    let h = header.trim();
+    if h.ends_with(']') {
+        if let Some(open) = h.rfind('[') {
+            let unit = h[open + 1..h.len() - 1].trim();
+            if !unit.is_empty() {
+                return (h[..open].trim().to_string(), Some(unit.to_string()));
+            }
+        }
+    }
+    (h.to_string(), None)
+}
+
+struct NumColumn {
+    is_numeric: bool,
+    int_digits: usize,
+    dec_digits: usize,
+    has_sign: bool,
+    // 指数表記が混ざると桁数が当てにならないので table-format を付けない。
+    format_ok: bool,
+}
+
+/// 各列について、数値列かどうかと siunitx の table-format 用の桁数を求める。
+fn analyze_columns(t: &Table, data_start: usize, format_cell: &dyn Fn(&str) -> String) -> Vec<NumColumn> {
+    let cols = t.iter().map(|r| r.len()).max().unwrap_or(0);
+    let mut specs = Vec::with_capacity(cols);
+    for j in 0..cols {
+        let mut is_numeric = true;
+        let mut any = false;
+        let mut int_digits = 1usize;
+        let mut dec_digits = 0usize;
+        let mut has_sign = false;
+        let mut format_ok = true;
+        for row in t.iter().skip(data_start) {
+            let cell = row.get(j).map(|s| s.as_str()).unwrap_or("");
+            if cell.trim().is_empty() {
+                continue;
+            }
+            let (value, error) = match parse_value_error(cell) {
+                Some(pair) => pair,
+                None => {
+                    is_numeric = false;
+                    break;
+                }
+            };
+            any = true;
+            // 不確かさ付きの列は table-format を付けない（siunitx の桁指定と衝突させない）。
+            if error.is_some() {
+                format_ok = false;
+            }
+            let formatted = format_cell(&value);
+            let f = formatted.trim();
+            if f.contains('e') || f.contains('E') {
+                format_ok = false;
+                continue;
+            }
+            let body = f.strip_prefix('-').map(|r| { has_sign = true; r })
+                .or_else(|| f.strip_prefix('+'))
+                .unwrap_or(f);
+            let (ip, dp) = match body.split_once('.') {
+                Some((a, b)) => (a.len().max(1), b.len()),
+                None => (body.len().max(1), 0),
+            };
+            int_digits = int_digits.max(ip);
+            dec_digits = dec_digits.max(dp);
+        }
+        specs.push(NumColumn {
+            is_numeric: is_numeric && any,
+            int_digits,
+            dec_digits,
+            has_sign,
+            format_ok,
+        });
+    }
+    specs
+}
+
+fn siunitx_colspec(spec: &NumColumn) -> String {
+    if !spec.is_numeric {
+        return "c".to_string();
+    }
+    if !spec.format_ok {
+        return "S".to_string();
+    }
+    let sign = if spec.has_sign { "-" } else { "" };
+    if spec.dec_digits == 0 {
+        format!("S[table-format={}{}]", sign, spec.int_digits)
+    } else {
+        format!("S[table-format={}{}.{}]", sign, spec.int_digits, spec.dec_digits)
+    }
+}
+
+fn to_latex_siunitx_style(
+    t: &Table,
+    format_cell: &dyn Fn(&str) -> String,
+    has_header: bool,
+    booktabs: bool,
+) -> String {
+    if t.is_empty() {
+        return String::new();
+    }
+    let data_start = if has_header { 1 } else { 0 };
+    let specs = analyze_columns(t, data_start, format_cell);
+    let colspec = specs.iter().map(siunitx_colspec).collect::<Vec<_>>().join(" ");
+    let (top, bottom) = if booktabs { ("\\toprule", "\\bottomrule") } else { ("\\hline", "\\hline") };
+
+    let mut out = format!("\\begin{{tabular}}{{{}}}\n{}\n", colspec, top);
+    for (row_index, row) in t.iter().enumerate() {
+        let is_header = has_header && row_index == 0;
+        for (j, spec) in specs.iter().enumerate() {
+            if j > 0 {
+                out.push_str(" & ");
+            }
+            let cell = row.get(j).map(|s| s.as_str()).unwrap_or("");
+            if is_header && spec.is_numeric {
+                // S 列のヘッダーは波括弧で囲む。既知の単位なら \si を付与する。
+                let (name, unit) = split_header_unit(cell);
+                let braced = match unit.as_deref().and_then(siunitx_unit) {
+                    Some(macro_str) => format!("{} / \\si{{{}}}", escape(name.trim()), macro_str),
+                    None => escape(cell.trim()),
+                };
+                out.push_str(&format!("{{{}}}", braced));
+            } else if !is_header && spec.is_numeric {
+                // S 列の数値セル。不確かさは siunitx の `値 +- 誤差` 構文で渡す。
+                match parse_value_error(cell) {
+                    Some((value, Some(error))) => {
+                        out.push_str(&format!("{} +- {}", format_cell(&value).trim(), format_cell(&error).trim()))
+                    }
+                    Some((value, None)) => out.push_str(format_cell(&value).trim()),
+                    None => out.push_str("{}"),
+                }
+            } else {
+                out.push_str(&escape(&format_cell(cell)));
+            }
+        }
+        out.push_str(" \\\\\n");
+        if has_header && row_index == 0 {
+            out.push_str(if booktabs { "\\midrule\n" } else { "\\hline\n" });
+        }
+    }
+    out.push_str(bottom);
+    out.push_str("\n\\end{tabular}");
+    out
 }
 
 fn to_latex_mode_style(
@@ -299,16 +592,17 @@ fn to_latex_mode_style(
     sig_figs: i32,
     has_header: bool,
     booktabs: bool,
+    siunitx: bool,
 ) -> String {
-    match mode {
-        ROUND_DECIMAL => to_latex_formatted_style(t, &|c| round_number(c, decimals), has_header, booktabs),
-        ROUND_SIG_FIGS => to_latex_formatted_style(
-            t,
-            &|c| round_significant_figures(c, sig_figs),
-            has_header,
-            booktabs,
-        ),
-        _ => to_latex_formatted_style(t, &identity, has_header, booktabs),
+    let format_cell: Box<dyn Fn(&str) -> String> = match mode {
+        ROUND_DECIMAL => Box::new(move |c: &str| round_number(c, decimals)),
+        ROUND_SIG_FIGS => Box::new(move |c: &str| round_significant_figures(c, sig_figs)),
+        _ => Box::new(|c: &str| identity(c)),
+    };
+    if siunitx {
+        to_latex_siunitx_style(t, format_cell.as_ref(), has_header, booktabs)
+    } else {
+        to_latex_formatted_style(t, format_cell.as_ref(), has_header, booktabs)
     }
 }
 fn to_csv_mode(t: &Table, mode: i32, decimals: i32, sig_figs: i32) -> String {
@@ -609,8 +903,14 @@ fn fit_method_for_series(fit_methods: &str, series_index: usize) -> String {
 fn points_for_column(t: &Table, col: usize) -> Vec<Point> {
     let mut points = Vec::new();
     for row in t {
-        if row.len() > col && is_number(&row[0]) && is_number(&row[col]) {
-            points.push(Point { x: parse_f64(&row[0]), y: parse_f64(&row[col]) });
+        if row.len() <= col {
+            continue;
+        }
+        // 不確かさ付きセルは値部のみを使う。
+        if let (Some((xv, _)), Some((yv, _))) =
+            (parse_value_error(&row[0]), parse_value_error(&row[col]))
+        {
+            points.push(Point { x: parse_f64(&xv), y: parse_f64(&yv) });
         }
     }
     points
@@ -658,14 +958,14 @@ fn axis_bounds(t: &Table) -> (i32, i32, i32, i32) {
     let (mut y_min, mut y_max) = (1e100_f64, -1e100_f64);
     for row in t {
         if row.len() >= 2 {
-            if is_number(&row[0]) {
-                let x = parse_f64(&row[0]);
+            if let Some((xv, _)) = parse_value_error(&row[0]) {
+                let x = parse_f64(&xv);
                 x_min = x_min.min(x);
                 x_max = x_max.max(x);
             }
             for i in 1..row.len() {
-                if is_number(&row[i]) {
-                    let y = parse_f64(&row[i]);
+                if let Some((yv, _)) = parse_value_error(&row[i]) {
+                    let y = parse_f64(&yv);
                     y_min = y_min.min(y);
                     y_max = y_max.max(y);
                 }
@@ -790,14 +1090,27 @@ fn to_tikz_graph(
     out.push_str("}\n");
     out.push_str("        ]\n");
 
+    let total_cols = t.iter().map(|r| r.len()).max().unwrap_or(num_cols);
+    let unc = uncertain_columns(t);
+
     for col in 1..num_cols {
+        let err_idx = error_index_for(&unc, total_cols, col);
         out.push_str("            \\addplot [\n");
-        push_pgfplots_options(&mut out, "                ", plot_mark_style(col - 1));
+        let mut opts = plot_mark_style(col - 1).to_string();
+        if err_idx.is_some() {
+            opts.push_str(", error bars/.cd, y dir=both, y explicit");
+        }
+        push_pgfplots_options(&mut out, "                ", &opts);
         out.push_str("            ]\n");
         out.push_str("            table [\n");
         out.push_str("                col sep=comma,\n");
         out.push_str("                x index=0,\n");
-        out.push_str(&format!("                y index={}\n", col));
+        if let Some(ei) = err_idx {
+            out.push_str(&format!("                y index={},\n", col));
+            out.push_str(&format!("                y error index={}\n", ei));
+        } else {
+            out.push_str(&format!("                y index={}\n", col));
+        }
         out.push_str(&format!("            ] {{{}.csv}};\n", filename));
         let legend_text = if headers.len() > col && !headers[col].is_empty() {
             headers[col].clone()
@@ -976,6 +1289,7 @@ pub fn gen_tikz_graph_preview(input: &str, sig_figs: i32, legend_pos: &str, scal
     to_tikz_graph_preview(&parse(input), sig_figs, legend_pos, scale_mode)
 }
 #[wasm_bindgen]
+#[allow(clippy::too_many_arguments)]
 pub fn gen_latex_config(
     input: &str,
     mode: i32,
@@ -984,9 +1298,10 @@ pub fn gen_latex_config(
     has_header: i32,
     clean_input: i32,
     booktabs: i32,
+    siunitx: i32,
 ) -> String {
     let t = prepare_table(input, has_header != 0, clean_input != 0, true);
-    to_latex_mode_style(&t, mode, decimals, sig_figs, has_header != 0, booktabs != 0)
+    to_latex_mode_style(&t, mode, decimals, sig_figs, has_header != 0, booktabs != 0, siunitx != 0)
 }
 #[wasm_bindgen]
 pub fn gen_csv_config(input: &str, mode: i32, decimals: i32, sig_figs: i32, has_header: i32, clean_input: i32) -> String {
@@ -1076,11 +1391,57 @@ mod tests {
 
     #[test]
     fn latex_booktabs_config() {
-        let out = gen_latex_config("x,y\n1,2", 0, 2, 3, 1, 1, 1);
+        let out = gen_latex_config("x,y\n1,2", 0, 2, 3, 1, 1, 1, 0);
         assert!(out.contains("\\toprule"));
         assert!(out.contains("\\midrule"));
         assert!(out.contains("\\bottomrule"));
         assert!(!out.contains("\\hline"));
+    }
+
+    #[test]
+    fn latex_siunitx_config() {
+        let out = gen_latex_config("電圧 [V],電流 [mA]\n1.20,3.4\n2.00,5.6", 0, 2, 3, 1, 1, 1, 1);
+        assert!(out.contains("S[table-format"));
+        assert!(out.contains("\\si{\\volt}"));
+        assert!(out.contains("\\si{\\milli\\ampere}"));
+        // 数値セルは波括弧で囲まずそのまま出す
+        assert!(out.contains("1.20 & 3.4"));
+    }
+
+    #[test]
+    fn latex_uncertainty_plain() {
+        // 非 siunitx は $値 \pm 誤差$
+        let out = gen_latex_config("x,y\n1,2.50 ± 0.05", 0, 2, 3, 1, 1, 0, 0);
+        assert!(out.contains("$2.50 \\pm 0.05$"));
+    }
+
+    #[test]
+    fn tikz_error_bars() {
+        // 不確かさ付き系列は error bars と y error index を出す。
+        let out = gen_tikz_graph_config(
+            "x,y\n1,2 ± 0.1\n2,4 ± 0.2\n3,6 ± 0.3",
+            "data", 3, "north west", "linear", "none", 1, 1, 0, "", "", "", "",
+        );
+        // push_pgfplots_options が ", " を改行に割るので個別に確認する。
+        assert!(out.contains("error bars/.cd"));
+        assert!(out.contains("y dir=both"));
+        assert!(out.contains("y explicit"));
+        assert!(out.contains("y error index=2"));
+    }
+
+    #[test]
+    fn graph_csv_appends_error_column() {
+        // 元の列(値) + 末尾に誤差列。値のみの行は誤差 0。
+        let csv = gen_csv_attachment("x,y\n1,2 ± 0.1\n2,4", 1, 1);
+        assert_eq!(csv, "1,2,0.1\n2,4,0");
+    }
+
+    #[test]
+    fn latex_uncertainty_siunitx() {
+        // siunitx は `値 +- 誤差` 構文。誤差付き列は table-format を付けない。
+        let out = gen_latex_config("x,y [V]\n1,2.50 +- 0.05\n2,3.10 ± 0.04", 0, 2, 3, 1, 1, 0, 1);
+        assert!(out.contains("2.50 +- 0.05"));
+        assert!(out.contains("3.10 +- 0.04"));
     }
 
     #[test]

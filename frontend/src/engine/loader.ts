@@ -17,7 +17,8 @@ export interface EngineModule {
     sig_figs: number,
     has_header: number,
     clean_input: number,
-    booktabs: number
+    booktabs: number,
+    siunitx: number
   ) => string
   gen_csv_config: (
     input: string,
@@ -83,6 +84,7 @@ export interface ConvertOptions {
   hasHeader: boolean
   cleanInput: boolean
   booktabs: boolean
+  siunitx: boolean
 }
 
 export interface TikzOptions {
@@ -111,7 +113,8 @@ export async function genLatex(input: string, o: ConvertOptions): Promise<string
     o.sigFigs,
     bool(o.hasHeader),
     bool(o.cleanInput),
-    bool(o.booktabs)
+    bool(o.booktabs),
+    bool(o.siunitx)
   )
 }
 
