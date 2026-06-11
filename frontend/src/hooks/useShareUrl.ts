@@ -24,8 +24,8 @@ export function getSharedInput(): string | null {
 /** 入力を URL ハッシュに debounce 同期し、共有リンクのコピーを提供する。 */
 export function useShareUrl(input: string) {
   const [copied, setCopied] = useState(false)
-  const copyTimer = useRef<ReturnType<typeof setTimeout>>()
-  const writeTimer = useRef<ReturnType<typeof setTimeout>>()
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const writeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   // 現在の入力に対応する共有 URL（ハッシュ書き込みより先行して計算）。
   const shareUrl = input.trim()
