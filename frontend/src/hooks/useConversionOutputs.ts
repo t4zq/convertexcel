@@ -7,6 +7,7 @@ import {
   type TableSettings,
   type TikzSettings,
 } from "@/lib/convert-settings"
+import { applyTableAlignment } from "@/lib/latex-postprocess"
 import { applySeriesStyles } from "@/lib/tikz-postprocess"
 
 // 入力・設定の変更を監視し、LaTeX 表 / CSV / TikZ を自動生成する。
@@ -29,7 +30,7 @@ export function useConversionOutputs(
       genTikz(input, toTikzOptions(tikz, table)).catch(() => ""),
     ]).then(([l, c, t]) => {
       if (!alive) return
-      setLatexOut(l)
+      setLatexOut(applyTableAlignment(l, table.columnAlign, table.siunitx))
       setCsvOut(c)
       setTikzOut(applySeriesStyles(
         t,
