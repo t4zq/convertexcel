@@ -44,6 +44,14 @@ export interface EngineModule {
     label: string
   ) => string
   gen_csv_attachment: (input: string, has_header: number, clean_input: number) => string
+  gen_gnuplot_config: (
+    input: string,
+    scale_mode: string,
+    has_header: number,
+    clean_input: number,
+    x_label: string,
+    y_label: string
+  ) => string
 }
 
 let enginePromise: Promise<EngineModule | null> | null = null
@@ -149,4 +157,24 @@ export async function genCsvAttachment(
 ): Promise<string> {
   const e = await require_engine()
   return e.gen_csv_attachment(input, bool(hasHeader), bool(cleanInput))
+}
+
+export interface GnuplotOptions {
+  scaleMode: string
+  hasHeader: boolean
+  cleanInput: boolean
+  xLabel: string
+  yLabel: string
+}
+
+export async function genGnuplot(input: string, o: GnuplotOptions): Promise<string> {
+  const e = await require_engine()
+  return e.gen_gnuplot_config(
+    input,
+    o.scaleMode,
+    bool(o.hasHeader),
+    bool(o.cleanInput),
+    o.xLabel,
+    o.yLabel
+  )
 }

@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react"
 
 interface KeyboardShortcuts {
   onPreview: () => void
-  onSwitchTab: (tab: "latex" | "tikz") => void
+  onSwitchTab: (tab: "latex" | "tikz" | "gnuplot") => void
 }
 
 /**
@@ -10,6 +10,7 @@ interface KeyboardShortcuts {
  *   Ctrl+Enter  : PDF プレビュー
  *   Alt+1       : table.tex タブ
  *   Alt+2       : plot.pgfplots タブ
+ *   Alt+3       : plot.gp タブ
  */
 export function useKeyboardShortcuts({ onPreview, onSwitchTab }: KeyboardShortcuts) {
   const previewRef = useRef(onPreview)
@@ -31,6 +32,7 @@ export function useKeyboardShortcuts({ onPreview, onSwitchTab }: KeyboardShortcu
       if (e.altKey && !ctrl) {
         if (e.key === "1") { e.preventDefault(); switchTabRef.current("latex") }
         if (e.key === "2") { e.preventDefault(); switchTabRef.current("tikz") }
+        if (e.key === "3") { e.preventDefault(); switchTabRef.current("gnuplot") }
       }
     }
 

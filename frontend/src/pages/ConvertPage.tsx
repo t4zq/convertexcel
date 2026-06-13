@@ -1,5 +1,5 @@
 import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { ClipboardPaste, FileText, Link2, Settings2, Table2 } from "lucide-react"
+import { CheckCircle2, ClipboardPaste, Copy, Download, FileText, Link2, LoaderCircle, Settings2, Table2 } from "lucide-react"
 
 import { CodeAssistEditor } from "@/components/CodeAssistEditor"
 import { ShareDialog } from "@/components/ShareDialog"
@@ -18,9 +18,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { genCsvAttachment, isWasmAvailable } from "@/engine/loader"
+import { renderGnuplotSvg } from "@/lib/gnuplot"
+import { copyPngToClipboard, downloadBlob, svgToPngBlob } from "@/lib/svg-to-png"
 import { useCollapsibleHeight } from "@/hooks/useCollapsibleHeight"
 import { useConversionOutputs } from "@/hooks/useConversionOutputs"
 import { useCooldown } from "@/hooks/useCooldown"
@@ -28,7 +31,7 @@ import { useI18n } from "@/hooks/useI18n"
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts"
 import { usePersistentState } from "@/hooks/usePersistentState"
 import { useSeo } from "@/hooks/useSeo"
-import { getSharedInput, useShareUrl } from "@/hooks/useShareUrl"
+import { getSharedState, useShareUrl } from "@/hooks/useShareUrl"
 import { useSplitResize } from "@/hooks/useSplitResize"
 import { useStatusSetter } from "@/hooks/useStatusBar"
 import {
@@ -57,6 +60,12 @@ const SAMPLE = `x\ty1\ty2
 const OUTPUT_MIN_HEIGHT = 273
 const SITE_URL = "https://convertexcel.net/"
 const convertUrls = localizedSiteUrls(SITE_URL, "/")
+type PreviewPhase = "idle" | "submitting" | "compiling" | "complete"
+type PreviewStatus = {
+  phase: PreviewPhase
+  kind: null | "latex" | "tikz"
+  progress: number
+}
 
 export default function ConvertPage() {
   const { language, t, seo: seoText } = useI18n()
@@ -102,8 +111,19 @@ export default function ConvertPage() {
   const [showInputSettings, setShowInputSettings] = useState(false)
   const [showTikzSettings, setShowTikzSettings] = useState(false)
   const [pending, setPending] = useState<null | "latex" | "tikz">(null)
-  const [activeTab, setActiveTab] = useState<"latex" | "tikz">("latex")
+  const [previewStatus, setPreviewStatus] = useState<PreviewStatus>({
+    phase: "idle",
+    kind: null,
+    progress: 0,
+  })
+  const [activeTab, setActiveTab] = useState<"latex" | "tikz" | "gnuplot">("latex")
+  // gnuplot プレビューはクライアント内 SVG 描画（外部送信・同意・クールダウン不要）。
+  const [gnuplotSvg, setGnuplotSvg] = useState<string | null>(null)
+  const [gnuplotRendering, setGnuplotRendering] = useState(false)
+  const [gnuplotErr, setGnuplotErr] = useState<string | null>(null)
+  const [imageCopied, setImageCopied] = useState(false)
   const iframeRef = useRef<HTMLIFrameElement>(null)
+  const previewDoneTimerRef = useRef<number | null>(null)
   const setStatus = useStatusSetter()
 
   const updateTable = (patch: Partial<TableSettings>) => setTable((s) => ({ ...s, ...patch }))
@@ -118,25 +138,92 @@ export default function ConvertPage() {
   const isExample = input.trim() === ""
   const source = isExample ? SAMPLE : input
 
-  const { latexOut, csvOut, tikzOut, setLatexOut, setTikzOut } = useConversionOutputs(source, table, tikz)
+  const { latexOut, csvOut, tikzOut, gnuplotOut, setLatexOut, setTikzOut, setGnuplotOut } = useConversionOutputs(source, table, tikz)
   const { cooldown, startCooldown } = useCooldown()
   const inputArea = useCollapsibleHeight()
   const split = useSplitResize()
   const [shareDialogOpen, setShareDialogOpen] = useState(false)
-  const { copied, copyShareUrl, shareUrl } = useShareUrl(input)
+  const defaultTikzForLanguage = useMemo(() => getDefaultTikzSettings(language), [language])
+  const shareState = useMemo(
+    () => ({ input, table, tikz, activeTab }),
+    [input, table, tikz, activeTab],
+  )
+  const hasShareContent = useMemo(
+    () =>
+      input.trim() !== "" ||
+      activeTab !== "latex" ||
+      JSON.stringify(table) !== JSON.stringify(DEFAULT_TABLE_SETTINGS) ||
+      JSON.stringify(tikz) !== JSON.stringify(defaultTikzForLanguage),
+    [input, activeTab, table, tikz, defaultTikzForLanguage],
+  )
+  const { copied, copyShareUrl, shareUrl } = useShareUrl(shareState, hasShareContent)
 
-  // 共有URLから入力を復元（localStorage より優先）。
+  // 共有URLから入力・設定を復元（localStorage より優先）。
   useEffect(() => {
-    const shared = getSharedInput()
-    if (shared !== null) setInput(shared)
+    const shared = getSharedState()
+    if (!shared) return
+    if (typeof shared.input === "string") setInput(shared.input)
+    if (shared.table) setTable((current) => ({ ...current, ...shared.table }))
+    if (shared.tikz) setTikz((current) => ({ ...current, ...shared.tikz }))
+    if (shared.activeTab) setActiveTab(shared.activeTab)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // gnuplot-wasm をブラウザ内で実行し SVG を描画する。texlive 経路を通らない。
+  const handleGnuplotPreview = useCallback(async () => {
+    if (!gnuplotOut.trim()) return
+    setGnuplotRendering(true)
+    setGnuplotErr(null)
+    try {
+      const svg = await renderGnuplotSvg(gnuplotOut)
+      setGnuplotSvg(svg)
+    } catch {
+      setGnuplotSvg(null)
+      setGnuplotErr(t.convert.gnuplotError)
+    } finally {
+      setGnuplotRendering(false)
+    }
+  }, [gnuplotOut, t.convert.gnuplotError])
+
+  // プレビュー SVG を PNG 化してクリップボードへコピー。
+  const handleCopyImage = useCallback(async () => {
+    if (!gnuplotSvg) return
+    try {
+      const png = await svgToPngBlob(gnuplotSvg)
+      await copyPngToClipboard(png)
+      setImageCopied(true)
+      setTimeout(() => setImageCopied(false), 1500)
+    } catch {
+      setGnuplotErr(t.convert.gnuplotError)
+    }
+  }, [gnuplotSvg, t.convert.gnuplotError])
+
+  // プレビュー SVG を PNG 化して保存（ダウンロード）。
+  const handleSaveImage = useCallback(async () => {
+    if (!gnuplotSvg) return
+    try {
+      const png = await svgToPngBlob(gnuplotSvg)
+      downloadBlob(png, "plot.png")
+    } catch {
+      setGnuplotErr(t.convert.gnuplotError)
+    }
+  }, [gnuplotSvg, t.convert.gnuplotError])
+
+  // 生成スクリプトが変われば前回の描画結果は古くなるので消す（古い画像のコピー防止）。
+  useEffect(() => {
+    setGnuplotSvg(null)
+    setGnuplotErr(null)
+  }, [gnuplotOut])
+
   const handlePreview = useCallback(() => {
+    if (activeTab === "gnuplot") {
+      void handleGnuplotPreview()
+      return
+    }
     if (cooldown > 0) return
     const out = activeTab === "latex" ? latexOut : tikzOut
     if (!out.trim()) return
     setPending(activeTab)
-  }, [cooldown, activeTab, latexOut, tikzOut])
+  }, [cooldown, activeTab, latexOut, tikzOut, handleGnuplotPreview])
 
   useKeyboardShortcuts({
     onPreview: handlePreview,
@@ -180,23 +267,63 @@ export default function ConvertPage() {
       rows: diagnostics.rowCount,
       cols: diagnostics.maxCols,
       chars: input.length,
-      activeOutput: activeTab === "latex" ? "table.tex" : "plot.pgfplots",
+      activeOutput: activeTab === "latex" ? "table.tex" : activeTab === "tikz" ? "plot.pgfplots" : "plot.gp",
       engineReady,
     })
   }, [diagnostics, input, activeTab, engineReady, setStatus])
 
+  useEffect(() => {
+    if (previewStatus.phase !== "submitting" && previewStatus.phase !== "compiling") return
+    const timer = window.setInterval(() => {
+      setPreviewStatus((current) => {
+        if (current.phase !== "submitting" && current.phase !== "compiling") return current
+        const limit = current.phase === "submitting" ? 35 : 92
+        const step = current.phase === "submitting" ? 4 : Math.max(1, Math.round((limit - current.progress) / 8))
+        return { ...current, progress: Math.min(limit, current.progress + step) }
+      })
+    }, 450)
+
+    return () => window.clearInterval(timer)
+  }, [previewStatus.phase])
+
+  useEffect(() => {
+    return () => {
+      if (previewDoneTimerRef.current !== null) window.clearTimeout(previewDoneTimerRef.current)
+    }
+  }, [])
+
+  function finishPreviewLoad() {
+    setPreviewStatus((current) => {
+      if (current.phase !== "submitting" && current.phase !== "compiling") return current
+      return { ...current, phase: "complete", progress: 100 }
+    })
+    if (previewDoneTimerRef.current !== null) window.clearTimeout(previewDoneTimerRef.current)
+    previewDoneTimerRef.current = window.setTimeout(() => {
+      setPreviewStatus({ phase: "idle", kind: null, progress: 0 })
+      previewDoneTimerRef.current = null
+    }, 2400)
+  }
+
   async function doPreview(kind: "latex" | "tikz") {
     const iframeName = iframeRef.current?.name ?? "tex-iframe"
+    setPreviewStatus({ phase: "submitting", kind, progress: 8 })
     if (kind === "latex") {
-      if (!latexOut.trim()) return
+      if (!latexOut.trim()) {
+        setPreviewStatus({ phase: "idle", kind: null, progress: 0 })
+        return
+      }
       submitToTexlive(iframeName, wrapLatexDocument(latexOut), [])
     } else {
-      if (!tikzOut.trim()) return
+      if (!tikzOut.trim()) {
+        setPreviewStatus({ phase: "idle", kind: null, progress: 0 })
+        return
+      }
       const refs = Array.from(new Set([...tikzOut.matchAll(/\{([^{}]+\.csv)\}/g)].map((m) => m[1])))
       const csv = await genCsvAttachment(source, table.hasHeader, table.cleanInput)
       const extra = refs.map((name) => ({ name, contents: csv }))
       submitToTexlive(iframeName, wrapTikzDocument(tikzOut), extra)
     }
+    setPreviewStatus((current) => ({ ...current, phase: "compiling", progress: Math.max(current.progress, 36) }))
     startCooldown(COOLDOWN_SECONDS)
   }
 
@@ -346,10 +473,11 @@ export default function ConvertPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <CsvActions value={csvOut} />
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "latex" | "tikz")}>
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "latex" | "tikz" | "gnuplot")}>
               <TabsList className="flex w-full justify-start overflow-x-auto">
                 <TabsTrigger value="latex" title="Alt+1">table.tex</TabsTrigger>
                 <TabsTrigger value="tikz" title="Alt+2">plot.pgfplots</TabsTrigger>
+                <TabsTrigger value="gnuplot" title="Alt+3">plot.gp</TabsTrigger>
               </TabsList>
               <TabsContent value="latex" className="space-y-2">
                 <div className="flex flex-wrap justify-end gap-2">
@@ -395,6 +523,18 @@ export default function ConvertPage() {
                   <CodeAssistEditor kind="tikz" value={tikzOut} onChange={setTikzOut} minHeight={OUTPUT_MIN_HEIGHT} />
                 </div>
               </TabsContent>
+              <TabsContent value="gnuplot" className="space-y-2">
+                <div className="flex flex-wrap justify-end gap-2">
+                  <Button size="icon" onClick={handlePreview} disabled={gnuplotRendering || !gnuplotOut.trim()} title={`${t.convert.previewGnuplot} (Ctrl+Enter)`}>
+                    {gnuplotRendering ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+                    <span className="sr-only">{t.convert.previewGnuplot}</span>
+                  </Button>
+                  <CopyButton value={gnuplotOut} label={t.convert.copyPlotGnuplot} />
+                </div>
+                <div className={ghost}>
+                  <CodeAssistEditor kind="gnuplot" value={gnuplotOut} onChange={setGnuplotOut} minHeight={OUTPUT_MIN_HEIGHT} />
+                </div>
+              </TabsContent>
             </Tabs>
           </CardContent>
         </Card>
@@ -419,15 +559,90 @@ export default function ConvertPage() {
         <Card>
           <CardHeader>
             <CardTitle>{t.convert.pdfTitle}</CardTitle>
-            <CardDescription>{t.convert.pdfDescription}</CardDescription>
+            <CardDescription>
+              {activeTab === "gnuplot" ? t.convert.gnuplotPreviewDescription : t.convert.pdfDescription}
+            </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
+            {activeTab === "gnuplot" ? (
+              <div className="space-y-2">
+              {gnuplotSvg && !gnuplotRendering && (
+                <div className="flex flex-wrap justify-end gap-2">
+                  <Button size="icon" variant="secondary" onClick={handleCopyImage} title={imageCopied ? t.convert.imageCopied : t.convert.copyImage}>
+                    <Copy className="h-4 w-4" />
+                    <span className="sr-only">{imageCopied ? t.convert.imageCopied : t.convert.copyImage}</span>
+                  </Button>
+                  <Button size="icon" variant="secondary" onClick={handleSaveImage} title={t.convert.saveImage}>
+                    <Download className="h-4 w-4" />
+                    <span className="sr-only">{t.convert.saveImage}</span>
+                  </Button>
+                </div>
+              )}
+              <div className="h-[420px] w-full overflow-auto rounded-md border xl:h-[760px]">
+                {gnuplotRendering ? (
+                  <div className="flex h-full items-center justify-center gap-2 text-muted-foreground text-sm">
+                    <LoaderCircle className="h-4 w-4 animate-spin text-info" />
+                    {t.convert.gnuplotRendering}
+                  </div>
+                ) : gnuplotErr ? (
+                  <div className="flex h-full items-center justify-center px-4 text-center text-destructive text-sm">
+                    {gnuplotErr}
+                  </div>
+                ) : gnuplotSvg ? (
+                  <div
+                    className="flex h-full w-full items-center justify-center bg-white p-2 [&_svg]:h-auto [&_svg]:max-h-full [&_svg]:w-auto [&_svg]:max-w-full dark:[filter:invert(1)_hue-rotate(180deg)]"
+                    dangerouslySetInnerHTML={{ __html: gnuplotSvg }}
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center px-4 text-center text-muted-foreground text-sm">
+                    {t.convert.previewGnuplot}
+                  </div>
+                )}
+              </div>
+              </div>
+            ) : (
+            <>
+            {previewStatus.phase !== "idle" && (
+              <div
+                role="status"
+                aria-live="polite"
+                className="rounded-md border bg-muted/40 px-3 py-2"
+              >
+                <div className="mb-2 flex items-center justify-between gap-3 text-sm">
+                  <span className="flex min-w-0 items-center gap-2 font-medium">
+                    {previewStatus.phase === "complete" ? (
+                      <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
+                    ) : (
+                      <LoaderCircle className="h-4 w-4 shrink-0 animate-spin text-info" />
+                    )}
+                    <span className="truncate">
+                      {previewStatus.phase === "complete"
+                        ? t.convert.previewComplete
+                        : t.convert.previewProgress(
+                            previewStatus.kind === "tikz" ? t.convert.previewKindGraph : t.convert.previewKindTable,
+                          )}
+                    </span>
+                  </span>
+                  <span className="shrink-0 tabular-nums text-muted-foreground">
+                    {previewStatus.progress}%
+                  </span>
+                </div>
+                <Progress
+                  value={previewStatus.progress}
+                  aria-label={t.convert.previewProgressLabel}
+                  className="h-1.5 bg-background [&_[data-slot=progress-indicator]]:bg-info [&_[data-slot=progress-indicator]]:duration-500 [&_[data-slot=progress-indicator]]:ease-out"
+                />
+              </div>
+            )}
             <iframe
               ref={iframeRef}
               name="tex-iframe"
               title="LaTeX PDF preview"
               className="h-[420px] w-full rounded-md border xl:h-[760px] dark:[filter:invert(1)_hue-rotate(180deg)]"
+              onLoad={finishPreviewLoad}
             />
+            </>
+            )}
           </CardContent>
         </Card>
         </div>

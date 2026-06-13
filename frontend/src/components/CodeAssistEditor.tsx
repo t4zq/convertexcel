@@ -26,7 +26,10 @@ import {
   rectangularSelection,
 } from "@codemirror/view"
 
-type CodeKind = "latex" | "csv" | "tikz"
+type CodeKind = "latex" | "csv" | "tikz" | "gnuplot"
+
+// LaTeX 系の構文支援（stex 言語・環境折りたたみ・コマンド補完）を持たないプレーン経路。
+const isPlainKind = (kind: CodeKind) => kind === "csv" || kind === "gnuplot"
 
 interface EnvironmentToken {
   env: string
@@ -158,7 +161,7 @@ const texEnvironmentFolding = foldService.of((state, lineStart, lineEnd) => {
 
 function codeCompletions(kind: CodeKind) {
   return (context: CompletionContext) => {
-    if (kind === "csv") return null
+    if (isPlainKind(kind)) return null
 
     const slash = context.matchBefore(/\\[A-Za-z]*/)
     if (slash) {
@@ -217,8 +220,8 @@ export function CodeAssistEditor({
     bracketMatching(),
     closeBrackets(),
     indentOnInput(),
-    kind === "csv" ? [] : StreamLanguage.define(stex),
-    kind === "csv" ? [] : texEnvironmentFolding,
+    isPlainKind(kind) ? [] : StreamLanguage.define(stex),
+    isPlainKind(kind) ? [] : texEnvironmentFolding,
     syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
     syntaxCompartment.current.of(buildSyntaxTheme(isDarkMode())),
     autocompletion({

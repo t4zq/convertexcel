@@ -54,6 +54,7 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
         title: "基本方針",
         bullets: [
           "変換処理は原則としてブラウザ内の Rust/WebAssembly で行います。",
+          "グラフ（gnuplot）のプレビューもブラウザ内（WebAssembly）で描画し、外部へ送信しません。",
           "PDFプレビューを実行する場合のみ、利用者の同意後に生成コードと必要なデータを texlive.net へ送信します。",
           "広告トラッキング、行動ターゲティング、販売目的の第三者提供は行いません。",
           "氏名、メールアドレス、アカウント登録を変換機能の利用条件にしません。",
@@ -90,7 +91,7 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
       },
       rows: [
         {
-          category: "貼り付けた表データ、生成されたLaTeX/CSV/TikZコード",
+          category: "貼り付けた表データ、生成されたLaTeX/CSV/TikZ/gnuplotコード",
           purpose: "変換結果の生成、編集、プレビュー",
           legalBasis: "契約履行または利用者の要求への対応。同意が必要な地域では利用者の操作・同意。",
           retention: "通常はブラウザ内のみ。localStorage保存が有効な場合は利用者が削除するまで。",
@@ -172,6 +173,7 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
         title: "Core principles",
         bullets: [
           "Conversion normally runs in the browser using Rust/WebAssembly.",
+          "gnuplot graph previews are also rendered in the browser (WebAssembly) and are not sent externally.",
           "PDF preview data is sent to texlive.net only after the user confirms the submission.",
           "No advertising tracking, behavioral targeting, or sale of personal data is performed.",
           "Names, email addresses, and account registration are not required to use the converter.",
@@ -208,7 +210,7 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
       },
       rows: [
         {
-          category: "Pasted table data and generated LaTeX/CSV/TikZ code",
+          category: "Pasted table data and generated LaTeX/CSV/TikZ/gnuplot code",
           purpose: "Generate, edit, and preview conversion output",
           legalBasis: "Performance of a requested service or user request. Consent/user action where required.",
           retention: "Normally browser-only. If localStorage is used, until the user deletes it or it is overwritten.",
@@ -290,6 +292,7 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
         title: "基本原则",
         bullets: [
           "转换通常通过 Rust/WebAssembly 在浏览器中运行。",
+          "图表（gnuplot）预览也在浏览器中（WebAssembly）渲染，不会向外部发送。",
           "只有在用户确认后，PDF 预览数据才会发送至 texlive.net。",
           "不进行广告跟踪、行为定向或出售个人信息。",
           "使用转换功能不需要姓名、邮箱或账户注册。",
@@ -324,7 +327,7 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
       },
       rows: [
         {
-          category: "粘贴的表格数据和生成的 LaTeX/CSV/TikZ 代码",
+          category: "粘贴的表格数据和生成的 LaTeX/CSV/TikZ/gnuplot 代码",
           purpose: "生成、编辑和预览转换结果",
           legalBasis: "履行用户请求的服务；在需要时基于用户操作或同意。",
           retention: "通常仅在浏览器中处理。如使用 localStorage，则直到用户删除或被应用覆盖。",
@@ -405,6 +408,7 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
         title: "基本原則",
         bullets: [
           "轉換通常透過 Rust/WebAssembly 在瀏覽器中執行。",
+          "圖表（gnuplot）預覽也在瀏覽器中（WebAssembly）算繪，不會向外部傳送。",
           "只有在使用者確認後，PDF 預覽資料才會送至 texlive.net。",
           "不進行廣告追蹤、行為定向或出售個人資料。",
           "使用轉換功能不需要姓名、電子郵件或帳戶註冊。",
@@ -439,7 +443,7 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
       },
       rows: [
         {
-          category: "貼上的表格資料和產生的 LaTeX/CSV/TikZ 程式碼",
+          category: "貼上的表格資料和產生的 LaTeX/CSV/TikZ/gnuplot 程式碼",
           purpose: "產生、編輯和預覽轉換結果",
           legalBasis: "履行使用者請求的服務；在需要時基於使用者操作或同意。",
           retention: "通常僅在瀏覽器中處理。如使用 localStorage，則直到使用者刪除或被應用覆寫。",
@@ -520,6 +524,7 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
         title: "기본 원칙",
         bullets: [
           "변환은 일반적으로 Rust/WebAssembly를 사용해 브라우저 안에서 실행됩니다.",
+          "그래프(gnuplot) 미리보기도 브라우저(WebAssembly)에서 렌더링되며 외부로 전송되지 않습니다.",
           "PDF 미리보기 데이터는 사용자가 제출을 확인한 뒤에만 texlive.net으로 전송됩니다.",
           "광고 추적, 행동 기반 타기팅, 개인정보 판매를 하지 않습니다.",
           "변환기 사용에 이름, 이메일 주소, 계정 등록이 필요하지 않습니다.",
@@ -554,7 +559,7 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
       },
       rows: [
         {
-          category: "붙여 넣은 표 데이터와 생성된 LaTeX/CSV/TikZ 코드",
+          category: "붙여 넣은 표 데이터와 생성된 LaTeX/CSV/TikZ/gnuplot 코드",
           purpose: "변환 결과 생성, 편집, 미리보기",
           legalBasis: "요청된 서비스 이행 또는 이용자 요청. 필요한 경우 이용자 조작/동의.",
           retention: "일반적으로 브라우저 내에서만 처리됩니다. localStorage 사용 시 이용자가 삭제하거나 앱이 덮어쓸 때까지.",
@@ -635,6 +640,7 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
         title: "Principios básicos",
         bullets: [
           "La conversión normalmente se ejecuta en el navegador con Rust/WebAssembly.",
+          "Las vistas previas de gráficos (gnuplot) también se renderizan en el navegador (WebAssembly) y no se envían al exterior.",
           "Los datos de vista previa PDF se envían a texlive.net solo después de la confirmación del usuario.",
           "No se realiza seguimiento publicitario, segmentación conductual ni venta de datos personales.",
           "No se requieren nombres, correos electrónicos ni registro de cuenta para usar el conversor.",
@@ -669,7 +675,7 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
       },
       rows: [
         {
-          category: "Datos de tabla pegados y código LaTeX/CSV/TikZ generado",
+          category: "Datos de tabla pegados y código LaTeX/CSV/TikZ/gnuplot generado",
           purpose: "Generar, editar y previsualizar resultados",
           legalBasis: "Ejecución de un servicio solicitado o petición del usuario. Consentimiento/acción cuando sea necesario.",
           retention: "Normalmente solo en el navegador. Si se usa localStorage, hasta que el usuario lo elimine o la app lo sobrescriba.",
@@ -750,6 +756,7 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
         title: "Grundsätze",
         bullets: [
           "Die Umwandlung läuft normalerweise im Browser mit Rust/WebAssembly.",
+          "gnuplot-Diagrammvorschauen werden ebenfalls im Browser (WebAssembly) gerendert und nicht extern gesendet.",
           "PDF-Vorschaudaten werden nur nach Bestätigung durch den Nutzer an texlive.net gesendet.",
           "Es gibt kein Werbe-Tracking, kein Behavioral Targeting und keinen Verkauf personenbezogener Daten.",
           "Für die Nutzung des Konverters sind keine Namen, E-Mail-Adressen oder Kontoregistrierung erforderlich.",
@@ -784,7 +791,7 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
       },
       rows: [
         {
-          category: "Eingefügte Tabellendaten und erzeugter LaTeX/CSV/TikZ-Code",
+          category: "Eingefügte Tabellendaten und erzeugter LaTeX/CSV/TikZ/gnuplot-Code",
           purpose: "Erzeugen, Bearbeiten und Vorschau von Umwandlungsergebnissen",
           legalBasis: "Erfüllung eines angefragten Dienstes oder Nutzeranfrage. Einwilligung/Nutzerhandlung, soweit erforderlich.",
           retention: "Normalerweise nur im Browser. Bei localStorage bis zur Löschung durch den Nutzer oder Überschreibung durch die App.",

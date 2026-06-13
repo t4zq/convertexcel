@@ -1254,6 +1254,98 @@ fn to_tikz_graph_preview(t: &Table, sig_figs: i32, legend_pos: &str, scale_mode:
     out
 }
 
+// ─── gnuplot ───────────────────────────────────────────────
+
+/// gnuplot のダブルクオート文字列用エスケープ（xlabel/ylabel）。
+fn gnuplot_quote(s: &str) -> String {
+    let mut out = String::with_capacity(s.len() + 2);
+    for c in s.chars() {
+        if c == '\\' || c == '"' {
+            out.push('\\');
+        }
+        out.push(c);
+    }
+    out
+}
+
+/// gnuplot のシングルクオート文字列用エスケープ（plot ... title '...'）。
+fn gnuplot_single_quote(s: &str) -> String {
+    s.replace('\'', "''")
+}
+
+/// gnuplot スクリプトを生成する。データはインラインデータブロック
+/// (`$data << EOD … EOD`) に埋め込み、列レイアウトは `to_graph_csv`（値列 +
+/// 末尾に誤差列）と同じ規則を共有する。`set terminal`/`set output` は付けない
+/// （ブラウザの gnuplot-wasm が svg 端末を自前で前置するため）。
+fn to_gnuplot(
+    t: &Table,
+    scale_mode: &str,
+    headers: &[String],
+    x_label: &str,
+    y_label: &str,
+) -> String {
+    if t.is_empty() {
+        return String::new();
+    }
+    let num_cols = t[0].len();
+    if num_cols < 2 {
+        return String::new();
+    }
+
+    let x_label = if x_label.trim().is_empty() { "x" } else { x_label.trim() };
+    let y_label = if y_label.trim().is_empty() { "y" } else { y_label.trim() };
+
+    let mut out = String::new();
+    // 注: `set encoding utf8` は付けない。gnuplot-wasm では UTF-8 文字列が
+    // 二重エンコードされて日本語ラベルが文字化けするため（既定のまま素通しさせる）。
+    out.push_str("set datafile separator ','\n");
+    out.push_str(&format!("set xlabel \"{}\"\n", gnuplot_quote(x_label)));
+    out.push_str(&format!("set ylabel \"{}\"\n", gnuplot_quote(y_label)));
+    out.push_str("set key left top\n");
+    if scale_mode == "semilog" {
+        out.push_str("set logscale y\n");
+    } else if scale_mode == "loglog" {
+        out.push_str("set logscale xy\n");
+    }
+
+    let total_cols = t.iter().map(|r| r.len()).max().unwrap_or(num_cols);
+    let unc = uncertain_columns(t);
+
+    out.push_str("$data << EOD\n");
+    out.push_str(&to_graph_csv(t));
+    out.push('\n');
+    out.push_str("EOD\n");
+
+    out.push_str("plot ");
+    for col in 1..num_cols {
+        if col > 1 {
+            out.push_str(", \\\n     ");
+        }
+        let title = if headers.len() > col && !headers[col].is_empty() {
+            headers[col].clone()
+        } else {
+            format!("y{}", col)
+        };
+        // gnuplot の列番号は 1 始まり。値列 = col+1、誤差列 = error_index_for+1。
+        let y_idx = col + 1;
+        match error_index_for(&unc, total_cols, col) {
+            Some(ei) => out.push_str(&format!(
+                "$data using 1:{}:{} with yerrorbars title '{}'",
+                y_idx,
+                ei + 1,
+                gnuplot_single_quote(&title)
+            )),
+            None => out.push_str(&format!(
+                "$data using 1:{} with points title '{}'",
+                y_idx,
+                gnuplot_single_quote(&title)
+            )),
+        }
+    }
+    out.push('\n');
+    out
+}
+
 // ─── wasm-bindgen エクスポート (旧 12 関数相当) ──────────────
 
 #[wasm_bindgen]
@@ -1351,6 +1443,24 @@ pub fn gen_tikz_graph_config(
 pub fn gen_csv_attachment(input: &str, has_header: i32, clean_input: i32) -> String {
     let t = prepare_table(input, has_header != 0, clean_input != 0, false);
     to_graph_csv(&t)
+}
+#[wasm_bindgen]
+pub fn gen_gnuplot_config(
+    input: &str,
+    scale_mode: &str,
+    has_header: i32,
+    clean_input: i32,
+    x_label: &str,
+    y_label: &str,
+) -> String {
+    let t = prepare_table(input, has_header != 0, clean_input != 0, false);
+    let headers = if has_header != 0 {
+        let with_hdr = prepare_table(input, true, clean_input != 0, true);
+        with_hdr.first().cloned().unwrap_or_default()
+    } else {
+        Vec::new()
+    };
+    to_gnuplot(&t, scale_mode, &headers, x_label, y_label)
 }
 
 #[cfg(test)]
@@ -1465,5 +1575,44 @@ mod tests {
         assert!(out.contains("ylabel={Current A}"));
         assert!(out.contains("\\caption{IV curve}"));
         assert!(out.contains("\\label{fig:iv_curve}"));
+    }
+
+    #[test]
+    fn gnuplot_basic_points() {
+        let out = gen_gnuplot_config("x,y\n1,2\n2,4\n3,6", "linear", 1, 1, "Voltage", "Current");
+        assert!(out.contains("set datafile separator ','"));
+        // gnuplot-wasm での二重エンコード回避のため encoding は設定しない。
+        assert!(!out.contains("set encoding"));
+        assert!(out.contains("set xlabel \"Voltage\""));
+        assert!(out.contains("set ylabel \"Current\""));
+        assert!(out.contains("$data << EOD"));
+        assert!(out.contains("\nEOD\n"));
+        assert!(out.contains("$data using 1:2 with points title 'y'"));
+        // 端末指定は付けない（wasm 側が前置する）。
+        assert!(!out.contains("set terminal"));
+        assert!(!out.contains("set output"));
+    }
+
+    #[test]
+    fn gnuplot_error_bars() {
+        // 誤差付き系列は yerrorbars と誤差列インデックスを出す（to_graph_csv と同じ列規則）。
+        let out = gen_gnuplot_config("x,y\n1,2 ± 0.1\n2,4 ± 0.2\n3,6 ± 0.3", "linear", 1, 1, "", "");
+        assert!(out.contains("$data using 1:2:3 with yerrorbars"));
+    }
+
+    #[test]
+    fn gnuplot_logscale() {
+        let loglog = gen_gnuplot_config("x,y\n1,2\n2,4", "loglog", 1, 1, "", "");
+        assert!(loglog.contains("set logscale xy"));
+        let semilog = gen_gnuplot_config("x,y\n1,2\n2,4", "semilog", 1, 1, "", "");
+        assert!(semilog.contains("set logscale y"));
+        assert!(!semilog.contains("set logscale xy"));
+    }
+
+    #[test]
+    fn gnuplot_multi_series_titles() {
+        let out = gen_gnuplot_config("x,a,b\n1,2,3\n2,4,5", "linear", 1, 1, "", "");
+        assert!(out.contains("$data using 1:2 with points title 'a'"));
+        assert!(out.contains("$data using 1:3 with points title 'b'"));
     }
 }
