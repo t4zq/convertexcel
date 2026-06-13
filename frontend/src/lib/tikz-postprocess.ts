@@ -24,86 +24,107 @@ export const SERIES_MARKS: { value: string; label: string }[] = [
   { value: "x",         label: "×" },
 ]
 
+const COLOR_NAMES = new Set(SERIES_COLORS.map((c) => c.name))
+const MARK_VALUES = new Set(SERIES_MARKS.map((m) => m.value))
+
+const safeColor = (value: string | undefined) =>
+  value && COLOR_NAMES.has(value) ? value : undefined
+
+const safeMark = (value: string | undefined) =>
+  value && MARK_VALUES.has(value) ? value : undefined
+
+function replaceOptionLine(lines: string[], option: "color" | "mark", value: string) {
+  const pattern = option === "color"
+    ? /^(\s*)color=[^,\]]+(,?\s*)$/
+    : /^(\s*)mark=[^,\]]+(,?\s*)$/
+
+  for (let i = 0; i < lines.length; i++) {
+    const match = lines[i].match(pattern)
+    if (match) {
+      lines[i] = `${match[1]}${option}=${value}${match[2]}`
+      return
+    }
+  }
+}
+
+function transformAddplotBlock(
+  lines: string[],
+  colors: string[],
+  marks: string[],
+  state: { nextDataSeries: number; lastDataSeries: number },
+) {
+  const body = lines.join("\n")
+  const isDataPlot = /^\s*mark=/m.test(body)
+  const isFitPlot = !isDataPlot && /\\addplot\b/.test(body) && /^\s*forget plot,?$/m.test(body)
+  const seriesIndex = isDataPlot ? state.nextDataSeries : isFitPlot ? state.lastDataSeries : -1
+
+  if (seriesIndex < 0) return lines
+
+  const next = [...lines]
+  const color = safeColor(colors[seriesIndex])
+  if (color) replaceOptionLine(next, "color", color)
+  if (isDataPlot) {
+    const mark = safeMark(marks[seriesIndex])
+    if (mark) replaceOptionLine(next, "mark", mark)
+    state.lastDataSeries = state.nextDataSeries
+    state.nextDataSeries += 1
+  }
+  return next
+}
+
 /**
  * 生成 TikZ コードに色・マーカーを適用する。
  *
- * エンジンは \addplot ブロック内に `  color=black,` と `  mark=*,` を
- * それぞれ独立した行として出力するため、その行を置換する。
- * 出現順は (data_i, fit_i?) × seriesCount なので fitMethods を参照して
- * どの出現が何番目の系列かを計算する。
+ * エンジンは \addplot ブロック内に `color=...` と `mark=...` を
+ * それぞれ独立した行として出力するため、そのオプション行を置換する。
+ * データ系列は mark のある \addplot、近似曲線は直前のデータ系列に対応する
+ * forget plot の \addplot として判定する。
  */
 export function applySeriesStyles(
   tikzCode: string,
   colors: string[],
   marks: string[],
-  fitMethods: string[],
+  _fitMethods: string[],
 ): string {
-  let result = tikzCode
+  if (!colors.length && !marks.length) return tikzCode
 
-  // ── 色 ──────────────────────────────────────────────────────────────────
-  // \addplot [...] のオプションブロック内に限定して color=black を置換する。
-  // axis 設定（tick style 等）の color=black は書き換えない。
-  if (colors.some((c) => c && c !== "black")) {
-    const map: number[] = []
-    colors.forEach((_, si) => {
-      map.push(si) // data plot
-      const fm = fitMethods[si] ?? fitMethods[0] ?? "auto"
-      if (fm && fm !== "none") map.push(si) // fit curve
-    })
+  const output: string[] = []
+  const state = { nextDataSeries: 0, lastDataSeries: -1 }
+  let block: string[] | null = null
+  let depth = 0
 
-    let occ = 0
-    let inAddplot = false
-    let addplotDepth = 0
+  for (const line of tikzCode.split("\n")) {
+    if (block) {
+      block.push(line)
+      for (const ch of line) {
+        if (ch === "[") depth += 1
+        if (ch === "]") depth -= 1
+      }
+      if (depth <= 0) {
+        output.push(...transformAddplotBlock(block, colors, marks, state))
+        block = null
+      }
+      continue
+    }
 
-    result = result
-      .split("\n")
-      .map((line) => {
-        if (!inAddplot) {
-          // \addplot または \addplot+ の後に [ が出現 → オプションブロック開始を検出
-          if (/\\addplot\b/.test(line)) {
-            const start = line.indexOf("[")
-            if (start !== -1) {
-              let depth = 0
-              for (let i = start; i < line.length; i++) {
-                if (line[i] === "[") depth++
-                else if (line[i] === "]") depth--
-              }
-              if (depth > 0) {
-                inAddplot = true
-                addplotDepth = depth
-              }
-            }
-          }
-          return line
-        }
+    if (/\\addplot\b/.test(line) && line.includes("[")) {
+      block = [line]
+      depth = 0
+      const start = line.indexOf("[")
+      for (let i = start; i < line.length; i++) {
+        if (line[i] === "[") depth += 1
+        if (line[i] === "]") depth -= 1
+      }
+      if (depth <= 0) {
+        output.push(...transformAddplotBlock(block, colors, marks, state))
+        block = null
+      }
+      continue
+    }
 
-        // \addplot オプションブロック内：ブラケット深度を追跡
-        for (const ch of line) {
-          if (ch === "[") addplotDepth++
-          else if (ch === "]") addplotDepth--
-        }
-        if (addplotDepth <= 0) inAddplot = false
-
-        return line.replace(/^(\s+)(color=black)(,\s*)$/, (match, lead, _col, trail) => {
-          const si = map[occ++]
-          const color = si !== undefined ? colors[si] : undefined
-          if (!color || color === "black") return match
-          return `${lead}color=${color}${trail}`
-        })
-      })
-      .join("\n")
+    output.push(line)
   }
 
-  // ── マーカー ─────────────────────────────────────────────────────────────
-  // mark=* はデータ系列の \addplot にのみ出現（fit curve には mark がない）。
-  if (marks.some((m) => m && m !== "*")) {
-    let occ = 0
-    result = result.replace(/^(\s+)(mark=\*)(,\s*)$/gm, (match, lead, _mk, trail) => {
-      const mark = marks[occ++]
-      if (!mark || mark === "*") return match
-      return `${lead}mark=${mark}${trail}`
-    })
-  }
-
-  return result
+  if (block) output.push(...block)
+  return output.join("\n")
 }
