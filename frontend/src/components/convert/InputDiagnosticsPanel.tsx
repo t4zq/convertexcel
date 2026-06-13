@@ -8,7 +8,7 @@ const SEVERITY: Record<DiagnosticSeverity, { label: string; glyph: string; color
 }
 
 export function InputDiagnosticsPanel({ diagnostics }: { diagnostics: InputDiagnostics }) {
-  const { language, t } = useI18n()
+  const { t } = useI18n()
   const problems = diagnostics.problems ?? []
   if (problems.length === 0) return null
 
@@ -49,9 +49,7 @@ export function InputDiagnosticsPanel({ diagnostics }: { diagnostics: InputDiagn
               <span className={`${s.color} shrink-0`} aria-hidden>{s.glyph}</span>
               <span className={`${s.color} shrink-0 font-semibold`}>{s.label}:</span>
               <span className="text-foreground/90">
-                {language === "en"
-                  ? t.diagnostics.messages[p.code as keyof typeof t.diagnostics.messages] ?? p.message
-                  : p.message}
+                {t.diagnostics.messages[p.code as keyof typeof t.diagnostics.messages] ?? p.message}
               </span>
               <span className="ml-auto shrink-0 whitespace-nowrap text-muted-foreground/80">
                 {p.line != null && <span className="text-info/80">{t.diagnostics.line(p.line)} </span>}

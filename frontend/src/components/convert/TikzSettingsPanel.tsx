@@ -38,6 +38,7 @@ interface TikzSettingsPanelProps {
 
 export function TikzSettingsPanel({ value, onChange, seriesCount, seriesNames }: TikzSettingsPanelProps) {
   const { language, t } = useI18n()
+  const colorLabel = (name: string, label: string) => language === "ja" ? label : name
   const fitMethods: [string, string][] = [
     ["none", t.settings.none],
     ["auto", t.settings.auto],
@@ -168,14 +169,14 @@ export function TikzSettingsPanel({ value, onChange, seriesCount, seriesNames }:
                     <button
                       key={c.name}
                       type="button"
-                      title={language === "en" ? c.name : c.label}
+                      title={colorLabel(c.name, c.label)}
                       onClick={() => setColorAt(i, c.name)}
                       className={cn(
                         "h-5 w-5 rounded-full border-2 transition-transform hover:scale-110",
                         colorAt(i) === c.name ? "border-primary scale-110" : "border-transparent",
                       )}
                       style={{ backgroundColor: c.css }}
-                      aria-label={language === "en" ? c.name : c.label}
+                      aria-label={colorLabel(c.name, c.label)}
                     />
                   ))}
                 </div>

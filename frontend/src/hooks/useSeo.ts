@@ -7,7 +7,20 @@ type SeoOptions = {
   language: string
   alternates?: Record<string, string>
   robots?: string
+  image?: string
   schema?: Record<string, unknown>
+}
+
+const DEFAULT_IMAGE = "https://convertexcel.net/og-image.svg"
+
+const OG_LOCALES: Record<string, string> = {
+  ja: "ja_JP",
+  en: "en_US",
+  zh: "zh_CN",
+  "zh-Hant": "zh_TW",
+  ko: "ko_KR",
+  es: "es_ES",
+  de: "de_DE",
 }
 
 function setMeta(selector: string, attr: "name" | "property", key: string, content: string) {
@@ -56,7 +69,16 @@ function setSchema(schema?: Record<string, unknown>) {
   document.head.appendChild(script)
 }
 
-export function useSeo({ title, description, canonical, language, alternates, robots = "index,follow", schema }: SeoOptions) {
+export function useSeo({
+  title,
+  description,
+  canonical,
+  language,
+  alternates,
+  robots = "index,follow",
+  image = DEFAULT_IMAGE,
+  schema,
+}: SeoOptions) {
   useEffect(() => {
     document.title = title
     document.documentElement.lang = language
@@ -67,8 +89,15 @@ export function useSeo({ title, description, canonical, language, alternates, ro
     setMeta('meta[property="og:title"]', "property", "og:title", title)
     setMeta('meta[property="og:description"]', "property", "og:description", description)
     setMeta('meta[property="og:url"]', "property", "og:url", canonical)
+    setMeta('meta[property="og:type"]', "property", "og:type", "website")
+    setMeta('meta[property="og:site_name"]', "property", "og:site_name", "converTeXcel")
+    setMeta('meta[property="og:locale"]', "property", "og:locale", OG_LOCALES[language] ?? "en_US")
+    setMeta('meta[property="og:image"]', "property", "og:image", image)
+    setMeta('meta[property="og:image:alt"]', "property", "og:image:alt", "converTeXcel")
+    setMeta('meta[name="twitter:card"]', "name", "twitter:card", "summary_large_image")
     setMeta('meta[name="twitter:title"]', "name", "twitter:title", title)
     setMeta('meta[name="twitter:description"]', "name", "twitter:description", description)
+    setMeta('meta[name="twitter:image"]', "name", "twitter:image", image)
     setSchema(schema)
-  }, [alternates, canonical, description, language, robots, schema, title])
+  }, [alternates, canonical, description, image, language, robots, schema, title])
 }

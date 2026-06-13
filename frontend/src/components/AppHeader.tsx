@@ -4,7 +4,7 @@ import logo from "@/assets/logo.png"
 import logoDark from "@/assets/logo-dark.png"
 import { ThemeToggle } from "@/components/ThemeToggle"
 import { useI18n } from "@/hooks/useI18n"
-import { SUPPORTED_LANGUAGES } from "@/lib/i18n"
+import { LANGUAGE_NAMES, LANGUAGE_SHORT_LABELS, SUPPORTED_LANGUAGES } from "@/lib/i18n"
 import { cn } from "@/lib/utils"
 
 export function AppHeader() {
@@ -63,9 +63,9 @@ export function AppHeader() {
                       ? "bg-background text-foreground shadow-sm"
                       : "text-muted-foreground hover:text-foreground",
                   )}
-                  title={lang === "ja" ? t.nav.japanese : t.nav.english}
+                  title={LANGUAGE_NAMES[lang]}
                 >
-                  {lang.toUpperCase()}
+                  {LANGUAGE_SHORT_LABELS[lang]}
                 </button>
               ))}
             </div>
