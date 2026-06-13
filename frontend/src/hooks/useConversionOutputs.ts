@@ -1,14 +1,7 @@
 import { useEffect, useState } from "react"
 
-import { genCsv, genGnuplot, genLatex, genTikz } from "@/engine/loader"
-import {
-  toConvertOptions,
-  toTikzOptions,
-  type TableSettings,
-  type TikzSettings,
-} from "@/lib/convert-settings"
-import { applyTableAlignment } from "@/lib/latex-postprocess"
-import { applySeriesStyles } from "@/lib/tikz-postprocess"
+import type { TableSettings, TikzSettings } from "@/lib/convert-settings"
+import { convertTable } from "@/lib/conversion-service"
 
 // 入力・設定の変更を監視し、LaTeX 表 / CSV / TikZ を自動生成する。
 // 生成後のコードは手動編集できるよう setter も返す。
@@ -24,29 +17,12 @@ export function useConversionOutputs(
 
   useEffect(() => {
     let alive = true
-    const opts = toConvertOptions(table)
-    Promise.all([
-      genLatex(input, opts).catch(() => ""),
-      genCsv(input, opts).catch(() => ""),
-      genTikz(input, toTikzOptions(tikz, table)).catch(() => ""),
-      genGnuplot(input, {
-        scaleMode: tikz.scaleMode,
-        hasHeader: table.hasHeader,
-        cleanInput: table.cleanInput,
-        xLabel: tikz.xLabel,
-        yLabel: tikz.yLabel,
-      }).catch(() => ""),
-    ]).then(([l, c, t, g]) => {
+    convertTable(input, table, tikz).then((result) => {
       if (!alive) return
-      setLatexOut(applyTableAlignment(l, table.columnAlign, table.siunitx))
-      setCsvOut(c)
-      setTikzOut(applySeriesStyles(
-        t,
-        tikz.seriesColors ?? [],
-        tikz.seriesMarks ?? [],
-        tikz.fitMethods ?? ["auto"],
-      ))
-      setGnuplotOut(g)
+      setLatexOut(result.latex)
+      setCsvOut(result.csv)
+      setTikzOut(result.tikz)
+      setGnuplotOut(result.gnuplot)
     })
     return () => {
       alive = false

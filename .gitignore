@@ -1,6 +1,12 @@
 tools/emsdk/
 server.*.log
 dist/convert.wasm.tmp*
+addin/dist/
+addin/*.log
+addin/certs/
+
+# Visual Studio
+.vs/
 
 # wrangler files
 .wrangler

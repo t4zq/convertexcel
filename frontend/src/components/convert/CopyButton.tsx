@@ -15,9 +15,9 @@ export function CopyButton({ value, label }: { value: string; label: string }) {
   }
 
   return (
-    <Button size="icon" variant="secondary" onClick={copy} disabled={!value} title={copied ? t.csv.copied : label}>
+    <Button size="sm" variant="secondary" onClick={copy} disabled={!value} title={copied ? t.csv.copied : label}>
       <Copy className="h-4 w-4" />
-      <span className="sr-only">{copied ? t.csv.copied : label}</span>
+      <span>{copied ? t.csv.copied : label}</span>
     </Button>
   )
 }

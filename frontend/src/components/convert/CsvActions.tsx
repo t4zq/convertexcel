@@ -28,13 +28,13 @@ export function CsvActions({ value }: { value: string }) {
     <div className="flex flex-wrap items-center justify-end gap-1.5 text-xs text-muted-foreground">
       <span className="mr-1 font-medium">CSV</span>
       <div className="flex flex-wrap gap-2">
-        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={copy} disabled={!value} title={copied ? t.csv.copied : t.csv.copy}>
+        <Button size="sm" variant="ghost" onClick={copy} disabled={!value} title={copied ? t.csv.copied : t.csv.copy}>
           <Copy className="h-3.5 w-3.5" />
-          <span className="sr-only">{copied ? t.csv.copied : t.csv.copy}</span>
+          <span>{copied ? t.csv.copied : t.csv.copy}</span>
         </Button>
-        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={download} disabled={!value} title={t.csv.download}>
+        <Button size="sm" variant="ghost" onClick={download} disabled={!value} title={t.csv.download}>
           <Download className="h-3.5 w-3.5" />
-          <span className="sr-only">{t.csv.download}</span>
+          <span>{t.csv.download}</span>
         </Button>
       </div>
     </div>

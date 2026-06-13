@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:addin": "vite --config vite.addin.config.ts",
     "build": "tsc -b && vite build",
+    "build:addin": "tsc -b && vite build --config vite.addin.config.ts",
     "preview": "vite preview",
     "lint": "tsc --noEmit"
   },

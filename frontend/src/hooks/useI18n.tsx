@@ -45,6 +45,31 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>
 }
 
+export function StaticI18nProvider({
+  children,
+  language,
+}: {
+  children: ReactNode
+  language: Language
+}) {
+  const value = useMemo<I18nContextValue>(() => {
+    const pathFor = (path: string, target = language) => localizePath(path, target)
+    return {
+      language,
+      t: translations[language],
+      seo: seo[language],
+      pathFor,
+      setLanguage: () => {},
+    }
+  }, [language])
+
+  useEffect(() => {
+    document.documentElement.lang = language
+  }, [language])
+
+  return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>
+}
+
 export function useI18n() {
   const value = useContext(I18nContext)
   if (!value) throw new Error("useI18n must be used inside I18nProvider")
