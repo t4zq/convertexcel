@@ -4,8 +4,21 @@ import { AppHeader } from "@/components/AppHeader"
 import { StatusBar } from "@/components/StatusBar"
 import { I18nProvider } from "@/hooks/useI18n"
 import { StatusBarProvider } from "@/hooks/useStatusBar"
+import { LANGUAGE_PATH_SEGMENTS, SUPPORTED_LANGUAGES } from "@/lib/i18n"
 import ConvertPage from "@/pages/ConvertPage"
+import NotFoundPage from "@/pages/NotFoundPage"
 import PrivacyPage from "@/pages/PrivacyPage"
+
+const localizedRoutes = SUPPORTED_LANGUAGES
+  .filter((language) => language !== "ja")
+  .flatMap((language) => {
+    const prefix = `/${LANGUAGE_PATH_SEGMENTS[language]}`
+    return [
+      <Route key={prefix} path={prefix} element={<ConvertPage />} />,
+      <Route key={`${prefix}/convert`} path={`${prefix}/convert`} element={<ConvertPage />} />,
+      <Route key={`${prefix}/privacy`} path={`${prefix}/privacy`} element={<PrivacyPage />} />,
+    ]
+  })
 
 export default function App() {
   return (
@@ -18,10 +31,8 @@ export default function App() {
               <Route path="/" element={<ConvertPage />} />
               <Route path="/convert" element={<ConvertPage />} />
               <Route path="/privacy" element={<PrivacyPage />} />
-              <Route path="/en" element={<ConvertPage />} />
-              <Route path="/en/convert" element={<ConvertPage />} />
-              <Route path="/en/privacy" element={<PrivacyPage />} />
-              <Route path="*" element={<ConvertPage />} />
+              {localizedRoutes}
+              <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </main>
           <StatusBar />

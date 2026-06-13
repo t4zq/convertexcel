@@ -51,6 +51,31 @@ const DEFAULT_TIKZ_TEXT: Record<Language, Pick<TikzSettings, "xLabel" | "yLabel"
     yLabel: "y-axis",
     caption: "Figure title",
   },
+  zh: {
+    xLabel: "x 轴",
+    yLabel: "y 轴",
+    caption: "图题",
+  },
+  "zh-Hant": {
+    xLabel: "x 軸",
+    yLabel: "y 軸",
+    caption: "圖題",
+  },
+  ko: {
+    xLabel: "x축",
+    yLabel: "y축",
+    caption: "그림 제목",
+  },
+  es: {
+    xLabel: "eje x",
+    yLabel: "eje y",
+    caption: "Título de la figura",
+  },
+  de: {
+    xLabel: "x-Achse",
+    yLabel: "y-Achse",
+    caption: "Abbildungstitel",
+  },
 }
 
 const DEFAULT_TIKZ_TEXT_VALUES = {

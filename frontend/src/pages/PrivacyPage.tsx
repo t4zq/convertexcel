@@ -16,12 +16,16 @@ import {
 } from "@/components/ui/table"
 import { useI18n } from "@/hooks/useI18n"
 import { useSeo } from "@/hooks/useSeo"
+import { localizedSiteUrls } from "@/lib/i18n"
+import { privacyPolicy } from "@/lib/privacy-policy"
 
 const SITE_URL = "https://convertexcel.net/"
+const privacyUrls = localizedSiteUrls(SITE_URL, "/privacy")
 
 export default function PrivacyPage() {
   const { language, t, seo: seoText, pathFor } = useI18n()
-  const canonical = language === "en" ? `${SITE_URL}en/privacy` : `${SITE_URL}privacy`
+  const policy = privacyPolicy[language]
+  const canonical = privacyUrls[language]
   const pageSchema = {
     "@context": "https://schema.org",
     "@type": "WebPage",
@@ -42,9 +46,8 @@ export default function PrivacyPage() {
     canonical,
     language,
     alternates: {
-      ja: `${SITE_URL}privacy`,
-      en: `${SITE_URL}en/privacy`,
-      "x-default": `${SITE_URL}privacy`,
+      ...privacyUrls,
+      "x-default": privacyUrls.ja,
     },
     schema: pageSchema,
   })
@@ -66,18 +69,55 @@ export default function PrivacyPage() {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle>{t.privacy.dataTitle}</CardTitle></CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          <p>{t.privacy.data1}</p>
-          <p>{t.privacy.data2}</p>
-          <p>{t.privacy.data3}</p>
+        <CardContent className="pt-6 text-sm text-muted-foreground">
+          <p>{policy.notice}</p>
+        </CardContent>
+      </Card>
+
+      {policy.sections.map((section) => (
+        <Card key={section.title}>
+          <CardHeader><CardTitle>{section.title}</CardTitle></CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            {section.paragraphs?.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+            {section.bullets && (
+              <ul className="list-disc space-y-1 pl-5">
+                {section.bullets.map((item) => <li key={item}>{item}</li>)}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      ))}
+
+      <Card>
+        <CardHeader><CardTitle>{policy.dataTable.title}</CardTitle></CardHeader>
+        <CardContent className="overflow-x-auto text-sm">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{policy.dataTable.headers.category}</TableHead>
+                <TableHead>{policy.dataTable.headers.purpose}</TableHead>
+                <TableHead>{policy.dataTable.headers.legalBasis}</TableHead>
+                <TableHead>{policy.dataTable.headers.retention}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {policy.dataTable.rows.map((row) => (
+                <TableRow key={row.category}>
+                  <TableCell className="min-w-48 align-top">{row.category}</TableCell>
+                  <TableCell className="min-w-48 align-top">{row.purpose}</TableCell>
+                  <TableCell className="min-w-56 align-top">{row.legalBasis}</TableCell>
+                  <TableCell className="min-w-56 align-top">{row.retention}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader><CardTitle>{t.privacy.externalTitle}</CardTitle></CardHeader>
-        <CardContent className="space-y-3 text-sm">
-          <p>{t.privacy.externalIntro}</p>
+        <CardHeader><CardTitle>{policy.thirdParties.title}</CardTitle></CardHeader>
+        <CardContent className="space-y-3 overflow-x-auto text-sm">
+          <p>{policy.thirdParties.intro}</p>
           <Table>
             <TableHeader>
               <TableRow>
@@ -88,25 +128,29 @@ export default function PrivacyPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              <TableRow>
-                <TableCell>
-                  <a className="underline" href="https://texlive.net" target="_blank" rel="noopener">texlive.net</a>
-                </TableCell>
-                <TableCell>{t.privacy.previewPurpose}</TableCell>
-                <TableCell>{t.privacy.previewData}</TableCell>
-                <TableCell>{t.privacy.previewTiming}</TableCell>
-              </TableRow>
+              {policy.thirdParties.rows.map((row) => (
+                <TableRow key={row.service}>
+                  <TableCell className="min-w-44 align-top">
+                    {row.service === "texlive.net" ? (
+                      <a className="underline" href="https://texlive.net" target="_blank" rel="noopener">texlive.net</a>
+                    ) : row.service}
+                  </TableCell>
+                  <TableCell className="min-w-48 align-top">{row.purpose}</TableCell>
+                  <TableCell className="min-w-56 align-top">{row.data}</TableCell>
+                  <TableCell className="min-w-48 align-top">{row.timing}</TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader><CardTitle>{t.privacy.trackingTitle}</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{policy.regional.title}</CardTitle></CardHeader>
         <CardContent className="space-y-2 text-sm">
-          <p>{t.privacy.tracking1}</p>
-          <p>{t.privacy.tracking2}</p>
-          <p>{t.privacy.tracking3}</p>
+          <ul className="list-disc space-y-1 pl-5">
+            {policy.regional.items.map((item) => <li key={item}>{item}</li>)}
+          </ul>
         </CardContent>
       </Card>
 

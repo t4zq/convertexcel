@@ -11,12 +11,62 @@
     <priority>1.0</priority>
   </url>
   <url>
+    <loc>https://convertexcel.net/zh</loc>
+    <lastmod>2026-06-13</lastmod>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://convertexcel.net/zh-hant</loc>
+    <lastmod>2026-06-13</lastmod>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://convertexcel.net/ko</loc>
+    <lastmod>2026-06-13</lastmod>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://convertexcel.net/es</loc>
+    <lastmod>2026-06-13</lastmod>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://convertexcel.net/de</loc>
+    <lastmod>2026-06-13</lastmod>
+    <priority>1.0</priority>
+  </url>
+  <url>
     <loc>https://convertexcel.net/privacy</loc>
     <lastmod>2026-06-13</lastmod>
     <priority>0.3</priority>
   </url>
   <url>
     <loc>https://convertexcel.net/en/privacy</loc>
+    <lastmod>2026-06-13</lastmod>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://convertexcel.net/zh/privacy</loc>
+    <lastmod>2026-06-13</lastmod>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://convertexcel.net/zh-hant/privacy</loc>
+    <lastmod>2026-06-13</lastmod>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://convertexcel.net/ko/privacy</loc>
+    <lastmod>2026-06-13</lastmod>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://convertexcel.net/es/privacy</loc>
+    <lastmod>2026-06-13</lastmod>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://convertexcel.net/de/privacy</loc>
     <lastmod>2026-06-13</lastmod>
     <priority>0.3</priority>
   </url>

@@ -3,86 +3,344 @@
 </p>
 
 <p align="center">
-  <strong>Excel to LaTeX Converter</strong>
+  <strong>Excel to LaTeX / CSV / TikZ Converter</strong>
 </p>
 
-## 新アーキテクチャ (TypeScript / Rust / Ruby on Rails)
+<p align="center">
+  <a href="#日本語">日本語</a> ·
+  <a href="#english">English</a> ·
+  <a href="#简体中文">简体中文</a> ·
+  <a href="#繁體中文">繁體中文</a> ·
+  <a href="#한국어">한국어</a> ·
+  <a href="#español">Español</a> ·
+  <a href="#deutsch">Deutsch</a>
+</p>
 
-React UI、Rust/WASM 計算エンジン、Rails API の 3 レイヤ構成です。
+## 日本語
+
+converTeXcel は、Excel やスプレッドシートの表を LaTeX 表、CSV、TikZ/PGFPlots コードへ変換する Web アプリです。計算とコード生成は Rust/WebAssembly によってブラウザ内で実行されます。
+
+### アーキテクチャ
 
 | レイヤ | 技術 | ディレクトリ |
 | --- | --- | --- |
-| 画面 (UI) | React 19 + Vite + TS + Tailwind v4 + **shadcn/ui** + react-router | `frontend/` |
-| 計算エンジン | **Rust** → WebAssembly (`wasm-pack`) | `engine/` |
-| API | **Ruby on Rails** 7 (API-only, 薄い) | `api/` |
+| 画面 (UI) | React 19 + Vite + TypeScript + Tailwind v4 + shadcn/ui + react-router | `frontend/` |
+| 計算エンジン | Rust -> WebAssembly (`wasm-pack`) | `engine/` |
+| API | Ruby on Rails 7 (API-only) | `api/` |
 
-数値計算はすべて **Rust(WASM)** がブラウザ内で実行します。Rails は計算を持たず、
-health とデータセット(grid)の永続化のみを担う薄い API です。
+### 画面
 
-### 画面 (frontend/src/pages)
-- **変換** `/` `/convert` — LaTeX 表 / CSV / TikZ(PGFPlots) 生成、texlive.net による PDF プレビュー(同意ダイアログ＋15秒クールダウン)
-- **プライバシー** `/privacy`
+- 変換: `/`, `/convert`
+- プライバシー: `/privacy`
+- 対応言語: 日本語、英語、簡体字中国語、繁体字中国語、韓国語、スペイン語、ドイツ語
 
-### エンジン (engine/src)
-- `convert.rs` — LaTeX/CSV/TikZ/近似の生成
-
-### Docker で起動 (推奨)
-
-ローカルに Rust / Ruby を入れずに、すべて Docker で完結します。
+### Docker で起動
 
 ```powershell
-# 1) Rust → WASM を frontend/src/engine/pkg に生成 (フロント起動の前に必須)
 docker compose run --rm engine
-
-# 2) API とフロントを起動
 docker compose up api frontend
 ```
 
-- フロント: <http://localhost:5173>
-- API: <http://localhost:3000/api/health>
+- Frontend: <http://localhost:5173>
+- API health: <http://localhost:3000/api/health>
 
-データセット API の確認:
-
-```powershell
-curl -X POST http://localhost:3000/api/datasets `
-  -H "Content-Type: application/json" `
-  -d '{"name":"sample","rows":[["x","y"],["1","2"]]}'
-curl http://localhost:3000/api/datasets
-curl http://localhost:3000/api/datasets/sample
-```
-
-### フロントのみローカル実行 (Node)
+### フロントのみローカル実行
 
 ```powershell
 cd frontend
 npm install
-# 先に engine ビルドで src/engine/pkg を生成しておくこと (docker compose run --rm engine)
-npm run dev      # http://localhost:5173
-npm run build    # 型チェック + 本番ビルド
+npm run dev
+npm run build
 ```
 
-> 注: WASM の glue/wasm は `frontend/src/engine/pkg/` に生成され Vite が処理します。
-> フロントのビルド/起動の前に必ず engine ビルドを実行してください。
+> `frontend/src/engine/pkg/` は先に engine ビルドで生成してください。
 
-shadcn の設定は `frontend/components.json` (style: new-york / baseColor: neutral)。
-コンポーネント追加は `npx shadcn@latest add <name>` で `frontend/src/components/ui/` に入ります。
+### Cloudflare
 
-### Cloudflare Pages
+- Pages build command: `npm run build`
+- Pages build output directory: `frontend/dist`
+- Workers deploy command: `npm run deploy`
 
-Cloudflare Pages ではリポジトリルートを root directory として使い、次を設定します。
+`npm run build` は Rust/WASM エンジンを生成してから Vite build を実行します。
 
-- Build command: `npm run build`
-- Build output directory: `frontend/dist`
+## English
 
-`npm run build` は `scripts/cloudflare-build.mjs` を呼び出し、Rust/WASM エンジンを
-`frontend/src/engine/pkg` に生成してから Vite build を実行します。
+converTeXcel is a web app that converts Excel or spreadsheet tables into LaTeX tables, CSV, and TikZ/PGFPlots code. Calculation and code generation run in the browser through Rust/WebAssembly.
 
-### Cloudflare Workers Builds
+### Architecture
 
-Workers Builds で `wrangler versions upload` を使う場合、先に `frontend/dist` を生成する必要があります。
+| Layer | Technology | Directory |
+| --- | --- | --- |
+| UI | React 19 + Vite + TypeScript + Tailwind v4 + shadcn/ui + react-router | `frontend/` |
+| Engine | Rust -> WebAssembly (`wasm-pack`) | `engine/` |
+| API | Ruby on Rails 7 (API-only) | `api/` |
 
-- Deploy command: `npm run deploy`
+### Pages
 
-`npm run deploy` は `npm run build && npx wrangler versions upload` を実行します。
-`npx wrangler versions upload` だけを指定すると、`frontend/dist` が存在しないため失敗します。
+- Converter: `/`, `/convert`
+- Privacy: `/privacy`
+- Languages: Japanese, English, Simplified Chinese, Traditional Chinese, Korean, Spanish, German
 
+### Run with Docker
+
+```powershell
+docker compose run --rm engine
+docker compose up api frontend
+```
+
+- Frontend: <http://localhost:5173>
+- API health: <http://localhost:3000/api/health>
+
+### Run the frontend locally
+
+```powershell
+cd frontend
+npm install
+npm run dev
+npm run build
+```
+
+> Generate `frontend/src/engine/pkg/` with the engine build before running or building the frontend.
+
+### Cloudflare
+
+- Pages build command: `npm run build`
+- Pages build output directory: `frontend/dist`
+- Workers deploy command: `npm run deploy`
+
+`npm run build` generates the Rust/WASM engine and then runs the Vite build.
+
+## 简体中文
+
+converTeXcel 是一个 Web 应用，可将 Excel 或电子表格数据转换为 LaTeX 表格、CSV 和 TikZ/PGFPlots 代码。计算与代码生成通过 Rust/WebAssembly 在浏览器中完成。
+
+### 架构
+
+| 层 | 技术 | 目录 |
+| --- | --- | --- |
+| 界面 | React 19 + Vite + TypeScript + Tailwind v4 + shadcn/ui + react-router | `frontend/` |
+| 引擎 | Rust -> WebAssembly (`wasm-pack`) | `engine/` |
+| API | Ruby on Rails 7 (API-only) | `api/` |
+
+### 页面
+
+- 转换: `/`, `/convert`
+- 隐私: `/privacy`
+- 支持语言: 日语、英语、简体中文、繁体中文、韩语、西班牙语、德语
+
+### 使用 Docker 运行
+
+```powershell
+docker compose run --rm engine
+docker compose up api frontend
+```
+
+- 前端: <http://localhost:5173>
+- API health: <http://localhost:3000/api/health>
+
+### 仅本地运行前端
+
+```powershell
+cd frontend
+npm install
+npm run dev
+npm run build
+```
+
+> 运行或构建前端前，请先通过 engine 构建生成 `frontend/src/engine/pkg/`。
+
+### Cloudflare
+
+- Pages build command: `npm run build`
+- Pages build output directory: `frontend/dist`
+- Workers deploy command: `npm run deploy`
+
+`npm run build` 会先生成 Rust/WASM 引擎，然后执行 Vite build。
+
+## 繁體中文
+
+converTeXcel 是一個 Web 應用程式，可將 Excel 或試算表資料轉換為 LaTeX 表格、CSV 和 TikZ/PGFPlots 程式碼。計算與程式碼產生會透過 Rust/WebAssembly 在瀏覽器中完成。
+
+### 架構
+
+| 層 | 技術 | 目錄 |
+| --- | --- | --- |
+| 介面 | React 19 + Vite + TypeScript + Tailwind v4 + shadcn/ui + react-router | `frontend/` |
+| 引擎 | Rust -> WebAssembly (`wasm-pack`) | `engine/` |
+| API | Ruby on Rails 7 (API-only) | `api/` |
+
+### 頁面
+
+- 轉換: `/`, `/convert`
+- 隱私: `/privacy`
+- 支援語言: 日文、英文、簡體中文、繁體中文、韓文、西班牙文、德文
+
+### 使用 Docker 執行
+
+```powershell
+docker compose run --rm engine
+docker compose up api frontend
+```
+
+- 前端: <http://localhost:5173>
+- API health: <http://localhost:3000/api/health>
+
+### 只在本機執行前端
+
+```powershell
+cd frontend
+npm install
+npm run dev
+npm run build
+```
+
+> 執行或建置前端前，請先透過 engine 建置產生 `frontend/src/engine/pkg/`。
+
+### Cloudflare
+
+- Pages build command: `npm run build`
+- Pages build output directory: `frontend/dist`
+- Workers deploy command: `npm run deploy`
+
+`npm run build` 會先產生 Rust/WASM 引擎，然後執行 Vite build。
+
+## 한국어
+
+converTeXcel은 Excel 또는 스프레드시트 표를 LaTeX 표, CSV, TikZ/PGFPlots 코드로 변환하는 웹 앱입니다. 계산과 코드 생성은 Rust/WebAssembly를 통해 브라우저 안에서 실행됩니다.
+
+### 아키텍처
+
+| 레이어 | 기술 | 디렉터리 |
+| --- | --- | --- |
+| UI | React 19 + Vite + TypeScript + Tailwind v4 + shadcn/ui + react-router | `frontend/` |
+| 엔진 | Rust -> WebAssembly (`wasm-pack`) | `engine/` |
+| API | Ruby on Rails 7 (API-only) | `api/` |
+
+### 페이지
+
+- 변환: `/`, `/convert`
+- 개인정보: `/privacy`
+- 지원 언어: 일본어, 영어, 중국어 간체, 중국어 번체, 한국어, 스페인어, 독일어
+
+### Docker로 실행
+
+```powershell
+docker compose run --rm engine
+docker compose up api frontend
+```
+
+- 프론트엔드: <http://localhost:5173>
+- API health: <http://localhost:3000/api/health>
+
+### 프론트엔드만 로컬 실행
+
+```powershell
+cd frontend
+npm install
+npm run dev
+npm run build
+```
+
+> 프론트엔드를 실행하거나 빌드하기 전에 engine 빌드로 `frontend/src/engine/pkg/`를 생성해 주세요.
+
+### Cloudflare
+
+- Pages build command: `npm run build`
+- Pages build output directory: `frontend/dist`
+- Workers deploy command: `npm run deploy`
+
+`npm run build`는 Rust/WASM 엔진을 생성한 뒤 Vite build를 실행합니다.
+
+## Español
+
+converTeXcel es una aplicación web que convierte tablas de Excel u hojas de cálculo en tablas LaTeX, CSV y código TikZ/PGFPlots. El cálculo y la generación de código se ejecutan en el navegador con Rust/WebAssembly.
+
+### Arquitectura
+
+| Capa | Tecnología | Directorio |
+| --- | --- | --- |
+| UI | React 19 + Vite + TypeScript + Tailwind v4 + shadcn/ui + react-router | `frontend/` |
+| Motor | Rust -> WebAssembly (`wasm-pack`) | `engine/` |
+| API | Ruby on Rails 7 (API-only) | `api/` |
+
+### Páginas
+
+- Conversor: `/`, `/convert`
+- Privacidad: `/privacy`
+- Idiomas: japonés, inglés, chino simplificado, chino tradicional, coreano, español, alemán
+
+### Ejecutar con Docker
+
+```powershell
+docker compose run --rm engine
+docker compose up api frontend
+```
+
+- Frontend: <http://localhost:5173>
+- API health: <http://localhost:3000/api/health>
+
+### Ejecutar solo el frontend localmente
+
+```powershell
+cd frontend
+npm install
+npm run dev
+npm run build
+```
+
+> Genera `frontend/src/engine/pkg/` con la compilación del motor antes de ejecutar o compilar el frontend.
+
+### Cloudflare
+
+- Pages build command: `npm run build`
+- Pages build output directory: `frontend/dist`
+- Workers deploy command: `npm run deploy`
+
+`npm run build` genera el motor Rust/WASM y después ejecuta Vite build.
+
+## Deutsch
+
+converTeXcel ist eine Web-App, die Excel- oder Tabellenkalkulations-Tabellen in LaTeX-Tabellen, CSV und TikZ/PGFPlots-Code umwandelt. Berechnung und Codegenerierung laufen mit Rust/WebAssembly im Browser.
+
+### Architektur
+
+| Schicht | Technologie | Verzeichnis |
+| --- | --- | --- |
+| UI | React 19 + Vite + TypeScript + Tailwind v4 + shadcn/ui + react-router | `frontend/` |
+| Engine | Rust -> WebAssembly (`wasm-pack`) | `engine/` |
+| API | Ruby on Rails 7 (API-only) | `api/` |
+
+### Seiten
+
+- Konverter: `/`, `/convert`
+- Datenschutz: `/privacy`
+- Sprachen: Japanisch, Englisch, vereinfachtes Chinesisch, traditionelles Chinesisch, Koreanisch, Spanisch, Deutsch
+
+### Mit Docker starten
+
+```powershell
+docker compose run --rm engine
+docker compose up api frontend
+```
+
+- Frontend: <http://localhost:5173>
+- API health: <http://localhost:3000/api/health>
+
+### Nur das Frontend lokal ausführen
+
+```powershell
+cd frontend
+npm install
+npm run dev
+npm run build
+```
+
+> Erzeuge `frontend/src/engine/pkg/` vor dem Starten oder Bauen des Frontends durch den Engine-Build.
+
+### Cloudflare
+
+- Pages build command: `npm run build`
+- Pages build output directory: `frontend/dist`
+- Workers deploy command: `npm run deploy`
+
+`npm run build` erzeugt zuerst die Rust/WASM-Engine und führt danach Vite build aus.

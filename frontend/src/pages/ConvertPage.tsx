@@ -38,6 +38,7 @@ import {
   type TableSettings,
   type TikzSettings,
 } from "@/lib/convert-settings"
+import { localizedSiteUrls } from "@/lib/i18n"
 import { diagnoseInput } from "@/lib/input-diagnostics"
 import {
   COOLDOWN_SECONDS,
@@ -55,10 +56,11 @@ const SAMPLE = `x\ty1\ty2
 
 const OUTPUT_MIN_HEIGHT = 273
 const SITE_URL = "https://convertexcel.net/"
+const convertUrls = localizedSiteUrls(SITE_URL, "/")
 
 export default function ConvertPage() {
   const { language, t, seo: seoText } = useI18n()
-  const canonical = language === "en" ? `${SITE_URL}en` : SITE_URL
+  const canonical = convertUrls[language]
   const pageSchema = useMemo(
     () => ({
       "@context": "https://schema.org",
@@ -86,9 +88,8 @@ export default function ConvertPage() {
     canonical,
     language,
     alternates: {
-      ja: SITE_URL,
-      en: `${SITE_URL}en`,
-      "x-default": SITE_URL,
+      ...convertUrls,
+      "x-default": convertUrls.ja,
     },
     schema: pageSchema,
   })
