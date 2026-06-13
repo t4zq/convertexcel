@@ -14,53 +14,77 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { useI18n } from "@/hooks/useI18n"
+import { useSeo } from "@/hooks/useSeo"
+
+const SITE_URL = "https://convertexcel.net/"
 
 export default function PrivacyPage() {
+  const { language, t, seo: seoText, pathFor } = useI18n()
+  const canonical = language === "en" ? `${SITE_URL}en/privacy` : `${SITE_URL}privacy`
+  const pageSchema = {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    name: seoText.privacyTitle,
+    url: canonical,
+    inLanguage: language,
+    description: seoText.privacyDescription,
+    isPartOf: {
+      "@type": "WebSite",
+      name: "converTeXcel",
+      url: SITE_URL,
+    },
+  }
+
+  useSeo({
+    title: seoText.privacyTitle,
+    description: seoText.privacyDescription,
+    canonical,
+    language,
+    alternates: {
+      ja: `${SITE_URL}privacy`,
+      en: `${SITE_URL}en/privacy`,
+      "x-default": `${SITE_URL}privacy`,
+    },
+    schema: pageSchema,
+  })
+
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-6">
       <header className="space-y-1">
-        <p className="text-muted-foreground text-sm font-medium tracking-wide uppercase">Privacy</p>
-        <h1 className="text-2xl font-semibold tracking-tight">プライバシーポリシー</h1>
-        <p className="text-muted-foreground text-sm">制定日: 2026年5月24日</p>
+        <p className="text-muted-foreground text-sm font-medium tracking-wide uppercase">{t.privacy.eyebrow}</p>
+        <h1 className="text-2xl font-semibold tracking-tight">{t.privacy.title}</h1>
+        <p className="text-muted-foreground text-sm">{t.privacy.date}</p>
       </header>
 
       <Card>
-        <CardHeader><CardTitle>はじめに / 収集する情報</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{t.privacy.introTitle}</CardTitle></CardHeader>
         <CardContent className="space-y-2 text-sm">
-          <p>本ポリシーは、converTeXcel の利用時に入力データや外部サービスがどのように扱われるかを説明します。</p>
-          <p>本ツールは、氏名・メールアドレス・IPアドレスなど利用者個人を特定できる情報を独自に収集・保存しません。</p>
+          <p>{t.privacy.intro1}</p>
+          <p>{t.privacy.intro2}</p>
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader><CardTitle>データの処理</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{t.privacy.dataTitle}</CardTitle></CardHeader>
         <CardContent className="space-y-2 text-sm">
-          <p>
-            入力された表データや数値データは、原則として利用者のブラウザ上(Rust/WebAssembly)で処理されます。
-            計算のためにサーバーへ自動送信することはありません。
-          </p>
-          <p>
-            入力内容や表示設定は、利便性のため利用者のブラウザ内の localStorage に保存される場合があります。
-            これらの情報は本ツールのサーバーへ自動送信されません。
-          </p>
-          <p>
-            共有リンクを作成した場合、入力内容はURL内に含まれます。共有リンクを第三者に送る場合は、
-            個人情報や機密情報が含まれていないことを確認してください。
-          </p>
+          <p>{t.privacy.data1}</p>
+          <p>{t.privacy.data2}</p>
+          <p>{t.privacy.data3}</p>
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader><CardTitle>外部サービスの利用</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{t.privacy.externalTitle}</CardTitle></CardHeader>
         <CardContent className="space-y-3 text-sm">
-          <p>PDF プレビュー機能のため、以下の外部サービスを利用します。</p>
+          <p>{t.privacy.externalIntro}</p>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>サービス</TableHead>
-                <TableHead>用途</TableHead>
-                <TableHead>送信されるデータ</TableHead>
-                <TableHead>利用タイミング</TableHead>
+                <TableHead>{t.privacy.service}</TableHead>
+                <TableHead>{t.privacy.purpose}</TableHead>
+                <TableHead>{t.privacy.sentData}</TableHead>
+                <TableHead>{t.privacy.timing}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -68,9 +92,9 @@ export default function PrivacyPage() {
                 <TableCell>
                   <a className="underline" href="https://texlive.net" target="_blank" rel="noopener">texlive.net</a>
                 </TableCell>
-                <TableCell>PDF プレビューの作成</TableCell>
-                <TableCell>表・グラフコードおよびグラフ用データ</TableCell>
-                <TableCell>確認ダイアログで同意した後</TableCell>
+                <TableCell>{t.privacy.previewPurpose}</TableCell>
+                <TableCell>{t.privacy.previewData}</TableCell>
+                <TableCell>{t.privacy.previewTiming}</TableCell>
               </TableRow>
             </TableBody>
           </Table>
@@ -78,19 +102,16 @@ export default function PrivacyPage() {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle>Cookie・トラッキング / ポリシーの変更</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{t.privacy.trackingTitle}</CardTitle></CardHeader>
         <CardContent className="space-y-2 text-sm">
-          <p>本ツールは Cookie を使用せず、広告トラッキングも行いません。</p>
-          <p>
-            検索結果での表示状況を確認するため Google Search Console を利用する場合がありますが、
-            本ツール上に利用者を追跡するためのタグやスクリプトを追加するものではありません。
-          </p>
-          <p>本ポリシーは必要に応じて更新され、変更時はこのページの内容を更新します。</p>
+          <p>{t.privacy.tracking1}</p>
+          <p>{t.privacy.tracking2}</p>
+          <p>{t.privacy.tracking3}</p>
         </CardContent>
       </Card>
 
       <p className="text-sm">
-        <Link to="/" className="underline underline-offset-4">変換に戻る</Link>
+        <Link to={pathFor("/")} className="underline underline-offset-4">{t.privacy.back}</Link>
       </p>
     </div>
   )

@@ -24,14 +24,17 @@ import { genCsvAttachment, isWasmAvailable } from "@/engine/loader"
 import { useCollapsibleHeight } from "@/hooks/useCollapsibleHeight"
 import { useConversionOutputs } from "@/hooks/useConversionOutputs"
 import { useCooldown } from "@/hooks/useCooldown"
+import { useI18n } from "@/hooks/useI18n"
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts"
 import { usePersistentState } from "@/hooks/usePersistentState"
+import { useSeo } from "@/hooks/useSeo"
 import { getSharedInput, useShareUrl } from "@/hooks/useShareUrl"
 import { useSplitResize } from "@/hooks/useSplitResize"
 import { useStatusSetter } from "@/hooks/useStatusBar"
 import {
   DEFAULT_TABLE_SETTINGS,
-  DEFAULT_TIKZ_SETTINGS,
+  getDefaultTikzSettings,
+  localizeDefaultTikzText,
   type TableSettings,
   type TikzSettings,
 } from "@/lib/convert-settings"
@@ -51,11 +54,48 @@ const SAMPLE = `x\ty1\ty2
 5\t7.2\t6.4`
 
 const OUTPUT_MIN_HEIGHT = 273
+const SITE_URL = "https://convertexcel.net/"
 
 export default function ConvertPage() {
+  const { language, t, seo: seoText } = useI18n()
+  const canonical = language === "en" ? `${SITE_URL}en` : SITE_URL
+  const pageSchema = useMemo(
+    () => ({
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      name: "converTeXcel",
+      url: canonical,
+      inLanguage: language,
+      applicationCategory: "EducationalApplication",
+      operatingSystem: "Web",
+      isAccessibleForFree: true,
+      description: seoText.convertDescription,
+      featureList: [...seoText.features],
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "JPY",
+      },
+    }),
+    [canonical, language, seoText.convertDescription, seoText.features],
+  )
+
+  useSeo({
+    title: seoText.convertTitle,
+    description: seoText.convertDescription,
+    canonical,
+    language,
+    alternates: {
+      ja: SITE_URL,
+      en: `${SITE_URL}en`,
+      "x-default": SITE_URL,
+    },
+    schema: pageSchema,
+  })
+
   const [input, setInput] = usePersistentState("convertexcel:input", "")
   const [table, setTable] = usePersistentState("convertexcel:table", DEFAULT_TABLE_SETTINGS)
-  const [tikz, setTikz] = usePersistentState("convertexcel:tikz", DEFAULT_TIKZ_SETTINGS)
+  const [tikz, setTikz] = usePersistentState("convertexcel:tikz", getDefaultTikzSettings(language))
   const [inputMode, setInputMode] = useState<"paste" | "form">("paste")
   const [formKey, setFormKey] = useState(0)
   const [showInputSettings, setShowInputSettings] = useState(false)
@@ -67,6 +107,10 @@ export default function ConvertPage() {
 
   const updateTable = (patch: Partial<TableSettings>) => setTable((s) => ({ ...s, ...patch }))
   const updateTikz = (patch: Partial<TikzSettings>) => setTikz((s) => ({ ...s, ...patch }))
+
+  useEffect(() => {
+    setTikz((current) => localizeDefaultTikzText(current, language))
+  }, [language, setTikz])
 
   // 入力が空のときはサンプルを「透過した例」として表示する。
   // 出力・診断・PDF はこの実効ソースから生成し、ユーザーが入力すると実データに切り替わる。
@@ -109,9 +153,9 @@ export default function ConvertPage() {
     () =>
       Array.from({ length: seriesCount }, (_, i) => {
         const col = diagnostics.numericColumns.find((c) => c.index === i + 1)
-        return col?.name ?? `系列${i + 1}`
+        return col?.name ?? t.convert.series(i + 1)
       }),
-    [seriesCount, diagnostics.numericColumns]
+    [seriesCount, diagnostics.numericColumns, t.convert]
   )
 
   // 透過表示中のコードは閲覧用の例なので、編集や選択を無効化する。
@@ -165,11 +209,11 @@ export default function ConvertPage() {
     <div className="w-full space-y-4 p-4 sm:p-6">
       <header className="space-y-1">
         <p className="text-muted-foreground text-sm font-medium tracking-wide uppercase">
-          Table · CSV · PGFPlots
+          {t.convert.eyebrow}
         </p>
-        <h1 className="text-2xl font-semibold tracking-tight">変換</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t.convert.title}</h1>
         <p className="text-muted-foreground text-sm">
-          貼り付けた表から LaTeX 表 / CSV / TikZ(PGFPlots) を生成します。変換後のコードはそのまま編集できます。
+          {t.convert.intro}
         </p>
       </header>
 
@@ -178,11 +222,11 @@ export default function ConvertPage() {
           <CardHeader>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <CardTitle>入力データ</CardTitle>
+                <CardTitle>{t.convert.inputTitle}</CardTitle>
                 <CardDescription>
                   {inputMode === "paste"
-                    ? "タブ区切り / カンマ区切りの表を貼り付けてください。"
-                    : "列ヘッダーと数値を直接入力できます。Enter で次の行へ移動します。"}
+                    ? t.convert.pasteDescription
+                    : t.convert.formDescription}
                 </CardDescription>
               </div>
               <div className="flex items-center gap-2">
@@ -190,7 +234,7 @@ export default function ConvertPage() {
                   <button
                     type="button"
                     onClick={() => setInputMode("paste")}
-                    title="テキストを貼り付け"
+                    title={t.convert.pasteTitle}
                     className={`inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors ${
                       inputMode === "paste"
                         ? "bg-background text-foreground shadow-sm"
@@ -198,7 +242,7 @@ export default function ConvertPage() {
                     }`}
                   >
                     <ClipboardPaste className="h-3 w-3" />
-                    貼り付け
+                    {t.convert.paste}
                   </button>
                   <button
                     type="button"
@@ -206,7 +250,7 @@ export default function ConvertPage() {
                       setFormKey((k) => k + 1)
                       setInputMode("form")
                     }}
-                    title="フォームで入力"
+                    title={t.convert.formTitle}
                     className={`inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors ${
                       inputMode === "form"
                         ? "bg-background text-foreground shadow-sm"
@@ -214,7 +258,7 @@ export default function ConvertPage() {
                     }`}
                   >
                     <Table2 className="h-3 w-3" />
-                    フォーム入力
+                    {t.convert.form}
                   </button>
                 </div>
                 <Button
@@ -222,10 +266,10 @@ export default function ConvertPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setShareDialogOpen(true)}
-                  title="共有リンク・QRコードを表示"
+                  title={t.convert.shareTitle}
                   className="gap-1.5 text-xs"
                 >
-                  <Link2 className="h-3.5 w-3.5" /> 共有
+                  <Link2 className="h-3.5 w-3.5" /> {t.convert.share}
                 </Button>
               </div>
             </div>
@@ -258,10 +302,10 @@ export default function ConvertPage() {
                   variant="secondary"
                   size="icon"
                   onClick={() => setShowInputSettings((v) => !v)}
-                  title={showInputSettings ? "入力設定を隠す" : "入力設定を表示"}
+                  title={showInputSettings ? t.convert.hideInputSettings : t.convert.showInputSettings}
                 >
                   <Settings2 className="h-4 w-4" />
-                  <span className="sr-only">{showInputSettings ? "入力設定を隠す" : "入力設定を表示"}</span>
+                  <span className="sr-only">{showInputSettings ? t.convert.hideInputSettings : t.convert.showInputSettings}</span>
                 </Button>
               </div>
               {showInputSettings && <InputSettingsPanel value={table} onChange={updateTable} />}
@@ -271,7 +315,7 @@ export default function ConvertPage() {
 
         <div
           role="separator"
-          aria-label="入力データと作業エリアの高さを調整"
+          aria-label={t.convert.inputResizeLabel}
           aria-orientation="horizontal"
           aria-valuemin={inputArea.min}
           aria-valuemax={inputArea.max}
@@ -281,7 +325,7 @@ export default function ConvertPage() {
           className={`flex h-5 cursor-row-resize touch-none items-center justify-center rounded-md transition-colors ${
             inputArea.isResizing ? "bg-primary/15" : "hover:bg-accent"
           }`}
-          title="下にドラッグして入力欄を表示、上下にドラッグして高さを調整"
+          title={t.convert.inputResizeTitle}
         >
           <span className="h-1 w-full max-w-5xl rounded-full bg-border" />
         </div>
@@ -296,8 +340,8 @@ export default function ConvertPage() {
         >
         <Card>
           <CardHeader>
-            <CardTitle>変換結果</CardTitle>
-            <CardDescription>生成コードは編集できます。PDF プレビューには編集後の内容を使います。</CardDescription>
+            <CardTitle>{t.convert.outputTitle}</CardTitle>
+            <CardDescription>{t.convert.outputDescription}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <CsvActions value={csvOut} />
@@ -308,12 +352,12 @@ export default function ConvertPage() {
               </TabsList>
               <TabsContent value="latex" className="space-y-2">
                 <div className="flex flex-wrap justify-end gap-2">
-                  <Button size="icon" onClick={handlePreview} disabled={cooldown > 0 || !latexOut.trim()} title="表PDFを作成 (Ctrl+Enter)">
+                  <Button size="icon" onClick={handlePreview} disabled={cooldown > 0 || !latexOut.trim()} title={`${t.convert.previewTable} (Ctrl+Enter)`}>
                     <FileText className="h-4 w-4" />
-                    <span className="sr-only">表PDFを作成</span>
+                    <span className="sr-only">{t.convert.previewTable}</span>
                   </Button>
-                  <CopyButton value={latexOut} label="table.texをコピー" />
-                  {cooldown > 0 && <span className="text-muted-foreground self-center text-sm">次の送信まで {cooldown} 秒</span>}
+                  <CopyButton value={latexOut} label={t.convert.copyTable} />
+                  {cooldown > 0 && <span className="text-muted-foreground self-center text-sm">{t.convert.cooldown(cooldown)}</span>}
                 </div>
                 <div className={ghost}>
                   <CodeAssistEditor kind="latex" value={latexOut} onChange={setLatexOut} minHeight={OUTPUT_MIN_HEIGHT} />
@@ -326,17 +370,17 @@ export default function ConvertPage() {
                     variant="secondary"
                     size="icon"
                     onClick={() => setShowTikzSettings((v) => !v)}
-                    title={showTikzSettings ? "簡易設定を隠す" : "簡易設定を表示"}
+                    title={showTikzSettings ? t.convert.hideTikzSettings : t.convert.showTikzSettings}
                   >
                     <Settings2 className="h-4 w-4" />
-                    <span className="sr-only">{showTikzSettings ? "簡易設定を隠す" : "簡易設定を表示"}</span>
+                    <span className="sr-only">{showTikzSettings ? t.convert.hideTikzSettings : t.convert.showTikzSettings}</span>
                   </Button>
-                  <Button size="icon" onClick={handlePreview} disabled={cooldown > 0 || !tikzOut.trim()} title="グラフPDFを作成 (Ctrl+Enter)">
+                  <Button size="icon" onClick={handlePreview} disabled={cooldown > 0 || !tikzOut.trim()} title={`${t.convert.previewGraph} (Ctrl+Enter)`}>
                     <FileText className="h-4 w-4" />
-                    <span className="sr-only">グラフPDFを作成</span>
+                    <span className="sr-only">{t.convert.previewGraph}</span>
                   </Button>
-                  <CopyButton value={tikzOut} label="plot.pgfplotsをコピー" />
-                  {cooldown > 0 && <span className="text-muted-foreground self-center text-sm">次の送信まで {cooldown} 秒</span>}
+                  <CopyButton value={tikzOut} label={t.convert.copyPlot} />
+                  {cooldown > 0 && <span className="text-muted-foreground self-center text-sm">{t.convert.cooldown(cooldown)}</span>}
                 </div>
                 {showTikzSettings && (
                   <TikzSettingsPanel
@@ -356,7 +400,7 @@ export default function ConvertPage() {
 
         <div
           role="separator"
-          aria-label="変換結果とPDFプレビューの幅を調整"
+          aria-label={t.convert.splitResizeLabel}
           aria-orientation="vertical"
           aria-valuemin={split.min}
           aria-valuemax={split.max}
@@ -366,15 +410,15 @@ export default function ConvertPage() {
           className={`hidden cursor-col-resize touch-none items-stretch justify-center rounded-md transition-colors xl:flex ${
             split.isResizing ? "bg-primary/15" : "hover:bg-accent"
           }`}
-          title="左右にドラッグして幅を調整"
+          title={t.convert.splitResizeTitle}
         >
           <span className="my-4 w-1 rounded-full bg-border" />
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>PDF プレビュー</CardTitle>
-            <CardDescription>左の生成コードを texlive.net で PDF にします。</CardDescription>
+            <CardTitle>{t.convert.pdfTitle}</CardTitle>
+            <CardDescription>{t.convert.pdfDescription}</CardDescription>
           </CardHeader>
           <CardContent>
             <iframe

@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { useI18n } from "@/hooks/useI18n"
 import { COOLDOWN_SECONDS } from "@/lib/texlive"
 
 interface PreviewConsentDialogProps {
@@ -16,19 +17,20 @@ interface PreviewConsentDialogProps {
 }
 
 export function PreviewConsentDialog({ open, onCancel, onAccept }: PreviewConsentDialogProps) {
+  const { t } = useI18n()
+
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onCancel()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>PDF プレビューの送信確認</DialogTitle>
+          <DialogTitle>{t.previewConsent.title}</DialogTitle>
           <DialogDescription>
-            PDF を作成するため、入力データと生成コードを texlive.net へ送信します。
-            連続送信を避けるため、送信後 {COOLDOWN_SECONDS} 秒のクールダウンを設けます。
+            {t.previewConsent.description(COOLDOWN_SECONDS)}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="secondary" onClick={onCancel}>キャンセル</Button>
-          <Button onClick={onAccept}>同意して送信</Button>
+          <Button variant="secondary" onClick={onCancel}>{t.previewConsent.cancel}</Button>
+          <Button onClick={onAccept}>{t.previewConsent.accept}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

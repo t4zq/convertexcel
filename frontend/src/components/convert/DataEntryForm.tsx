@@ -1,6 +1,8 @@
 import { useCallback, useId, useState } from "react"
 import { Plus, X } from "lucide-react"
 
+import { useI18n } from "@/hooks/useI18n"
+
 interface DataEntryFormProps {
   initialValue: string
   onChange: (tsv: string) => void
@@ -51,6 +53,7 @@ function serialize(grid: GridState): string {
 
 export function DataEntryForm({ initialValue, onChange }: DataEntryFormProps) {
   const uid = useId()
+  const { t } = useI18n()
   const [grid, setGrid] = useState<GridState>(() => parseTsv(initialValue))
 
   const update = useCallback(
@@ -134,13 +137,13 @@ export function DataEntryForm({ initialValue, onChange }: DataEntryFormProps) {
                     onChange={(e) => setHeader(col, e.target.value)}
                     placeholder={col === 0 ? "x" : `y${col}`}
                     className="h-7 w-20 rounded border border-input bg-muted px-1.5 text-center text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-ring"
-                    aria-label={`列 ${col + 1} のヘッダー`}
+                    aria-label={t.dataForm.headerLabel(col + 1)}
                   />
                   {colCount > 1 && (
                     <button
                       type="button"
                       onClick={() => removeColumn(col)}
-                      title="列を削除"
+                      title={t.dataForm.removeColumn}
                       className="absolute -right-2 -top-2 hidden h-4 w-4 items-center justify-center rounded-full bg-destructive/80 text-destructive-foreground group-hover:flex"
                     >
                       <X className="h-2.5 w-2.5" />
@@ -153,7 +156,7 @@ export function DataEntryForm({ initialValue, onChange }: DataEntryFormProps) {
               <button
                 type="button"
                 onClick={addColumn}
-                title="列を追加"
+                title={t.dataForm.addColumn}
                 className="flex h-7 w-7 items-center justify-center rounded hover:bg-accent"
               >
                 <Plus className="h-3.5 w-3.5" />
@@ -176,7 +179,7 @@ export function DataEntryForm({ initialValue, onChange }: DataEntryFormProps) {
                     onKeyDown={(e) => handleCellKey(e, rowIndex, col)}
                     placeholder="0"
                     className="h-7 w-20 rounded border border-input bg-background px-1.5 text-right font-mono text-xs focus:outline-none focus:ring-1 focus:ring-ring"
-                    aria-label={`行 ${rowIndex + 1}、${grid.headers[col] || `列 ${col + 1}`}`}
+                    aria-label={t.dataForm.cellLabel(rowIndex + 1, grid.headers[col], col + 1)}
                   />
                 </td>
               ))}
@@ -186,7 +189,7 @@ export function DataEntryForm({ initialValue, onChange }: DataEntryFormProps) {
                 <button
                   type="button"
                   onClick={() => removeRow(rowIndex)}
-                  title="行を削除"
+                  title={t.dataForm.removeRow}
                   disabled={grid.rows.length <= 1}
                   className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:pointer-events-none disabled:opacity-30"
                 >
@@ -203,7 +206,7 @@ export function DataEntryForm({ initialValue, onChange }: DataEntryFormProps) {
         className="flex items-center gap-1 px-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
       >
         <Plus className="h-3 w-3" />
-        行を追加
+        {t.dataForm.addRow}
       </button>
     </div>
   )

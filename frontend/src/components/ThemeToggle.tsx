@@ -1,11 +1,13 @@
 import { Moon, Sun } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { useI18n } from "@/hooks/useI18n"
 import { useTheme } from "@/hooks/useTheme"
 
 export function ThemeToggle() {
   const { theme, toggle } = useTheme()
-  const label = theme === "dark" ? "ライトモードに切替" : "ダークモードに切替"
+  const { t } = useI18n()
+  const label = theme === "dark" ? t.theme.light : t.theme.dark
 
   return (
     <Button variant="ghost" size="icon" onClick={toggle} title={label}>
