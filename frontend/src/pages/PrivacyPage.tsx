@@ -39,7 +39,14 @@ export default function PrivacyPage() {
             入力された表データや数値データは、原則として利用者のブラウザ上(Rust/WebAssembly)で処理されます。
             計算のためにサーバーへ自動送信することはありません。
           </p>
-          <p>ページを離れると入力内容は失われます（明示的に保存操作を行った場合を除く）。</p>
+          <p>
+            入力内容や表示設定は、利便性のため利用者のブラウザ内の localStorage に保存される場合があります。
+            これらの情報は本ツールのサーバーへ自動送信されません。
+          </p>
+          <p>
+            共有リンクを作成した場合、入力内容はURL内に含まれます。共有リンクを第三者に送る場合は、
+            個人情報や機密情報が含まれていないことを確認してください。
+          </p>
         </CardContent>
       </Card>
 
@@ -73,7 +80,11 @@ export default function PrivacyPage() {
       <Card>
         <CardHeader><CardTitle>Cookie・トラッキング / ポリシーの変更</CardTitle></CardHeader>
         <CardContent className="space-y-2 text-sm">
-          <p>本ツールは Cookie を使用せず、アクセス解析や広告トラッキングも行いません。</p>
+          <p>本ツールは Cookie を使用せず、広告トラッキングも行いません。</p>
+          <p>
+            検索結果での表示状況を確認するため Google Search Console を利用する場合がありますが、
+            本ツール上に利用者を追跡するためのタグやスクリプトを追加するものではありません。
+          </p>
           <p>本ポリシーは必要に応じて更新され、変更時はこのページの内容を更新します。</p>
         </CardContent>
       </Card>
