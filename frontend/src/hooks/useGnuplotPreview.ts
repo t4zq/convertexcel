@@ -1,0 +1,40 @@
+import { useCallback, useEffect, useState } from "react"
+
+import { renderGnuplotSvg } from "@/lib/gnuplot"
+
+export function useGnuplotPreview(script: string, errorMessage: string) {
+  const [svg, setSvg] = useState<string | null>(null)
+  const [rendering, setRendering] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const renderPreview = useCallback(async () => {
+    if (!script.trim()) return
+    setRendering(true)
+    setError(null)
+    try {
+      setSvg(await renderGnuplotSvg(script))
+    } catch {
+      setSvg(null)
+      setError(errorMessage)
+    } finally {
+      setRendering(false)
+    }
+  }, [script, errorMessage])
+
+  const markImageActionFailed = useCallback(() => {
+    setError(errorMessage)
+  }, [errorMessage])
+
+  useEffect(() => {
+    setSvg(null)
+    setError(null)
+  }, [script])
+
+  return {
+    svg,
+    rendering,
+    error,
+    renderPreview,
+    markImageActionFailed,
+  }
+}

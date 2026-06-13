@@ -79,6 +79,13 @@ const PGFPLOTS_OPTIONS = [
   { label: "smooth", apply: "smooth", detail: "曲線化" },
 ]
 
+const CODE_EDITOR_LABELS: Record<CodeKind, string> = {
+  latex: "LaTeX code editor",
+  csv: "CSV code editor",
+  tikz: "TikZ code editor",
+  gnuplot: "gnuplot code editor",
+}
+
 const texHighlightStyle = HighlightStyle.define([
   { tag: t.keyword, color: "#1d4ed8", fontWeight: "600" },
   { tag: t.controlKeyword, color: "#1d4ed8", fontWeight: "600" },
@@ -236,6 +243,9 @@ export function CodeAssistEditor({
       ...searchKeymap,
     ]),
     EditorView.lineWrapping,
+    EditorView.contentAttributes.of({
+      "aria-label": CODE_EDITOR_LABELS[kind],
+    }),
     EditorView.theme({
       "&": {
         minHeight: `${minHeight}px`,

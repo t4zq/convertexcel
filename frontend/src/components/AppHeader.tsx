@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom"
 
-import logo from "@/assets/logo.png"
-import logoDark from "@/assets/logo-dark.png"
+import logo from "@/assets/logo-2x.webp"
+import logoDark from "@/assets/logo-dark-2x.webp"
 import { ThemeToggle } from "@/components/ThemeToggle"
 import { useI18n } from "@/hooks/useI18n"
 import { LANGUAGE_NAMES, LANGUAGE_SHORT_LABELS, SUPPORTED_LANGUAGES } from "@/lib/i18n"
@@ -17,8 +17,8 @@ export function AppHeader() {
     <header className="border-b">
       <div className="flex w-full flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3 sm:px-6">
         <NavLink to={pathFor("/")} className="shrink-0" aria-label="converTeXcel">
-          <img src={logo} alt="converTeXcel" className="h-9 w-auto dark:hidden" />
-          <img src={logoDark} alt="converTeXcel" className="hidden h-9 w-auto dark:block" />
+          <img src={logo} alt="converTeXcel" width={209} height={36} className="h-9 w-auto dark:hidden" />
+          <img src={logoDark} alt="converTeXcel" width={209} height={36} className="hidden h-9 w-auto dark:block" />
         </NavLink>
         <nav className="flex flex-1 flex-wrap items-center gap-2" aria-label={t.nav.aria}>
           {tools.map((item) => (

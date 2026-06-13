@@ -37,6 +37,14 @@ function encodeState(state: ShareState): string {
   }))
 }
 
+export function createShareHash(state: ShareState): string {
+  return SHARE_STATE_PREFIX + encodeState(state)
+}
+
+export function createShareUrl(baseUrl: string, state: ShareState): string {
+  return `${baseUrl.replace(/#.*$/, "")}#${createShareHash(state)}`
+}
+
 function decodeState(hashValue: string): ShareState | null {
   const raw = decode(hashValue)
   if (!raw) return null
@@ -84,7 +92,7 @@ export function useShareUrl(state: ShareState, hasShareContent: boolean) {
   const copyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const writeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
-  const hash = SHARE_STATE_PREFIX + encodeState(state)
+  const hash = createShareHash(state)
   // 現在の状態に対応する共有 URL（ハッシュ書き込みより先行して計算）。
   const shareUrl = hasShareContent
     ? `${location.origin}${location.pathname}${location.search}#${hash}`

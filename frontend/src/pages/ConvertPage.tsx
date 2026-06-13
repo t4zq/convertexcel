@@ -1,11 +1,12 @@
 import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { CheckCircle2, ClipboardPaste, Copy, Download, FileText, Link2, LoaderCircle, Settings2, Table2 } from "lucide-react"
+import { CheckCircle2, ClipboardPaste, FileText, Link2, LoaderCircle, Settings2, Table2 } from "lucide-react"
 
 import { CodeAssistEditor } from "@/components/CodeAssistEditor"
 import { ShareDialog } from "@/components/ShareDialog"
 import { CopyButton } from "@/components/convert/CopyButton"
 import { CsvActions } from "@/components/convert/CsvActions"
 import { DataEntryForm } from "@/components/convert/DataEntryForm"
+import { GnuplotPreviewPane } from "@/components/convert/GnuplotPreviewPane"
 import { InputDiagnosticsPanel } from "@/components/convert/InputDiagnosticsPanel"
 import { InputSettingsPanel } from "@/components/convert/InputSettingsPanel"
 import { PreviewConsentDialog } from "@/components/convert/PreviewConsentDialog"
@@ -22,11 +23,10 @@ import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { genCsvAttachment, isWasmAvailable } from "@/engine/loader"
-import { renderGnuplotSvg } from "@/lib/gnuplot"
-import { copyPngToClipboard, downloadBlob, svgToPngBlob } from "@/lib/svg-to-png"
 import { useCollapsibleHeight } from "@/hooks/useCollapsibleHeight"
 import { useConversionOutputs } from "@/hooks/useConversionOutputs"
 import { useCooldown } from "@/hooks/useCooldown"
+import { useGnuplotPreview } from "@/hooks/useGnuplotPreview"
 import { useI18n } from "@/hooks/useI18n"
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts"
 import { usePersistentState } from "@/hooks/usePersistentState"
@@ -117,11 +117,6 @@ export default function ConvertPage() {
     progress: 0,
   })
   const [activeTab, setActiveTab] = useState<"latex" | "tikz" | "gnuplot">("latex")
-  // gnuplot プレビューはクライアント内 SVG 描画（外部送信・同意・クールダウン不要）。
-  const [gnuplotSvg, setGnuplotSvg] = useState<string | null>(null)
-  const [gnuplotRendering, setGnuplotRendering] = useState(false)
-  const [gnuplotErr, setGnuplotErr] = useState<string | null>(null)
-  const [imageCopied, setImageCopied] = useState(false)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const previewDoneTimerRef = useRef<number | null>(null)
   const setStatus = useStatusSetter()
@@ -140,6 +135,14 @@ export default function ConvertPage() {
 
   const { latexOut, csvOut, tikzOut, gnuplotOut, setLatexOut, setTikzOut, setGnuplotOut } = useConversionOutputs(source, table, tikz)
   const { cooldown, startCooldown } = useCooldown()
+  // gnuplot プレビューはクライアント内 SVG 描画（外部送信・同意・クールダウン不要）。
+  const {
+    svg: gnuplotSvg,
+    rendering: gnuplotRendering,
+    error: gnuplotErr,
+    renderPreview: renderGnuplotPreview,
+    markImageActionFailed,
+  } = useGnuplotPreview(gnuplotOut, t.convert.gnuplotError)
   const inputArea = useCollapsibleHeight()
   const split = useSplitResize()
   const [shareDialogOpen, setShareDialogOpen] = useState(false)
@@ -168,62 +171,16 @@ export default function ConvertPage() {
     if (shared.activeTab) setActiveTab(shared.activeTab)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // gnuplot-wasm をブラウザ内で実行し SVG を描画する。texlive 経路を通らない。
-  const handleGnuplotPreview = useCallback(async () => {
-    if (!gnuplotOut.trim()) return
-    setGnuplotRendering(true)
-    setGnuplotErr(null)
-    try {
-      const svg = await renderGnuplotSvg(gnuplotOut)
-      setGnuplotSvg(svg)
-    } catch {
-      setGnuplotSvg(null)
-      setGnuplotErr(t.convert.gnuplotError)
-    } finally {
-      setGnuplotRendering(false)
-    }
-  }, [gnuplotOut, t.convert.gnuplotError])
-
-  // プレビュー SVG を PNG 化してクリップボードへコピー。
-  const handleCopyImage = useCallback(async () => {
-    if (!gnuplotSvg) return
-    try {
-      const png = await svgToPngBlob(gnuplotSvg)
-      await copyPngToClipboard(png)
-      setImageCopied(true)
-      setTimeout(() => setImageCopied(false), 1500)
-    } catch {
-      setGnuplotErr(t.convert.gnuplotError)
-    }
-  }, [gnuplotSvg, t.convert.gnuplotError])
-
-  // プレビュー SVG を PNG 化して保存（ダウンロード）。
-  const handleSaveImage = useCallback(async () => {
-    if (!gnuplotSvg) return
-    try {
-      const png = await svgToPngBlob(gnuplotSvg)
-      downloadBlob(png, "plot.png")
-    } catch {
-      setGnuplotErr(t.convert.gnuplotError)
-    }
-  }, [gnuplotSvg, t.convert.gnuplotError])
-
-  // 生成スクリプトが変われば前回の描画結果は古くなるので消す（古い画像のコピー防止）。
-  useEffect(() => {
-    setGnuplotSvg(null)
-    setGnuplotErr(null)
-  }, [gnuplotOut])
-
   const handlePreview = useCallback(() => {
     if (activeTab === "gnuplot") {
-      void handleGnuplotPreview()
+      void renderGnuplotPreview()
       return
     }
     if (cooldown > 0) return
     const out = activeTab === "latex" ? latexOut : tikzOut
     if (!out.trim()) return
     setPending(activeTab)
-  }, [cooldown, activeTab, latexOut, tikzOut, handleGnuplotPreview])
+  }, [cooldown, activeTab, latexOut, tikzOut, renderGnuplotPreview])
 
   useKeyboardShortcuts({
     onPreview: handlePreview,
@@ -428,12 +385,12 @@ export default function ConvertPage() {
                 <Button
                   type="button"
                   variant="secondary"
-                  size="icon"
+                  size="sm"
                   onClick={() => setShowInputSettings((v) => !v)}
                   title={showInputSettings ? t.convert.hideInputSettings : t.convert.showInputSettings}
                 >
                   <Settings2 className="h-4 w-4" />
-                  <span className="sr-only">{showInputSettings ? t.convert.hideInputSettings : t.convert.showInputSettings}</span>
+                  <span>{showInputSettings ? t.convert.hideInputSettings : t.convert.showInputSettings}</span>
                 </Button>
               </div>
               {showInputSettings && <InputSettingsPanel value={table} onChange={updateTable} />}
@@ -481,9 +438,9 @@ export default function ConvertPage() {
               </TabsList>
               <TabsContent value="latex" className="space-y-2">
                 <div className="flex flex-wrap justify-end gap-2">
-                  <Button size="icon" onClick={handlePreview} disabled={cooldown > 0 || !latexOut.trim()} title={`${t.convert.previewTable} (Ctrl+Enter)`}>
+                  <Button size="sm" onClick={handlePreview} disabled={cooldown > 0 || !latexOut.trim()} title={`${t.convert.previewTable} (Ctrl+Enter)`}>
                     <FileText className="h-4 w-4" />
-                    <span className="sr-only">{t.convert.previewTable}</span>
+                    <span>{t.convert.previewTable}</span>
                   </Button>
                   <CopyButton value={latexOut} label={t.convert.copyTable} />
                   {cooldown > 0 && <span className="text-muted-foreground self-center text-sm">{t.convert.cooldown(cooldown)}</span>}
@@ -497,16 +454,16 @@ export default function ConvertPage() {
                   <Button
                     type="button"
                     variant="secondary"
-                    size="icon"
+                    size="sm"
                     onClick={() => setShowTikzSettings((v) => !v)}
                     title={showTikzSettings ? t.convert.hideTikzSettings : t.convert.showTikzSettings}
                   >
                     <Settings2 className="h-4 w-4" />
-                    <span className="sr-only">{showTikzSettings ? t.convert.hideTikzSettings : t.convert.showTikzSettings}</span>
+                    <span>{showTikzSettings ? t.convert.hideTikzSettings : t.convert.showTikzSettings}</span>
                   </Button>
-                  <Button size="icon" onClick={handlePreview} disabled={cooldown > 0 || !tikzOut.trim()} title={`${t.convert.previewGraph} (Ctrl+Enter)`}>
+                  <Button size="sm" onClick={handlePreview} disabled={cooldown > 0 || !tikzOut.trim()} title={`${t.convert.previewGraph} (Ctrl+Enter)`}>
                     <FileText className="h-4 w-4" />
-                    <span className="sr-only">{t.convert.previewGraph}</span>
+                    <span>{t.convert.previewGraph}</span>
                   </Button>
                   <CopyButton value={tikzOut} label={t.convert.copyPlot} />
                   {cooldown > 0 && <span className="text-muted-foreground self-center text-sm">{t.convert.cooldown(cooldown)}</span>}
@@ -525,9 +482,9 @@ export default function ConvertPage() {
               </TabsContent>
               <TabsContent value="gnuplot" className="space-y-2">
                 <div className="flex flex-wrap justify-end gap-2">
-                  <Button size="icon" onClick={handlePreview} disabled={gnuplotRendering || !gnuplotOut.trim()} title={`${t.convert.previewGnuplot} (Ctrl+Enter)`}>
+                  <Button size="sm" onClick={handlePreview} disabled={gnuplotRendering || !gnuplotOut.trim()} title={`${t.convert.previewGnuplot} (Ctrl+Enter)`}>
                     {gnuplotRendering ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
-                    <span className="sr-only">{t.convert.previewGnuplot}</span>
+                    <span>{t.convert.previewGnuplot}</span>
                   </Button>
                   <CopyButton value={gnuplotOut} label={t.convert.copyPlotGnuplot} />
                 </div>
@@ -565,41 +522,12 @@ export default function ConvertPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             {activeTab === "gnuplot" ? (
-              <div className="space-y-2">
-              {gnuplotSvg && !gnuplotRendering && (
-                <div className="flex flex-wrap justify-end gap-2">
-                  <Button size="icon" variant="secondary" onClick={handleCopyImage} title={imageCopied ? t.convert.imageCopied : t.convert.copyImage}>
-                    <Copy className="h-4 w-4" />
-                    <span className="sr-only">{imageCopied ? t.convert.imageCopied : t.convert.copyImage}</span>
-                  </Button>
-                  <Button size="icon" variant="secondary" onClick={handleSaveImage} title={t.convert.saveImage}>
-                    <Download className="h-4 w-4" />
-                    <span className="sr-only">{t.convert.saveImage}</span>
-                  </Button>
-                </div>
-              )}
-              <div className="h-[420px] w-full overflow-auto rounded-md border xl:h-[760px]">
-                {gnuplotRendering ? (
-                  <div className="flex h-full items-center justify-center gap-2 text-muted-foreground text-sm">
-                    <LoaderCircle className="h-4 w-4 animate-spin text-info" />
-                    {t.convert.gnuplotRendering}
-                  </div>
-                ) : gnuplotErr ? (
-                  <div className="flex h-full items-center justify-center px-4 text-center text-destructive text-sm">
-                    {gnuplotErr}
-                  </div>
-                ) : gnuplotSvg ? (
-                  <div
-                    className="flex h-full w-full items-center justify-center bg-white p-2 [&_svg]:h-auto [&_svg]:max-h-full [&_svg]:w-auto [&_svg]:max-w-full dark:[filter:invert(1)_hue-rotate(180deg)]"
-                    dangerouslySetInnerHTML={{ __html: gnuplotSvg }}
-                  />
-                ) : (
-                  <div className="flex h-full items-center justify-center px-4 text-center text-muted-foreground text-sm">
-                    {t.convert.previewGnuplot}
-                  </div>
-                )}
-              </div>
-              </div>
+              <GnuplotPreviewPane
+                svg={gnuplotSvg}
+                rendering={gnuplotRendering}
+                error={gnuplotErr}
+                onImageActionError={markImageActionFailed}
+              />
             ) : (
             <>
             {previewStatus.phase !== "idle" && (

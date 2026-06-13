@@ -53,3 +53,6 @@ if (!engineBuilt) {
 
 run("npm", ["ci"], { cwd: "frontend" })
 run("npm", ["run", "build"], { cwd: "frontend" })
+// Excel アドインを frontend/dist/addin に同梱する。メインの build が dist を
+// 空にするため、必ずその後に実行する。
+run("npm", ["run", "build:addin"], { cwd: "frontend" })
