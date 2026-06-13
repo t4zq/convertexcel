@@ -1,9 +1,17 @@
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { useI18n } from "@/hooks/useI18n"
 import type { TableSettings } from "@/lib/convert-settings"
+import { tableAlignmentLabels } from "@/lib/table-alignment-labels"
 
 interface InputSettingsPanelProps {
   value: TableSettings
@@ -11,10 +19,11 @@ interface InputSettingsPanelProps {
 }
 
 export function InputSettingsPanel({ value, onChange }: InputSettingsPanelProps) {
-  const { t } = useI18n()
+  const { language, t } = useI18n()
+  const alignText = tableAlignmentLabels[language]
 
   return (
-    <div className="grid gap-4 md:grid-cols-[minmax(220px,0.8fr)_minmax(260px,1fr)_minmax(220px,0.8fr)]">
+    <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
       <div className="space-y-2">
         <Label>{t.settings.rounding}</Label>
         <RadioGroup
@@ -42,6 +51,26 @@ export function InputSettingsPanel({ value, onChange }: InputSettingsPanelProps)
           <Label htmlFor="sigfigs">{t.settings.sigFigs}</Label>
           <Input id="sigfigs" type="number" min={1} value={value.sigFigs} onChange={(e) => onChange({ sigFigs: Number(e.target.value) })} />
         </div>
+      </div>
+      <div className="space-y-1">
+        <Label>{alignText.columnAlign}</Label>
+        <Select
+          value={value.columnAlign}
+          onValueChange={(v) => onChange({ columnAlign: v as TableSettings["columnAlign"] })}
+          disabled={value.siunitx}
+        >
+          <SelectTrigger className="w-full min-w-0">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="left">{alignText.alignLeft}</SelectItem>
+            <SelectItem value="center">{alignText.alignCenter}</SelectItem>
+            <SelectItem value="right">{alignText.alignRight}</SelectItem>
+          </SelectContent>
+        </Select>
+        {value.siunitx && (
+          <p className="text-muted-foreground text-xs">{alignText.siunitxHint}</p>
+        )}
       </div>
       <div className="grid gap-2">
         <label className="flex items-center gap-2 text-sm"><Switch checked={value.hasHeader} onCheckedChange={(v) => onChange({ hasHeader: v })} /> {t.settings.hasHeader}</label>

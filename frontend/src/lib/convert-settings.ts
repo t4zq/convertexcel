@@ -7,6 +7,7 @@ export interface TableSettings {
   roundMode: "none" | "decimal" | "sig-figs"
   decimals: number
   sigFigs: number
+  columnAlign: "left" | "center" | "right"
   hasHeader: boolean
   cleanInput: boolean
   booktabs: boolean
@@ -34,6 +35,7 @@ export const DEFAULT_TABLE_SETTINGS: TableSettings = {
   roundMode: "none",
   decimals: 2,
   sigFigs: 3,
+  columnAlign: "center",
   hasHeader: true,
   cleanInput: true,
   booktabs: true,
