@@ -4,6 +4,7 @@ import logo from "@/assets/logo-2x.webp"
 import logoDark from "@/assets/logo-dark-2x.webp"
 import { ThemeToggle } from "@/components/ThemeToggle"
 import { useI18n } from "@/hooks/useI18n"
+import { addinGuide } from "@/lib/addin-guide"
 import { LANGUAGE_NAMES, LANGUAGE_SHORT_LABELS, SUPPORTED_LANGUAGES } from "@/lib/i18n"
 import { cn } from "@/lib/utils"
 
@@ -40,6 +41,17 @@ export function AppHeader() {
             </NavLink>
           ))}
           <div className="ml-auto flex items-center gap-3">
+            <NavLink
+              to={pathFor("/excel-addin")}
+              className={({ isActive }) =>
+                cn(
+                  "text-sm underline-offset-4 hover:underline",
+                  isActive ? "font-medium" : "text-muted-foreground"
+                )
+              }
+            >
+              {addinGuide[language].navLabel}
+            </NavLink>
             <NavLink
               to={pathFor("/privacy")}
               className={({ isActive }) =>

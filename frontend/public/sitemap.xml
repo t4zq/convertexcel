@@ -70,4 +70,39 @@
     <lastmod>2026-06-13</lastmod>
     <priority>0.3</priority>
   </url>
+  <url>
+    <loc>https://convertexcel.net/excel-addin</loc>
+    <lastmod>2026-06-14</lastmod>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://convertexcel.net/en/excel-addin</loc>
+    <lastmod>2026-06-14</lastmod>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://convertexcel.net/zh/excel-addin</loc>
+    <lastmod>2026-06-14</lastmod>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://convertexcel.net/zh-hant/excel-addin</loc>
+    <lastmod>2026-06-14</lastmod>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://convertexcel.net/ko/excel-addin</loc>
+    <lastmod>2026-06-14</lastmod>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://convertexcel.net/es/excel-addin</loc>
+    <lastmod>2026-06-14</lastmod>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://convertexcel.net/de/excel-addin</loc>
+    <lastmod>2026-06-14</lastmod>
+    <priority>0.5</priority>
+  </url>
 </urlset>

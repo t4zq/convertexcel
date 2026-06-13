@@ -5,6 +5,7 @@ import { StatusBar } from "@/components/StatusBar"
 import { I18nProvider } from "@/hooks/useI18n"
 import { StatusBarProvider } from "@/hooks/useStatusBar"
 import { LANGUAGE_PATH_SEGMENTS, SUPPORTED_LANGUAGES } from "@/lib/i18n"
+import AddinPage from "@/pages/AddinPage"
 import ConvertPage from "@/pages/ConvertPage"
 import NotFoundPage from "@/pages/NotFoundPage"
 import PrivacyPage from "@/pages/PrivacyPage"
@@ -17,6 +18,7 @@ const localizedRoutes = SUPPORTED_LANGUAGES
       <Route key={prefix} path={prefix} element={<ConvertPage />} />,
       <Route key={`${prefix}/convert`} path={`${prefix}/convert`} element={<ConvertPage />} />,
       <Route key={`${prefix}/privacy`} path={`${prefix}/privacy`} element={<PrivacyPage />} />,
+      <Route key={`${prefix}/excel-addin`} path={`${prefix}/excel-addin`} element={<AddinPage />} />,
     ]
   })
 
@@ -31,6 +33,7 @@ export default function App() {
               <Route path="/" element={<ConvertPage />} />
               <Route path="/convert" element={<ConvertPage />} />
               <Route path="/privacy" element={<PrivacyPage />} />
+              <Route path="/excel-addin" element={<AddinPage />} />
               {localizedRoutes}
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
