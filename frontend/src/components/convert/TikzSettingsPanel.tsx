@@ -7,6 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useI18n } from "@/hooks/useI18n"
 import type { TikzSettings } from "@/lib/convert-settings"
 import { SERIES_COLORS, SERIES_MARKS } from "@/lib/tikz-postprocess"
 import { cn } from "@/lib/utils"
@@ -16,23 +17,12 @@ const LEGEND_POS = [
   "north", "south", "east", "west",
 ]
 
-const FIT_METHODS: [string, string][] = [
-  ["none", "なし"],
-  ["auto", "自動"],
-  ["linear", "線形"],
-  ["quadratic", "2次"],
-  ["cubic", "3次"],
-  ["exponential", "指数"],
-  ["logarithmic", "対数"],
-  ["power", "べき乗"],
-]
-
-function FitMethodSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function FitMethodSelect({ value, onChange, methods }: { value: string; onChange: (v: string) => void; methods: [string, string][] }) {
   return (
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger className="w-full min-w-0"><SelectValue /></SelectTrigger>
       <SelectContent>
-        {FIT_METHODS.map(([v, label]) => <SelectItem key={v} value={v}>{label}</SelectItem>)}
+        {methods.map(([v, label]) => <SelectItem key={v} value={v}>{label}</SelectItem>)}
       </SelectContent>
     </Select>
   )
@@ -47,6 +37,18 @@ interface TikzSettingsPanelProps {
 }
 
 export function TikzSettingsPanel({ value, onChange, seriesCount, seriesNames }: TikzSettingsPanelProps) {
+  const { language, t } = useI18n()
+  const fitMethods: [string, string][] = [
+    ["none", t.settings.none],
+    ["auto", t.settings.auto],
+    ["linear", t.settings.linear],
+    ["quadratic", t.settings.quadratic],
+    ["cubic", t.settings.cubic],
+    ["exponential", t.settings.exponential],
+    ["logarithmic", t.settings.logarithmic],
+    ["power", t.settings.power],
+  ]
+
   // 旧バージョンの永続データでは fitMethods が無いことがあるため防御する。
   const methods = Array.isArray(value.fitMethods) ? value.fitMethods : []
   const fitAt = (i: number) => methods[i] ?? methods[0] ?? "auto"
@@ -83,15 +85,15 @@ export function TikzSettingsPanel({ value, onChange, seriesCount, seriesNames }:
     <div className="space-y-3">
       <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(8.5rem,1fr))]">
         <div className="min-w-0 space-y-1">
-          <Label htmlFor="fn">ファイル名</Label>
+          <Label htmlFor="fn">{t.settings.filename}</Label>
           <Input id="fn" value={value.filename} onChange={(e) => onChange({ filename: e.target.value })} />
         </div>
         <div className="min-w-0 space-y-1">
-          <Label htmlFor="fig">図番号</Label>
-          <Input id="fig" type="number" min={1} placeholder="自動" value={value.figureNumber} onChange={(e) => onChange({ figureNumber: e.target.value })} />
+          <Label htmlFor="fig">{t.settings.figureNumber}</Label>
+          <Input id="fig" type="number" min={1} placeholder={t.settings.auto} value={value.figureNumber} onChange={(e) => onChange({ figureNumber: e.target.value })} />
         </div>
         <div className="min-w-0 space-y-1">
-          <Label>凡例位置</Label>
+          <Label>{t.settings.legendPos}</Label>
           <Select value={value.legendPos} onValueChange={(v) => onChange({ legendPos: v })}>
             <SelectTrigger className="w-full min-w-0"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -100,33 +102,33 @@ export function TikzSettingsPanel({ value, onChange, seriesCount, seriesNames }:
           </Select>
         </div>
         <div className="min-w-0 space-y-1">
-          <Label>軸スケール</Label>
+          <Label>{t.settings.axisScale}</Label>
           <Select value={value.scaleMode} onValueChange={(v) => onChange({ scaleMode: v })}>
             <SelectTrigger className="w-full min-w-0"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="linear">線形</SelectItem>
-              <SelectItem value="semilog">片対数</SelectItem>
-              <SelectItem value="loglog">両対数</SelectItem>
+              <SelectItem value="linear">{t.settings.linear}</SelectItem>
+              <SelectItem value="semilog">{t.settings.semilog}</SelectItem>
+              <SelectItem value="loglog">{t.settings.loglog}</SelectItem>
             </SelectContent>
           </Select>
         </div>
         {!perSeriesFit && (
           <div className="min-w-0 space-y-1">
-            <Label>近似</Label>
-            <FitMethodSelect value={fitAt(0)} onChange={setFitAll} />
+            <Label>{t.settings.fit}</Label>
+            <FitMethodSelect value={fitAt(0)} onChange={setFitAll} methods={fitMethods} />
           </div>
         )}
       </div>
       {perSeriesFit && (
         <div className="space-y-1">
-          <Label>近似（系列ごと）</Label>
+          <Label>{t.settings.fitPerSeries}</Label>
           <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(8.5rem,1fr))]">
             {Array.from({ length: seriesCount }, (_, i) => (
               <div key={i} className="min-w-0 space-y-1">
                 <span className="text-muted-foreground block truncate text-xs" title={seriesNames[i]}>
-                  {seriesNames[i] || `系列${i + 1}`}
+                  {seriesNames[i] || t.convert.series(i + 1)}
                 </span>
-                <FitMethodSelect value={fitAt(i)} onChange={(v) => setFitAt(i, v)} />
+                <FitMethodSelect value={fitAt(i)} onChange={(v) => setFitAt(i, v)} methods={fitMethods} />
               </div>
             ))}
           </div>
@@ -134,31 +136,31 @@ export function TikzSettingsPanel({ value, onChange, seriesCount, seriesNames }:
       )}
       <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(8.5rem,1fr))]">
         <div className="min-w-0 space-y-1">
-          <Label htmlFor="xlabel">x軸ラベル</Label>
+          <Label htmlFor="xlabel">{t.settings.xLabel}</Label>
           <Input id="xlabel" value={value.xLabel} onChange={(e) => onChange({ xLabel: e.target.value })} />
         </div>
         <div className="min-w-0 space-y-1">
-          <Label htmlFor="ylabel">y軸ラベル</Label>
+          <Label htmlFor="ylabel">{t.settings.yLabel}</Label>
           <Input id="ylabel" value={value.yLabel} onChange={(e) => onChange({ yLabel: e.target.value })} />
         </div>
         <div className="min-w-0 space-y-1">
-          <Label htmlFor="caption">キャプション</Label>
+          <Label htmlFor="caption">{t.settings.caption}</Label>
           <Input id="caption" value={value.caption} onChange={(e) => onChange({ caption: e.target.value })} />
         </div>
         <div className="min-w-0 space-y-1">
-          <Label htmlFor="label">ラベル</Label>
+          <Label htmlFor="label">{t.settings.label}</Label>
           <Input id="label" value={value.label} onChange={(e) => onChange({ label: e.target.value })} />
         </div>
       </div>
 
       {seriesCount > 0 && (
         <div className="space-y-2">
-          <Label>色・マーカー</Label>
+          <Label>{t.settings.colorMarker}</Label>
           <div className="space-y-2">
             {Array.from({ length: seriesCount }, (_, i) => (
               <div key={i} className="flex flex-wrap items-center gap-2">
                 <span className="text-muted-foreground w-12 shrink-0 truncate text-xs" title={seriesNames[i]}>
-                  {seriesNames[i] || `系列${i + 1}`}
+                  {seriesNames[i] || t.convert.series(i + 1)}
                 </span>
                 {/* カラーパレット */}
                 <div className="flex flex-wrap gap-1">
@@ -166,14 +168,14 @@ export function TikzSettingsPanel({ value, onChange, seriesCount, seriesNames }:
                     <button
                       key={c.name}
                       type="button"
-                      title={c.label}
+                      title={language === "en" ? c.name : c.label}
                       onClick={() => setColorAt(i, c.name)}
                       className={cn(
                         "h-5 w-5 rounded-full border-2 transition-transform hover:scale-110",
                         colorAt(i) === c.name ? "border-primary scale-110" : "border-transparent",
                       )}
                       style={{ backgroundColor: c.css }}
-                      aria-label={c.label}
+                      aria-label={language === "en" ? c.name : c.label}
                     />
                   ))}
                 </div>

@@ -1,6 +1,7 @@
 // 変換ページの設定値と、エンジン (engine/loader) のオプションへの変換。
 
 import type { ConvertOptions, RoundMode, TikzOptions } from "@/engine/loader"
+import type { Language } from "@/lib/i18n"
 
 export interface TableSettings {
   roundMode: "none" | "decimal" | "sig-figs"
@@ -39,19 +40,50 @@ export const DEFAULT_TABLE_SETTINGS: TableSettings = {
   siunitx: false,
 }
 
-export const DEFAULT_TIKZ_SETTINGS: TikzSettings = {
-  filename: "data",
-  figureNumber: "",
-  legendPos: "north west",
-  scaleMode: "linear",
-  fitMethods: ["auto"],
-  xLabel: "x軸",
-  yLabel: "y軸",
-  caption: "図題",
-  label: "fig:label",
-  seriesColors: [],
-  seriesMarks: [],
+const DEFAULT_TIKZ_TEXT: Record<Language, Pick<TikzSettings, "xLabel" | "yLabel" | "caption">> = {
+  ja: {
+    xLabel: "x軸",
+    yLabel: "y軸",
+    caption: "図題",
+  },
+  en: {
+    xLabel: "x-axis",
+    yLabel: "y-axis",
+    caption: "Figure title",
+  },
 }
+
+const DEFAULT_TIKZ_TEXT_VALUES = {
+  xLabel: Object.values(DEFAULT_TIKZ_TEXT).map((text) => text.xLabel),
+  yLabel: Object.values(DEFAULT_TIKZ_TEXT).map((text) => text.yLabel),
+  caption: Object.values(DEFAULT_TIKZ_TEXT).map((text) => text.caption),
+}
+
+export function getDefaultTikzSettings(language: Language = "ja"): TikzSettings {
+  return {
+    filename: "data",
+    figureNumber: "",
+    legendPos: "north west",
+    scaleMode: "linear",
+    fitMethods: ["auto"],
+    ...DEFAULT_TIKZ_TEXT[language],
+    label: "fig:label",
+    seriesColors: [],
+    seriesMarks: [],
+  }
+}
+
+export function localizeDefaultTikzText(tikz: TikzSettings, language: Language): TikzSettings {
+  const target = DEFAULT_TIKZ_TEXT[language]
+  return {
+    ...tikz,
+    xLabel: DEFAULT_TIKZ_TEXT_VALUES.xLabel.includes(tikz.xLabel) ? target.xLabel : tikz.xLabel,
+    yLabel: DEFAULT_TIKZ_TEXT_VALUES.yLabel.includes(tikz.yLabel) ? target.yLabel : tikz.yLabel,
+    caption: DEFAULT_TIKZ_TEXT_VALUES.caption.includes(tikz.caption) ? target.caption : tikz.caption,
+  }
+}
+
+export const DEFAULT_TIKZ_SETTINGS: TikzSettings = getDefaultTikzSettings("ja")
 
 export function toConvertOptions(table: TableSettings): ConvertOptions {
   const mode: RoundMode = table.roundMode === "decimal" ? 1 : table.roundMode === "sig-figs" ? 2 : 0

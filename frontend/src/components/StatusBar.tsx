@@ -1,14 +1,16 @@
+import { useI18n } from "@/hooks/useI18n"
 import { useStatusData } from "@/hooks/useStatusBar"
 
-function engineLabel(ready: boolean | null) {
-  if (ready === null) return { text: "engine 読込中", color: "text-warning" }
-  if (ready) return { text: "engine 準備完了", color: "text-success" }
-  return { text: "engine 利用不可", color: "text-destructive" }
+function engineLabel(ready: boolean | null, labels: { loading: string; ready: string; unavailable: string }) {
+  if (ready === null) return { text: labels.loading, color: "text-warning" }
+  if (ready) return { text: labels.ready, color: "text-success" }
+  return { text: labels.unavailable, color: "text-destructive" }
 }
 
 export function StatusBar() {
   const s = useStatusData()
-  const engine = engineLabel(s.engineReady)
+  const { t } = useI18n()
+  const engine = engineLabel(s.engineReady, t.status)
 
   return (
     <footer className="fixed inset-x-0 bottom-0 z-50 flex h-6 select-none items-center gap-3 border-t bg-secondary px-0 font-mono text-[11px] text-secondary-foreground">
@@ -28,7 +30,7 @@ export function StatusBar() {
 
       <span className="ml-auto flex items-center gap-3 pr-3 text-muted-foreground">
         <span>{s.rows}×{s.cols}</span>
-        <span>{s.chars} 文字</span>
+        <span>{s.chars} {t.status.chars}</span>
         {s.activeOutput && <span className="text-secondary-foreground">{s.activeOutput}</span>}
         <span>UTF-8</span>
         <span>LF</span>

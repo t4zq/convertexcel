@@ -2,9 +2,11 @@ import { useState } from "react"
 import { Copy } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { useI18n } from "@/hooks/useI18n"
 
 export function CopyButton({ value, label }: { value: string; label: string }) {
   const [copied, setCopied] = useState(false)
+  const { t } = useI18n()
 
   const copy = async () => {
     await navigator.clipboard.writeText(value)
@@ -13,9 +15,9 @@ export function CopyButton({ value, label }: { value: string; label: string }) {
   }
 
   return (
-    <Button size="icon" variant="secondary" onClick={copy} disabled={!value} title={copied ? "コピー済み" : label}>
+    <Button size="icon" variant="secondary" onClick={copy} disabled={!value} title={copied ? t.csv.copied : label}>
       <Copy className="h-4 w-4" />
-      <span className="sr-only">{copied ? "コピー済み" : label}</span>
+      <span className="sr-only">{copied ? t.csv.copied : label}</span>
     </Button>
   )
 }

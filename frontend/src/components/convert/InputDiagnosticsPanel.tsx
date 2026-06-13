@@ -1,3 +1,4 @@
+import { useI18n } from "@/hooks/useI18n"
 import type { DiagnosticSeverity, InputDiagnostics } from "@/lib/input-diagnostics"
 
 const SEVERITY: Record<DiagnosticSeverity, { label: string; glyph: string; color: string }> = {
@@ -7,6 +8,7 @@ const SEVERITY: Record<DiagnosticSeverity, { label: string; glyph: string; color
 }
 
 export function InputDiagnosticsPanel({ diagnostics }: { diagnostics: InputDiagnostics }) {
+  const { language, t } = useI18n()
   const problems = diagnostics.problems ?? []
   if (problems.length === 0) return null
 
@@ -25,7 +27,7 @@ export function InputDiagnosticsPanel({ diagnostics }: { diagnostics: InputDiagn
             <span className="size-2 rounded-full bg-warning/60" />
             <span className="size-2 rounded-full bg-success/60" />
           </span>
-          <span className="tracking-widest uppercase">diagnostics</span>
+          <span className="tracking-widest uppercase">{t.diagnostics.title}</span>
         </div>
         <div className="flex items-center gap-3">
           {counts.error > 0 && (
@@ -46,9 +48,13 @@ export function InputDiagnosticsPanel({ diagnostics }: { diagnostics: InputDiagn
             <li key={`${p.code}-${p.line ?? i}`} className="flex items-baseline gap-2 px-3 py-1.5">
               <span className={`${s.color} shrink-0`} aria-hidden>{s.glyph}</span>
               <span className={`${s.color} shrink-0 font-semibold`}>{s.label}:</span>
-              <span className="text-foreground/90">{p.message}</span>
+              <span className="text-foreground/90">
+                {language === "en"
+                  ? t.diagnostics.messages[p.code as keyof typeof t.diagnostics.messages] ?? p.message
+                  : p.message}
+              </span>
               <span className="ml-auto shrink-0 whitespace-nowrap text-muted-foreground/80">
-                {p.line != null && <span className="text-info/80">行{p.line} </span>}
+                {p.line != null && <span className="text-info/80">{t.diagnostics.line(p.line)} </span>}
                 {p.code}
               </span>
             </li>
