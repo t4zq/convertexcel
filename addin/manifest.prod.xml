@@ -12,7 +12,7 @@
   <Description DefaultValue="Excel の選択範囲からレポート用の LaTeX 表・グラフ・gnuplot を生成します。" />
   <IconUrl DefaultValue="https://convertexcel.net/addin/assets/icon-32.png" />
   <HighResolutionIconUrl DefaultValue="https://convertexcel.net/addin/assets/icon-80.png" />
-  <SupportUrl DefaultValue="https://convertexcel.net/privacy" />
+  <SupportUrl DefaultValue="https://convertexcel.net/" />
   <AppDomains>
     <AppDomain>https://convertexcel.net</AppDomain>
     <AppDomain>https://texlive.net</AppDomain>
@@ -21,7 +21,7 @@
     <Host Name="Workbook" />
   </Hosts>
   <DefaultSettings>
-    <SourceLocation DefaultValue="https://convertexcel.net/addin/addin.html" />
+    <SourceLocation DefaultValue="https://convertexcel.net/addin/addin" />
   </DefaultSettings>
   <Permissions>ReadDocument</Permissions>
   <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
@@ -72,8 +72,8 @@
         <bt:Image id="Icon.80x80" DefaultValue="https://convertexcel.net/addin/assets/icon-80.png" />
       </bt:Images>
       <bt:Urls>
-        <bt:Url id="Commands.Url" DefaultValue="https://convertexcel.net/addin/addin.html" />
-        <bt:Url id="Taskpane.Url" DefaultValue="https://convertexcel.net/addin/addin.html" />
+        <bt:Url id="Commands.Url" DefaultValue="https://convertexcel.net/addin/addin" />
+        <bt:Url id="Taskpane.Url" DefaultValue="https://convertexcel.net/addin/addin" />
         <bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="https://convertexcel.net/" />
       </bt:Urls>
       <bt:ShortStrings>
