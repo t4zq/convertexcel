@@ -10,7 +10,7 @@ const SEVERITY: Record<DiagnosticSeverity, { label: string; glyph: string; color
 export function InputDiagnosticsPanel({ diagnostics }: { diagnostics: InputDiagnostics }) {
   const { t } = useI18n()
   const problems = diagnostics.problems ?? []
-  if (problems.length === 0) return null
+  if (problems.length === 0 && diagnostics.rowCount === 0) return null
 
   const counts = {
     error: problems.filter((p) => p.severity === "error").length,
@@ -41,24 +41,61 @@ export function InputDiagnosticsPanel({ diagnostics }: { diagnostics: InputDiagn
           )}
         </div>
       </div>
-      <ul className="max-h-48 divide-y divide-border/60 overflow-auto">
-        {problems.map((p, i) => {
-          const s = SEVERITY[p.severity]
-          return (
-            <li key={`${p.code}-${p.line ?? i}`} className="flex items-baseline gap-2 px-3 py-1.5">
-              <span className={`${s.color} shrink-0`} aria-hidden>{s.glyph}</span>
-              <span className={`${s.color} shrink-0 font-semibold`}>{s.label}:</span>
-              <span className="text-foreground/90">
-                {t.diagnostics.messages[p.code as keyof typeof t.diagnostics.messages] ?? p.message}
-              </span>
-              <span className="ml-auto shrink-0 whitespace-nowrap text-muted-foreground/80">
-                {p.line != null && <span className="text-info/80">{t.diagnostics.line(p.line)} </span>}
-                {p.code}
-              </span>
-            </li>
-          )
-        })}
-      </ul>
+      <div className="grid gap-2 border-b px-3 py-2 text-muted-foreground sm:grid-cols-4">
+        <span>形式: <strong className="text-foreground">{diagnostics.format.delimiterLabel}</strong></span>
+        <span>行: <strong className="text-foreground">{diagnostics.rowCount}</strong></span>
+        <span>列: <strong className="text-foreground">{diagnostics.maxCols}</strong></span>
+        <span>正規化: <strong className="text-foreground">{diagnostics.format.changedCells}</strong> セル</span>
+      </div>
+      {diagnostics.normalizedRows.length > 0 && (
+        <div className="border-b px-3 py-2">
+          <div className="mb-1 text-muted-foreground">自動整形プレビュー</div>
+          <div className="overflow-auto rounded border bg-background/60">
+            <table className="min-w-full border-collapse">
+              <tbody>
+                {diagnostics.normalizedRows.slice(0, 4).map((row, rowIndex) => (
+                  <tr key={rowIndex} className="border-b last:border-b-0">
+                    <th className="w-10 border-r px-2 py-1 text-right font-normal text-muted-foreground">
+                      {rowIndex + 1}
+                    </th>
+                    {Array.from({ length: diagnostics.maxCols }, (_, columnIndex) => (
+                      <td key={columnIndex} className="max-w-40 truncate border-r px-2 py-1 last:border-r-0">
+                        {row[columnIndex] || <span className="text-muted-foreground/60">empty</span>}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {diagnostics.normalizedRows.length > 4 && (
+            <div className="mt-1 text-muted-foreground">
+              ほか {diagnostics.normalizedRows.length - 4} 行
+            </div>
+          )}
+        </div>
+      )}
+      {problems.length > 0 && (
+        <ul className="max-h-48 divide-y divide-border/60 overflow-auto">
+          {problems.map((p, i) => {
+            const s = SEVERITY[p.severity]
+            return (
+              <li key={`${p.code}-${p.line ?? i}-${p.column ?? 0}`} className="flex items-baseline gap-2 px-3 py-1.5">
+                <span className={`${s.color} shrink-0`} aria-hidden>{s.glyph}</span>
+                <span className={`${s.color} shrink-0 font-semibold`}>{s.label}:</span>
+                <span className="text-foreground/90">
+                  {t.diagnostics.messages[p.code as keyof typeof t.diagnostics.messages] ?? p.message}
+                </span>
+                <span className="ml-auto shrink-0 whitespace-nowrap text-muted-foreground/80">
+                  {p.line != null && <span className="text-info/80">{t.diagnostics.line(p.line)} </span>}
+                  {p.column != null && <span className="text-info/80">列{p.column} </span>}
+                  {p.code}
+                </span>
+              </li>
+            )
+          })}
+        </ul>
+      )}
     </div>
   )
 }

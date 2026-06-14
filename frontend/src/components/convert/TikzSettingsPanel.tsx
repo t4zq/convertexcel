@@ -132,18 +132,74 @@ export function TikzSettingsPanel({ value, onChange, seriesCount, seriesNames }:
           />
         </div>
       </div>
-      {perSeriesFit && (
-        <div className="space-y-1">
-          <Label>{t.settings.fitPerSeries}</Label>
-          <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(8.5rem,1fr))]">
-            {Array.from({ length: seriesCount }, (_, i) => (
-              <div key={i} className="min-w-0 space-y-1">
-                <span className="text-muted-foreground block truncate text-xs" title={seriesNames[i]}>
-                  {seriesNames[i] || t.convert.series(i + 1)}
-                </span>
-                <FitMethodSelect value={fitAt(i)} onChange={(v) => setFitAt(i, v)} methods={fitMethods} />
-              </div>
-            ))}
+      {seriesCount > 0 && (
+        <div className="space-y-2">
+          <Label>{t.settings.columnSettings}</Label>
+          <div className="overflow-x-auto rounded-md border">
+            <table className="min-w-[46rem] w-full border-collapse text-sm">
+              <thead className="bg-muted/60 text-muted-foreground">
+                <tr>
+                  <th className="w-16 border-r px-2 py-2 text-left font-medium">{t.settings.column}</th>
+                  <th className="min-w-36 border-r px-2 py-2 text-left font-medium">{t.settings.seriesName}</th>
+                  <th className="min-w-40 border-r px-2 py-2 text-left font-medium">{t.settings.fit}</th>
+                  <th className="min-w-44 border-r px-2 py-2 text-left font-medium">{t.settings.color}</th>
+                  <th className="min-w-32 px-2 py-2 text-left font-medium">{t.settings.marker}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Array.from({ length: seriesCount }, (_, i) => (
+                  <tr key={i} className="border-t">
+                    <td className="border-r px-2 py-2 text-muted-foreground">Y{i + 1}</td>
+                    <td className="border-r px-2 py-2">
+                      <span className="block max-w-44 truncate" title={seriesNames[i]}>
+                        {seriesNames[i] || t.convert.series(i + 1)}
+                      </span>
+                    </td>
+                    <td className="border-r px-2 py-2">
+                      <FitMethodSelect value={fitAt(i)} onChange={(v) => setFitAt(i, v)} methods={fitMethods} />
+                    </td>
+                    <td className="border-r px-2 py-2">
+                      <div className="flex flex-wrap gap-1">
+                        {SERIES_COLORS.map((c) => (
+                          <button
+                            key={c.name}
+                            type="button"
+                            title={colorLabel(c.name, c.label)}
+                            onClick={() => setColorAt(i, c.name)}
+                            className={cn(
+                              "h-5 w-5 rounded-full border-2 transition-transform hover:scale-110",
+                              colorAt(i) === c.name ? "border-primary scale-110" : "border-transparent",
+                            )}
+                            style={{ backgroundColor: c.css }}
+                            aria-label={colorLabel(c.name, c.label)}
+                          />
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-2 py-2">
+                      <div className="flex flex-wrap gap-0.5">
+                        {SERIES_MARKS.map((m) => (
+                          <button
+                            key={m.value}
+                            type="button"
+                            title={m.value}
+                            onClick={() => setMarkAt(i, m.value)}
+                            className={cn(
+                              "flex h-6 w-6 items-center justify-center rounded text-xs transition-colors",
+                              markAt(i) === m.value
+                                ? "bg-primary text-primary-foreground"
+                                : "hover:bg-accent",
+                            )}
+                          >
+                            {m.label}
+                          </button>
+                        ))}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
@@ -165,57 +221,6 @@ export function TikzSettingsPanel({ value, onChange, seriesCount, seriesNames }:
           <Input id="label" value={value.label} onChange={(e) => onChange({ label: e.target.value })} />
         </div>
       </div>
-
-      {seriesCount > 0 && (
-        <div className="space-y-2">
-          <Label>{t.settings.colorMarker}</Label>
-          <div className="space-y-2">
-            {Array.from({ length: seriesCount }, (_, i) => (
-              <div key={i} className="flex flex-wrap items-center gap-2">
-                <span className="text-muted-foreground w-12 shrink-0 truncate text-xs" title={seriesNames[i]}>
-                  {seriesNames[i] || t.convert.series(i + 1)}
-                </span>
-                {/* カラーパレット */}
-                <div className="flex flex-wrap gap-1">
-                  {SERIES_COLORS.map((c) => (
-                    <button
-                      key={c.name}
-                      type="button"
-                      title={colorLabel(c.name, c.label)}
-                      onClick={() => setColorAt(i, c.name)}
-                      className={cn(
-                        "h-5 w-5 rounded-full border-2 transition-transform hover:scale-110",
-                        colorAt(i) === c.name ? "border-primary scale-110" : "border-transparent",
-                      )}
-                      style={{ backgroundColor: c.css }}
-                      aria-label={colorLabel(c.name, c.label)}
-                    />
-                  ))}
-                </div>
-                {/* マーカー */}
-                <div className="flex flex-wrap gap-0.5">
-                  {SERIES_MARKS.map((m) => (
-                    <button
-                      key={m.value}
-                      type="button"
-                      title={m.value}
-                      onClick={() => setMarkAt(i, m.value)}
-                      className={cn(
-                        "flex h-6 w-6 items-center justify-center rounded text-xs transition-colors",
-                        markAt(i) === m.value
-                          ? "bg-primary text-primary-foreground"
-                          : "hover:bg-accent",
-                      )}
-                    >
-                      {m.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   )
 }

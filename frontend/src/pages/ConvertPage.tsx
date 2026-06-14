@@ -1,4 +1,4 @@
-import { type CSSProperties, useEffect, useMemo, useState } from "react"
+import { type CSSProperties, useCallback, useEffect, useMemo, useState } from "react"
 import { CheckCircle2, ClipboardPaste, FileText, Link2, LoaderCircle, Settings2, Table2 } from "lucide-react"
 
 import { CodeAssistEditor } from "@/components/CodeAssistEditor"
@@ -104,6 +104,7 @@ export default function ConvertPage() {
   const [showTikzSettings, setShowTikzSettings] = useState(false)
   const [showGnuplotSettings, setShowGnuplotSettings] = useState(false)
   const [activeTab, setActiveTab] = useState<OutputTab>("latex")
+  const [sharedStateRestored, setSharedStateRestored] = useState(false)
 
   const updateTable = (patch: Partial<TableSettings>) => setTable((s) => ({ ...s, ...patch }))
   const updateTikz = (patch: Partial<TikzSettings>) => setTikz((s) => ({ ...s, ...patch }))
@@ -127,7 +128,7 @@ export default function ConvertPage() {
     error: gnuplotErr,
     renderPreview: renderGnuplotPreview,
     markImageActionFailed,
-  } = useGnuplotPreview(gnuplotOut, t.convert.gnuplotError)
+  } = useGnuplotPreview(gnuplotOut, t.convert.gnuplotError, gnuplot.autoPreview)
   const preview = usePreviewSubmission({
     activeTab,
     cooldown,
@@ -167,10 +168,34 @@ export default function ConvertPage() {
     if (shared.tikz) setTikz((current) => ({ ...current, ...shared.tikz }))
     if (shared.gnuplot) setGnuplot((current) => ({ ...current, ...shared.gnuplot }))
     if (shared.activeTab) setActiveTab(shared.activeTab)
+    setSharedStateRestored(true)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!sharedStateRestored) return
+    const timer = window.setTimeout(() => setSharedStateRestored(false), 4200)
+    return () => window.clearTimeout(timer)
+  }, [sharedStateRestored])
+
+  const copyActiveOutput = useCallback(() => {
+    const output = activeTab === "latex" ? latexOut : activeTab === "tikz" ? tikzOut : gnuplotOut
+    if (!output.trim()) return
+    void navigator.clipboard.writeText(output)
+  }, [activeTab, gnuplotOut, latexOut, tikzOut])
+
+  const toggleActiveGraphSettings = useCallback(() => {
+    if (activeTab === "gnuplot") {
+      setShowGnuplotSettings((value) => !value)
+      return
+    }
+    setShowTikzSettings((value) => !value)
+  }, [activeTab])
 
   useKeyboardShortcuts({
     onPreview: preview.requestPreview,
+    onCopyActive: copyActiveOutput,
+    onToggleInputSettings: () => setShowInputSettings((value) => !value),
+    onToggleGraphSettings: toggleActiveGraphSettings,
     onSwitchTab: setActiveTab,
   })
 
@@ -206,6 +231,12 @@ export default function ConvertPage() {
           {t.convert.intro}
         </p>
       </header>
+      {sharedStateRestored && (
+        <div className="flex items-center gap-2 rounded-md border border-success/40 bg-success/10 px-3 py-2 text-sm text-foreground">
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
+          <span>{t.share.restored}</span>
+        </div>
+      )}
 
       <div className="space-y-4">
         <Card>
@@ -292,7 +323,7 @@ export default function ConvertPage() {
                   variant="secondary"
                   size="sm"
                   onClick={() => setShowInputSettings((v) => !v)}
-                  title={showInputSettings ? t.convert.hideInputSettings : t.convert.showInputSettings}
+                  title={`${showInputSettings ? t.convert.hideInputSettings : t.convert.showInputSettings} (Alt+I)`}
                 >
                   <Settings2 className="h-4 w-4" />
                   <span>{showInputSettings ? t.convert.hideInputSettings : t.convert.showInputSettings}</span>
@@ -361,7 +392,7 @@ export default function ConvertPage() {
                     variant="secondary"
                     size="sm"
                     onClick={() => setShowTikzSettings((v) => !v)}
-                    title={showTikzSettings ? t.convert.hideTikzSettings : t.convert.showTikzSettings}
+                    title={`${showTikzSettings ? t.convert.hideTikzSettings : t.convert.showTikzSettings} (Alt+G)`}
                   >
                     <Settings2 className="h-4 w-4" />
                     <span>{showTikzSettings ? t.convert.hideTikzSettings : t.convert.showTikzSettings}</span>
@@ -392,7 +423,7 @@ export default function ConvertPage() {
                     variant="secondary"
                     size="sm"
                     onClick={() => setShowGnuplotSettings((v) => !v)}
-                    title={showGnuplotSettings ? t.convert.hideTikzSettings : t.convert.showTikzSettings}
+                    title={`${showGnuplotSettings ? t.convert.hideTikzSettings : t.convert.showTikzSettings} (Alt+G)`}
                   >
                     <Settings2 className="h-4 w-4" />
                     <span>{showGnuplotSettings ? t.convert.hideTikzSettings : t.convert.showTikzSettings}</span>

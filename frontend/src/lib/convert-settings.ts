@@ -44,6 +44,8 @@ export interface GnuplotSettings {
   pointSize: number
   // グラフタイトル（set title）。空文字 = 出力しない。
   title: string
+  // true のとき、gnuplot タブではコード生成後にブラウザ内 SVG プレビューを自動更新する。
+  autoPreview: boolean
 }
 
 export const DEFAULT_GNUPLOT_SETTINGS: GnuplotSettings = {
@@ -52,6 +54,7 @@ export const DEFAULT_GNUPLOT_SETTINGS: GnuplotSettings = {
   pointType: 0,
   pointSize: 0,
   title: "",
+  autoPreview: false,
 }
 
 export const DEFAULT_TABLE_SETTINGS: TableSettings = {

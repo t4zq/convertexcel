@@ -91,6 +91,10 @@ export function GnuplotSettingsPanel({ value, onChange }: GnuplotSettingsPanelPr
         <Switch checked={value.grid} onCheckedChange={(c) => onChange({ grid: c })} />
         <span>{t.settings.grid}</span>
       </Label>
+      <Label className="flex w-fit items-center gap-2">
+        <Switch checked={value.autoPreview} onCheckedChange={(c) => onChange({ autoPreview: c })} />
+        <span>{t.settings.autoPreview}</span>
+      </Label>
     </div>
   )
 }
