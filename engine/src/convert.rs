@@ -453,6 +453,47 @@ fn split_header_unit(header: &str) -> (String, Option<String>) {
     (h.to_string(), None)
 }
 
+/// 数式記号の整形。`I` -> `I`、`I_0` -> `I_\mathrm{0}`（添字は \mathrm で立体に）。
+fn format_math_symbol(name: &str) -> String {
+    let n = name.trim();
+    match n.split_once('_') {
+        Some((base, sub)) => {
+            let sub = sub.trim().trim_matches(|c| c == '{' || c == '}');
+            format!("{}_\\mathrm{{{}}}", base.trim(), sub)
+        }
+        None => n.to_string(),
+    }
+}
+
+/// 記号が ASCII 英数字と `_` のみか（数式モードに入れて安全か）。
+/// 日本語など非 ASCII の記号は false（従来のテキスト形式へフォールバックさせる）。
+fn is_mathy_symbol(name: &str) -> bool {
+    let n = name.trim();
+    !n.is_empty() && n.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+}
+
+/// siunitx 用ラベル整形。`記号[単位]`（記号は ASCII 英数字/`_`、単位は既知）のとき
+/// `$記号\,[\si{macro}]$` を返す。条件に合わなければ None（呼び出し側が従来処理へ）。
+/// 例: `I[A]` -> `$I\,[\si{\ampere}]$`、`I_0[A]` -> `$I_\mathrm{0}\,[\si{\ampere}]$`
+fn format_si_label(label: &str) -> Option<String> {
+    let (name, unit) = split_header_unit(label);
+    let macro_str = siunitx_unit(unit.as_deref()?)?;
+    if !is_mathy_symbol(&name) {
+        return None;
+    }
+    Some(format!("${}\\,[\\si{{{}}}]$", format_math_symbol(&name), macro_str))
+}
+
+/// グラフのラベル/凡例向け。siunitx 時は format_si_label を試し、無理ならエスケープ。
+fn label_for_si(raw: &str, siunitx: bool) -> String {
+    if siunitx {
+        if let Some(s) = format_si_label(raw) {
+            return s;
+        }
+    }
+    escape(raw.trim())
+}
+
 struct NumColumn {
     is_numeric: bool,
     int_digits: usize,
@@ -555,11 +596,16 @@ fn to_latex_siunitx_style(
             }
             let cell = row.get(j).map(|s| s.as_str()).unwrap_or("");
             if is_header && spec.is_numeric {
-                // S 列のヘッダーは波括弧で囲む。既知の単位なら \si を付与する。
-                let (name, unit) = split_header_unit(cell);
-                let braced = match unit.as_deref().and_then(siunitx_unit) {
-                    Some(macro_str) => format!("{} / \\si{{{}}}", escape(name.trim()), macro_str),
-                    None => escape(cell.trim()),
+                // S 列のヘッダーは波括弧で囲む。`記号[単位]` 形式なら数式ラベル
+                // `$記号\,[\si{macro}]$` に整形。そうでなければ従来の `名前 / \si{macro}`。
+                let braced = if let Some(s) = format_si_label(cell) {
+                    s
+                } else {
+                    let (name, unit) = split_header_unit(cell);
+                    match unit.as_deref().and_then(siunitx_unit) {
+                        Some(macro_str) => format!("{} / \\si{{{}}}", escape(name.trim()), macro_str),
+                        None => escape(cell.trim()),
+                    }
                 };
                 out.push_str(&format!("{{{}}}", braced));
             } else if !is_header && spec.is_numeric {
@@ -994,6 +1040,7 @@ fn to_tikz_graph(
     y_label: &str,
     caption: &str,
     label: &str,
+    siunitx: bool,
 ) -> String {
     if t.is_empty() {
         return String::new();
@@ -1053,8 +1100,8 @@ fn to_tikz_graph(
     let caption = if caption.trim().is_empty() { "図題" } else { caption.trim() };
     let label = if label.trim().is_empty() { "fig:label" } else { label.trim() };
 
-    out.push_str(&format!("            xlabel={{{}}},\n", escape(x_label)));
-    out.push_str(&format!("            ylabel={{{}}},\n", escape(y_label)));
+    out.push_str(&format!("            xlabel={{{}}},\n", label_for_si(x_label, siunitx)));
+    out.push_str(&format!("            ylabel={{{}}},\n", label_for_si(y_label, siunitx)));
     out.push_str(&format!("            xmin={}, xmax={},\n", xmin_val, xmax_val));
     out.push_str(&format!("            ymin={}, ymax={},\n", ymin_val, ymax_val));
 
@@ -1117,7 +1164,8 @@ fn to_tikz_graph(
         } else {
             format!("data {}", col)
         };
-        out.push_str(&format!("            \\addlegendentry{{{}}}\n", escape(&legend_text)));
+        let legend_label = label_for_si(&legend_text, siunitx);
+        out.push_str(&format!("            \\addlegendentry{{{}}}\n", legend_label));
 
         let fit_method = fit_method_for_series(fit_methods, col - 1);
         let fit = select_fit(&points_for_column(t, col), &fit_method);
@@ -1137,9 +1185,19 @@ fn to_tikz_graph(
             out.push_str(&multiline_plot_expression(&fit.expression));
             out.push_str("\n");
             out.push_str("            };\n");
+            // 近似式の左辺。siunitx 時に列の記号が数式向き（ASCII）なら
+            // `y_{col}` の代わりに整形した記号（例: I_\mathrm{0}）を使う。
+            let eq_lhs = {
+                let (name, _) = split_header_unit(&legend_text);
+                if siunitx && is_mathy_symbol(&name) {
+                    format_math_symbol(&name)
+                } else {
+                    format!("y_{{{}}}", col)
+                }
+            };
             fit_equations.push(FitEquation {
-                legend: legend_text,
-                equation: format!("y_{{{}}} = {}", col, fit.tex_expression),
+                legend: legend_label,
+                equation: format!("{} = {}", eq_lhs, fit.tex_expression),
                 r2: fit.r2,
             });
         }
@@ -1374,7 +1432,7 @@ pub fn gen_latex_sig_figs(input: &str, sig_figs: i32) -> String {
 }
 #[wasm_bindgen]
 pub fn gen_tikz_graph(input: &str, filename: &str, sig_figs: i32, legend_pos: &str, scale_mode: &str) -> String {
-    to_tikz_graph(&parse(input), filename, sig_figs, legend_pos, scale_mode, 0, "auto", &[], "", "", "", "")
+    to_tikz_graph(&parse(input), filename, sig_figs, legend_pos, scale_mode, 0, "auto", &[], "", "", "", "", false)
 }
 #[wasm_bindgen]
 pub fn gen_tikz_graph_preview(input: &str, sig_figs: i32, legend_pos: &str, scale_mode: &str) -> String {
@@ -1416,6 +1474,7 @@ pub fn gen_tikz_graph_config(
     y_label: &str,
     caption: &str,
     label: &str,
+    siunitx: i32,
 ) -> String {
     let t = prepare_table(input, has_header != 0, clean_input != 0, false);
     let headers = if has_header != 0 {
@@ -1437,6 +1496,7 @@ pub fn gen_tikz_graph_config(
         y_label,
         caption,
         label,
+        siunitx != 0,
     )
 }
 #[wasm_bindgen]
@@ -1530,7 +1590,7 @@ mod tests {
         // 不確かさ付き系列は error bars と y error index を出す。
         let out = gen_tikz_graph_config(
             "x,y\n1,2 ± 0.1\n2,4 ± 0.2\n3,6 ± 0.3",
-            "data", 3, "north west", "linear", "none", 1, 1, 0, "", "", "", "",
+            "data", 3, "north west", "linear", "none", 1, 1, 0, "", "", "", "", 0,
         );
         // push_pgfplots_options が ", " を改行に割るので個別に確認する。
         assert!(out.contains("error bars/.cd"));
@@ -1544,6 +1604,49 @@ mod tests {
         // 元の列(値) + 末尾に誤差列。値のみの行は誤差 0。
         let csv = gen_csv_attachment("x,y\n1,2 ± 0.1\n2,4", 1, 1);
         assert_eq!(csv, "1,2,0.1\n2,4,0");
+    }
+
+    #[test]
+    fn siunitx_math_label_header() {
+        // `記号[単位]` は `$記号\,[\si{macro}]$`、添字は \mathrm。
+        let out = gen_latex_config("I[A],I_0[A]\n1,2\n3,4", 0, 2, 3, 1, 1, 1, 1);
+        assert!(out.contains("{$I\\,[\\si{\\ampere}]$}"));
+        assert!(out.contains("{$I_\\mathrm{0}\\,[\\si{\\ampere}]$}"));
+    }
+
+    #[test]
+    fn siunitx_japanese_header_keeps_slash() {
+        // 非 ASCII 記号は従来の `名前 / \si{macro}` を維持（数式モードに入れない）。
+        let out = gen_latex_config("電圧 [V],x\n1.0,2\n2.0,3", 0, 2, 3, 1, 1, 1, 1);
+        assert!(out.contains("電圧 / \\si{\\volt}"));
+        assert!(!out.contains("$電圧"));
+    }
+
+    #[test]
+    fn tikz_siunitx_labels_legend_equation() {
+        let out = gen_tikz_graph_config(
+            "x,I_0[A]\n1,2\n2,4\n3,6",
+            "data", 3, "north west", "linear", "linear", 1, 1, 0,
+            "t[s]", "I[A]", "", "", 1,
+        );
+        assert!(out.contains("xlabel={$t\\,[\\si{\\second}]$}"));
+        assert!(out.contains("ylabel={$I\\,[\\si{\\ampere}]$}"));
+        assert!(out.contains("\\addlegendentry{$I_\\mathrm{0}\\,[\\si{\\ampere}]$}"));
+        // 近似式の左辺は列の記号を使う。
+        assert!(out.contains("I_\\mathrm{0} ="));
+    }
+
+    #[test]
+    fn tikz_no_siunitx_keeps_plain_labels() {
+        let out = gen_tikz_graph_config(
+            "x,I_0[A]\n1,2\n2,4",
+            "data", 3, "north west", "linear", "none", 1, 1, 0,
+            "t[s]", "I[A]", "", "", 0,
+        );
+        // siunitx OFF ならそのまま（数式化しない）。
+        assert!(out.contains("xlabel={t[s]}"));
+        assert!(out.contains("ylabel={I[A]}"));
+        assert!(!out.contains("\\si{"));
     }
 
     #[test]
@@ -1570,6 +1673,7 @@ mod tests {
             "Current A",
             "IV curve",
             "fig:iv_curve",
+            0,
         );
         assert!(out.contains("xlabel={Voltage V}"));
         assert!(out.contains("ylabel={Current A}"));

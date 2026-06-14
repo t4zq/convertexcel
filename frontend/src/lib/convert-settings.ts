@@ -140,5 +140,6 @@ export function toTikzOptions(tikz: TikzSettings, table: TableSettings): TikzOpt
     yLabel: tikz.yLabel,
     caption: tikz.caption,
     label: tikz.label,
+    siunitx: table.siunitx,
   }
 }

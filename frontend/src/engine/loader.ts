@@ -41,7 +41,8 @@ export interface EngineModule {
     x_label: string,
     y_label: string,
     caption: string,
-    label: string
+    label: string,
+    siunitx: number
   ) => string
   gen_csv_attachment: (input: string, has_header: number, clean_input: number) => string
   gen_gnuplot_config: (
@@ -108,6 +109,7 @@ export interface TikzOptions {
   yLabel: string
   caption: string
   label: string
+  siunitx: boolean
 }
 
 const bool = (b: boolean) => (b ? 1 : 0)
@@ -146,7 +148,8 @@ export async function genTikz(input: string, o: TikzOptions): Promise<string> {
     o.xLabel,
     o.yLabel,
     o.caption,
-    o.label
+    o.label,
+    bool(o.siunitx)
   )
 }
 
