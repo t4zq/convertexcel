@@ -1,7 +1,6 @@
-import { type CSSProperties, useCallback, useEffect, useMemo, useState } from "react"
+import { lazy, Suspense, type CSSProperties, useCallback, useEffect, useMemo, useState } from "react"
 import { CheckCircle2, ClipboardPaste, FileText, Link2, LoaderCircle, Settings2, Table2 } from "lucide-react"
 
-import { CodeAssistEditor } from "@/components/CodeAssistEditor"
 import { ShareDialog } from "@/components/ShareDialog"
 import { CopyButton } from "@/components/convert/CopyButton"
 import { CsvActions } from "@/components/convert/CsvActions"
@@ -57,6 +56,21 @@ const SAMPLE = `x\ty1\ty2
 const OUTPUT_MIN_HEIGHT = 273
 const SITE_URL = "https://convertexcel.net/"
 const convertUrls = localizedSiteUrls(SITE_URL, "/")
+const CodeAssistEditor = lazy(() =>
+  import("@/components/CodeAssistEditor").then((module) => ({
+    default: module.CodeAssistEditor,
+  }))
+)
+
+function EditorFallback({ minHeight }: { minHeight: number }) {
+  return (
+    <div
+      className="rounded-md border bg-muted/30"
+      style={{ minHeight }}
+      aria-hidden="true"
+    />
+  )
+}
 
 export default function ConvertPage() {
   const { language, t, seo: seoText } = useI18n()
@@ -382,7 +396,9 @@ export default function ConvertPage() {
                   {cooldown > 0 && <span className="text-muted-foreground self-center text-sm">{t.convert.cooldown(cooldown)}</span>}
                 </div>
                 <div className={ghost}>
-                  <CodeAssistEditor kind="latex" value={latexOut} onChange={setLatexOut} minHeight={OUTPUT_MIN_HEIGHT} />
+                  <Suspense fallback={<EditorFallback minHeight={OUTPUT_MIN_HEIGHT} />}>
+                    <CodeAssistEditor kind="latex" value={latexOut} onChange={setLatexOut} minHeight={OUTPUT_MIN_HEIGHT} />
+                  </Suspense>
                 </div>
               </TabsContent>
               <TabsContent value="tikz" className="space-y-3">
@@ -413,7 +429,9 @@ export default function ConvertPage() {
                   />
                 )}
                 <div className={ghost}>
-                  <CodeAssistEditor kind="tikz" value={tikzOut} onChange={setTikzOut} minHeight={OUTPUT_MIN_HEIGHT} />
+                  <Suspense fallback={<EditorFallback minHeight={OUTPUT_MIN_HEIGHT} />}>
+                    <CodeAssistEditor kind="tikz" value={tikzOut} onChange={setTikzOut} minHeight={OUTPUT_MIN_HEIGHT} />
+                  </Suspense>
                 </div>
               </TabsContent>
               <TabsContent value="gnuplot" className="space-y-2">
@@ -438,7 +456,9 @@ export default function ConvertPage() {
                   <GnuplotSettingsPanel value={gnuplot} onChange={updateGnuplot} />
                 )}
                 <div className={ghost}>
-                  <CodeAssistEditor kind="gnuplot" value={gnuplotOut} onChange={setGnuplotOut} minHeight={OUTPUT_MIN_HEIGHT} />
+                  <Suspense fallback={<EditorFallback minHeight={OUTPUT_MIN_HEIGHT} />}>
+                    <CodeAssistEditor kind="gnuplot" value={gnuplotOut} onChange={setGnuplotOut} minHeight={OUTPUT_MIN_HEIGHT} />
+                  </Suspense>
                 </div>
               </TabsContent>
             </Tabs>
