@@ -33,6 +33,27 @@ export interface TikzSettings {
   uncSigFigs: number
 }
 
+// gnuplot 固有のグラフ設定。ラベル・軸スケール・近似手法は TikZ 設定を共有する。
+export interface GnuplotSettings {
+  // gnuplot の `set key` 引数（例: "left top" / "right bottom" / "outside" / "off"）。
+  keyPos: string
+  grid: boolean
+  // pointtype。0 = 既定（出力しない）。
+  pointType: number
+  // pointsize。0 = 既定（出力しない）。
+  pointSize: number
+  // グラフタイトル（set title）。空文字 = 出力しない。
+  title: string
+}
+
+export const DEFAULT_GNUPLOT_SETTINGS: GnuplotSettings = {
+  keyPos: "left top",
+  grid: false,
+  pointType: 0,
+  pointSize: 0,
+  title: "",
+}
+
 export const DEFAULT_TABLE_SETTINGS: TableSettings = {
   roundMode: "none",
   decimals: 2,

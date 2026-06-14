@@ -1,4 +1,4 @@
-import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { type CSSProperties, useEffect, useMemo, useState } from "react"
 import { CheckCircle2, ClipboardPaste, FileText, Link2, LoaderCircle, Settings2, Table2 } from "lucide-react"
 
 import { CodeAssistEditor } from "@/components/CodeAssistEditor"
@@ -7,6 +7,7 @@ import { CopyButton } from "@/components/convert/CopyButton"
 import { CsvActions } from "@/components/convert/CsvActions"
 import { DataEntryForm } from "@/components/convert/DataEntryForm"
 import { GnuplotPreviewPane } from "@/components/convert/GnuplotPreviewPane"
+import { GnuplotSettingsPanel } from "@/components/convert/GnuplotSettingsPanel"
 import { InputDiagnosticsPanel } from "@/components/convert/InputDiagnosticsPanel"
 import { InputSettingsPanel } from "@/components/convert/InputSettingsPanel"
 import { PreviewConsentDialog } from "@/components/convert/PreviewConsentDialog"
@@ -22,33 +23,29 @@ import {
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
-import { genCsvAttachment, isWasmAvailable } from "@/engine/loader"
 import { useCollapsibleHeight } from "@/hooks/useCollapsibleHeight"
+import { useConvertPageStatus } from "@/hooks/useConvertPageStatus"
 import { useConversionOutputs } from "@/hooks/useConversionOutputs"
 import { useCooldown } from "@/hooks/useCooldown"
 import { useGnuplotPreview } from "@/hooks/useGnuplotPreview"
 import { useI18n } from "@/hooks/useI18n"
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts"
 import { usePersistentState } from "@/hooks/usePersistentState"
+import { usePreviewSubmission, type OutputTab } from "@/hooks/usePreviewSubmission"
 import { useSeo } from "@/hooks/useSeo"
 import { getSharedState, useShareUrl } from "@/hooks/useShareUrl"
 import { useSplitResize } from "@/hooks/useSplitResize"
-import { useStatusSetter } from "@/hooks/useStatusBar"
 import {
   DEFAULT_TABLE_SETTINGS,
+  DEFAULT_GNUPLOT_SETTINGS,
   getDefaultTikzSettings,
   localizeDefaultTikzText,
+  type GnuplotSettings,
   type TableSettings,
   type TikzSettings,
 } from "@/lib/convert-settings"
 import { localizedSiteUrls } from "@/lib/i18n"
 import { diagnoseInput } from "@/lib/input-diagnostics"
-import {
-  COOLDOWN_SECONDS,
-  submitToTexlive,
-  wrapLatexDocument,
-  wrapTikzDocument,
-} from "@/lib/texlive"
 
 const SAMPLE = `x\ty1\ty2
 1\t2.3\t4.5
@@ -60,12 +57,6 @@ const SAMPLE = `x\ty1\ty2
 const OUTPUT_MIN_HEIGHT = 273
 const SITE_URL = "https://convertexcel.net/"
 const convertUrls = localizedSiteUrls(SITE_URL, "/")
-type PreviewPhase = "idle" | "submitting" | "compiling" | "complete"
-type PreviewStatus = {
-  phase: PreviewPhase
-  kind: null | "latex" | "tikz"
-  progress: number
-}
 
 export default function ConvertPage() {
   const { language, t, seo: seoText } = useI18n()
@@ -106,23 +97,17 @@ export default function ConvertPage() {
   const [input, setInput] = usePersistentState("convertexcel:input", "")
   const [table, setTable] = usePersistentState("convertexcel:table", DEFAULT_TABLE_SETTINGS)
   const [tikz, setTikz] = usePersistentState("convertexcel:tikz", getDefaultTikzSettings(language))
+  const [gnuplot, setGnuplot] = usePersistentState("convertexcel:gnuplot", DEFAULT_GNUPLOT_SETTINGS)
   const [inputMode, setInputMode] = useState<"paste" | "form">("paste")
   const [formKey, setFormKey] = useState(0)
   const [showInputSettings, setShowInputSettings] = useState(false)
   const [showTikzSettings, setShowTikzSettings] = useState(false)
-  const [pending, setPending] = useState<null | "latex" | "tikz">(null)
-  const [previewStatus, setPreviewStatus] = useState<PreviewStatus>({
-    phase: "idle",
-    kind: null,
-    progress: 0,
-  })
-  const [activeTab, setActiveTab] = useState<"latex" | "tikz" | "gnuplot">("latex")
-  const iframeRef = useRef<HTMLIFrameElement>(null)
-  const previewDoneTimerRef = useRef<number | null>(null)
-  const setStatus = useStatusSetter()
+  const [showGnuplotSettings, setShowGnuplotSettings] = useState(false)
+  const [activeTab, setActiveTab] = useState<OutputTab>("latex")
 
   const updateTable = (patch: Partial<TableSettings>) => setTable((s) => ({ ...s, ...patch }))
   const updateTikz = (patch: Partial<TikzSettings>) => setTikz((s) => ({ ...s, ...patch }))
+  const updateGnuplot = (patch: Partial<GnuplotSettings>) => setGnuplot((s) => ({ ...s, ...patch }))
 
   useEffect(() => {
     setTikz((current) => localizeDefaultTikzText(current, language))
@@ -133,7 +118,7 @@ export default function ConvertPage() {
   const isExample = input.trim() === ""
   const source = isExample ? SAMPLE : input
 
-  const { latexOut, csvOut, tikzOut, gnuplotOut, setLatexOut, setTikzOut, setGnuplotOut } = useConversionOutputs(source, table, tikz)
+  const { latexOut, csvOut, tikzOut, gnuplotOut, setLatexOut, setTikzOut, setGnuplotOut } = useConversionOutputs(source, table, tikz, gnuplot)
   const { cooldown, startCooldown } = useCooldown()
   // gnuplot プレビューはクライアント内 SVG 描画（外部送信・同意・クールダウン不要）。
   const {
@@ -143,21 +128,33 @@ export default function ConvertPage() {
     renderPreview: renderGnuplotPreview,
     markImageActionFailed,
   } = useGnuplotPreview(gnuplotOut, t.convert.gnuplotError)
+  const preview = usePreviewSubmission({
+    activeTab,
+    cooldown,
+    latexOut,
+    tikzOut,
+    gnuplotOut,
+    source,
+    table,
+    renderGnuplotPreview,
+    startCooldown,
+  })
   const inputArea = useCollapsibleHeight()
   const split = useSplitResize()
   const [shareDialogOpen, setShareDialogOpen] = useState(false)
   const defaultTikzForLanguage = useMemo(() => getDefaultTikzSettings(language), [language])
   const shareState = useMemo(
-    () => ({ input, table, tikz, activeTab }),
-    [input, table, tikz, activeTab],
+    () => ({ input, table, tikz, gnuplot, activeTab }),
+    [input, table, tikz, gnuplot, activeTab],
   )
   const hasShareContent = useMemo(
     () =>
       input.trim() !== "" ||
       activeTab !== "latex" ||
       JSON.stringify(table) !== JSON.stringify(DEFAULT_TABLE_SETTINGS) ||
-      JSON.stringify(tikz) !== JSON.stringify(defaultTikzForLanguage),
-    [input, activeTab, table, tikz, defaultTikzForLanguage],
+      JSON.stringify(tikz) !== JSON.stringify(defaultTikzForLanguage) ||
+      JSON.stringify(gnuplot) !== JSON.stringify(DEFAULT_GNUPLOT_SETTINGS),
+    [input, activeTab, table, tikz, gnuplot, defaultTikzForLanguage],
   )
   const { copied, copyShareUrl, shareUrl } = useShareUrl(shareState, hasShareContent)
 
@@ -168,22 +165,12 @@ export default function ConvertPage() {
     if (typeof shared.input === "string") setInput(shared.input)
     if (shared.table) setTable((current) => ({ ...current, ...shared.table }))
     if (shared.tikz) setTikz((current) => ({ ...current, ...shared.tikz }))
+    if (shared.gnuplot) setGnuplot((current) => ({ ...current, ...shared.gnuplot }))
     if (shared.activeTab) setActiveTab(shared.activeTab)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handlePreview = useCallback(() => {
-    if (activeTab === "gnuplot") {
-      void renderGnuplotPreview()
-      return
-    }
-    if (cooldown > 0) return
-    const out = activeTab === "latex" ? latexOut : tikzOut
-    if (!out.trim()) return
-    setPending(activeTab)
-  }, [cooldown, activeTab, latexOut, tikzOut, renderGnuplotPreview])
-
   useKeyboardShortcuts({
-    onPreview: handlePreview,
+    onPreview: preview.requestPreview,
     onSwitchTab: setActiveTab,
   })
 
@@ -206,89 +193,7 @@ export default function ConvertPage() {
   // 透過表示中のコードは閲覧用の例なので、編集や選択を無効化する。
   const ghost = isExample ? "pointer-events-none opacity-60 select-none" : undefined
 
-  // WASM エンジンの利用可否（ステータスバー表示用）。
-  const [engineReady, setEngineReady] = useState<boolean | null>(null)
-  useEffect(() => {
-    let alive = true
-    isWasmAvailable().then((ok) => alive && setEngineReady(ok))
-    return () => {
-      alive = false
-    }
-  }, [])
-
-  // ステータスバーへ現在の状態を公開する。
-  useEffect(() => {
-    setStatus({
-      errors: diagnostics.problems.filter((p) => p.severity === "error").length,
-      warnings: diagnostics.problems.filter((p) => p.severity === "warning").length,
-      rows: diagnostics.rowCount,
-      cols: diagnostics.maxCols,
-      chars: input.length,
-      activeOutput: activeTab === "latex" ? "table.tex" : activeTab === "tikz" ? "plot.pgfplots" : "plot.gp",
-      engineReady,
-    })
-  }, [diagnostics, input, activeTab, engineReady, setStatus])
-
-  useEffect(() => {
-    if (previewStatus.phase !== "submitting" && previewStatus.phase !== "compiling") return
-    const timer = window.setInterval(() => {
-      setPreviewStatus((current) => {
-        if (current.phase !== "submitting" && current.phase !== "compiling") return current
-        const limit = current.phase === "submitting" ? 35 : 92
-        const step = current.phase === "submitting" ? 4 : Math.max(1, Math.round((limit - current.progress) / 8))
-        return { ...current, progress: Math.min(limit, current.progress + step) }
-      })
-    }, 450)
-
-    return () => window.clearInterval(timer)
-  }, [previewStatus.phase])
-
-  useEffect(() => {
-    return () => {
-      if (previewDoneTimerRef.current !== null) window.clearTimeout(previewDoneTimerRef.current)
-    }
-  }, [])
-
-  function finishPreviewLoad() {
-    setPreviewStatus((current) => {
-      if (current.phase !== "submitting" && current.phase !== "compiling") return current
-      return { ...current, phase: "complete", progress: 100 }
-    })
-    if (previewDoneTimerRef.current !== null) window.clearTimeout(previewDoneTimerRef.current)
-    previewDoneTimerRef.current = window.setTimeout(() => {
-      setPreviewStatus({ phase: "idle", kind: null, progress: 0 })
-      previewDoneTimerRef.current = null
-    }, 2400)
-  }
-
-  async function doPreview(kind: "latex" | "tikz") {
-    const iframeName = iframeRef.current?.name ?? "tex-iframe"
-    setPreviewStatus({ phase: "submitting", kind, progress: 8 })
-    if (kind === "latex") {
-      if (!latexOut.trim()) {
-        setPreviewStatus({ phase: "idle", kind: null, progress: 0 })
-        return
-      }
-      submitToTexlive(iframeName, wrapLatexDocument(latexOut), [])
-    } else {
-      if (!tikzOut.trim()) {
-        setPreviewStatus({ phase: "idle", kind: null, progress: 0 })
-        return
-      }
-      const refs = Array.from(new Set([...tikzOut.matchAll(/\{([^{}]+\.csv)\}/g)].map((m) => m[1])))
-      const csv = await genCsvAttachment(source, table.hasHeader, table.cleanInput)
-      const extra = refs.map((name) => ({ name, contents: csv }))
-      submitToTexlive(iframeName, wrapTikzDocument(tikzOut), extra)
-    }
-    setPreviewStatus((current) => ({ ...current, phase: "compiling", progress: Math.max(current.progress, 36) }))
-    startCooldown(COOLDOWN_SECONDS)
-  }
-
-  async function acceptConsent() {
-    const kind = pending
-    setPending(null)
-    if (kind) await doPreview(kind)
-  }
+  useConvertPageStatus(diagnostics, input.length, activeTab)
 
   return (
     <div className="w-full space-y-4 p-4 sm:p-6">
@@ -430,7 +335,7 @@ export default function ConvertPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <CsvActions value={csvOut} />
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "latex" | "tikz" | "gnuplot")}>
+            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as OutputTab)}>
               <TabsList className="flex w-full justify-start overflow-x-auto">
                 <TabsTrigger value="latex" title="Alt+1">table.tex</TabsTrigger>
                 <TabsTrigger value="tikz" title="Alt+2">plot.pgfplots</TabsTrigger>
@@ -438,7 +343,7 @@ export default function ConvertPage() {
               </TabsList>
               <TabsContent value="latex" className="space-y-2">
                 <div className="flex flex-wrap justify-end gap-2">
-                  <Button size="sm" onClick={handlePreview} disabled={cooldown > 0 || !latexOut.trim()} title={`${t.convert.previewTable} (Ctrl+Enter)`}>
+                  <Button size="sm" onClick={preview.requestPreview} disabled={!preview.canPreviewLatex} title={`${t.convert.previewTable} (Ctrl+Enter)`}>
                     <FileText className="h-4 w-4" />
                     <span>{t.convert.previewTable}</span>
                   </Button>
@@ -461,7 +366,7 @@ export default function ConvertPage() {
                     <Settings2 className="h-4 w-4" />
                     <span>{showTikzSettings ? t.convert.hideTikzSettings : t.convert.showTikzSettings}</span>
                   </Button>
-                  <Button size="sm" onClick={handlePreview} disabled={cooldown > 0 || !tikzOut.trim()} title={`${t.convert.previewGraph} (Ctrl+Enter)`}>
+                  <Button size="sm" onClick={preview.requestPreview} disabled={!preview.canPreviewTikz} title={`${t.convert.previewGraph} (Ctrl+Enter)`}>
                     <FileText className="h-4 w-4" />
                     <span>{t.convert.previewGraph}</span>
                   </Button>
@@ -482,12 +387,25 @@ export default function ConvertPage() {
               </TabsContent>
               <TabsContent value="gnuplot" className="space-y-2">
                 <div className="flex flex-wrap justify-end gap-2">
-                  <Button size="sm" onClick={handlePreview} disabled={gnuplotRendering || !gnuplotOut.trim()} title={`${t.convert.previewGnuplot} (Ctrl+Enter)`}>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setShowGnuplotSettings((v) => !v)}
+                    title={showGnuplotSettings ? t.convert.hideTikzSettings : t.convert.showTikzSettings}
+                  >
+                    <Settings2 className="h-4 w-4" />
+                    <span>{showGnuplotSettings ? t.convert.hideTikzSettings : t.convert.showTikzSettings}</span>
+                  </Button>
+                  <Button size="sm" onClick={preview.requestPreview} disabled={gnuplotRendering || !preview.canPreviewGnuplot} title={`${t.convert.previewGnuplot} (Ctrl+Enter)`}>
                     {gnuplotRendering ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
                     <span>{t.convert.previewGnuplot}</span>
                   </Button>
                   <CopyButton value={gnuplotOut} label={t.convert.copyPlotGnuplot} />
                 </div>
+                {showGnuplotSettings && (
+                  <GnuplotSettingsPanel value={gnuplot} onChange={updateGnuplot} />
+                )}
                 <div className={ghost}>
                   <CodeAssistEditor kind="gnuplot" value={gnuplotOut} onChange={setGnuplotOut} minHeight={OUTPUT_MIN_HEIGHT} />
                 </div>
@@ -530,7 +448,7 @@ export default function ConvertPage() {
               />
             ) : (
             <>
-            {previewStatus.phase !== "idle" && (
+            {preview.previewStatus.phase !== "idle" && (
               <div
                 role="status"
                 aria-live="polite"
@@ -538,36 +456,36 @@ export default function ConvertPage() {
               >
                 <div className="mb-2 flex items-center justify-between gap-3 text-sm">
                   <span className="flex min-w-0 items-center gap-2 font-medium">
-                    {previewStatus.phase === "complete" ? (
+                    {preview.previewStatus.phase === "complete" ? (
                       <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
                     ) : (
                       <LoaderCircle className="h-4 w-4 shrink-0 animate-spin text-info" />
                     )}
                     <span className="truncate">
-                      {previewStatus.phase === "complete"
+                      {preview.previewStatus.phase === "complete"
                         ? t.convert.previewComplete
                         : t.convert.previewProgress(
-                            previewStatus.kind === "tikz" ? t.convert.previewKindGraph : t.convert.previewKindTable,
+                            preview.previewStatus.kind === "tikz" ? t.convert.previewKindGraph : t.convert.previewKindTable,
                           )}
                     </span>
                   </span>
                   <span className="shrink-0 tabular-nums text-muted-foreground">
-                    {previewStatus.progress}%
+                    {preview.previewStatus.progress}%
                   </span>
                 </div>
                 <Progress
-                  value={previewStatus.progress}
+                  value={preview.previewStatus.progress}
                   aria-label={t.convert.previewProgressLabel}
                   className="h-1.5 bg-background [&_[data-slot=progress-indicator]]:bg-info [&_[data-slot=progress-indicator]]:duration-500 [&_[data-slot=progress-indicator]]:ease-out"
                 />
               </div>
             )}
             <iframe
-              ref={iframeRef}
+              ref={preview.iframeRef}
               name="tex-iframe"
               title="LaTeX PDF preview"
               className="h-[420px] w-full rounded-md border xl:h-[760px] dark:[filter:invert(1)_hue-rotate(180deg)]"
-              onLoad={finishPreviewLoad}
+              onLoad={preview.finishPreviewLoad}
             />
             </>
             )}
@@ -577,9 +495,9 @@ export default function ConvertPage() {
       </div>
 
       <PreviewConsentDialog
-        open={pending !== null}
-        onCancel={() => setPending(null)}
-        onAccept={acceptConsent}
+        open={preview.pending !== null}
+        onCancel={preview.cancelConsent}
+        onAccept={preview.acceptConsent}
       />
       <ShareDialog
         open={shareDialogOpen}

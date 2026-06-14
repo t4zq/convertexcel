@@ -1,7 +1,11 @@
 import { useCallback, useMemo, useState } from "react"
 
 import { createShareUrl } from "@/hooks/useShareUrl"
-import { DEFAULT_TABLE_SETTINGS, getDefaultTikzSettings } from "@/lib/convert-settings"
+import {
+  DEFAULT_GNUPLOT_SETTINGS,
+  DEFAULT_TABLE_SETTINGS,
+  getDefaultTikzSettings,
+} from "@/lib/convert-settings"
 
 const WEB_APP_URL = import.meta.env.VITE_CONVERTEXCEL_WEB_URL ?? `${window.location.origin}/`
 const COPIED_FLASH_MS = 1600
@@ -27,6 +31,7 @@ export function useWebAppLink(input: string): WebAppLink {
             input,
             table: DEFAULT_TABLE_SETTINGS,
             tikz: getDefaultTikzSettings("ja"),
+            gnuplot: DEFAULT_GNUPLOT_SETTINGS,
             activeTab: "latex",
           })
         : WEB_APP_URL,

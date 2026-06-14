@@ -53,7 +53,12 @@ export interface EngineModule {
     clean_input: number,
     x_label: string,
     y_label: string,
-    fit_method: string
+    fit_method: string,
+    key_pos: string,
+    grid: number,
+    point_type: number,
+    point_size: number,
+    title: string
   ) => string
 }
 
@@ -174,6 +179,12 @@ export interface GnuplotOptions {
   yLabel: string
   // 系列ごとの近似手法をカンマ区切りで（エンジンが split_line で解釈）。
   fitMethod: string
+  // gnuplot 固有設定。
+  keyPos: string
+  grid: boolean
+  pointType: number
+  pointSize: number
+  title: string
 }
 
 export async function genGnuplot(input: string, o: GnuplotOptions): Promise<string> {
@@ -185,6 +196,11 @@ export async function genGnuplot(input: string, o: GnuplotOptions): Promise<stri
     bool(o.cleanInput),
     o.xLabel,
     o.yLabel,
-    o.fitMethod
+    o.fitMethod,
+    o.keyPos,
+    bool(o.grid),
+    o.pointType,
+    o.pointSize,
+    o.title
   )
 }

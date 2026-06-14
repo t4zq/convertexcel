@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react"
 
-import type { TableSettings, TikzSettings } from "@/lib/convert-settings"
+import type { GnuplotSettings, TableSettings, TikzSettings } from "@/lib/convert-settings"
 import { convertTable } from "@/lib/conversion-service"
 
-// 入力・設定の変更を監視し、LaTeX 表 / CSV / TikZ を自動生成する。
+// 入力・設定の変更を監視し、LaTeX 表 / CSV / TikZ / gnuplot を自動生成する。
 // 生成後のコードは手動編集できるよう setter も返す。
 export function useConversionOutputs(
   input: string,
   table: TableSettings,
-  tikz: TikzSettings
+  tikz: TikzSettings,
+  gnuplot: GnuplotSettings
 ) {
   const [latexOut, setLatexOut] = useState("")
   const [csvOut, setCsvOut] = useState("")
@@ -17,7 +18,7 @@ export function useConversionOutputs(
 
   useEffect(() => {
     let alive = true
-    convertTable(input, table, tikz).then((result) => {
+    convertTable(input, table, tikz, gnuplot).then((result) => {
       if (!alive) return
       setLatexOut(result.latex)
       setCsvOut(result.csv)
@@ -27,7 +28,7 @@ export function useConversionOutputs(
     return () => {
       alive = false
     }
-  }, [input, table, tikz])
+  }, [input, table, tikz, gnuplot])
 
   return { latexOut, csvOut, tikzOut, gnuplotOut, setLatexOut, setTikzOut, setGnuplotOut }
 }

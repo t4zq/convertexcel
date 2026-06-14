@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from "react"
 
-import type { TableSettings, TikzSettings } from "@/lib/convert-settings"
+import {
+  DEFAULT_GNUPLOT_SETTINGS,
+  type GnuplotSettings,
+  type TableSettings,
+  type TikzSettings,
+} from "@/lib/convert-settings"
 
 const LEGACY_INPUT_PREFIX = "d="
 const SHARE_STATE_PREFIX = "s="
@@ -9,6 +14,7 @@ export interface ShareState {
   input: string
   table: TableSettings
   tikz: TikzSettings
+  gnuplot: GnuplotSettings
   activeTab: "latex" | "tikz" | "gnuplot"
 }
 
@@ -33,6 +39,7 @@ function encodeState(state: ShareState): string {
     input: state.input,
     table: state.table,
     tikz: state.tikz,
+    gnuplot: state.gnuplot,
     activeTab: state.activeTab,
   }))
 }
@@ -62,6 +69,7 @@ function decodeState(hashValue: string): ShareState | null {
       input: parsed.input,
       table: parsed.table,
       tikz: parsed.tikz,
+      gnuplot: (parsed.gnuplot as GnuplotSettings | undefined) ?? DEFAULT_GNUPLOT_SETTINGS,
       activeTab: parsed.activeTab,
     } as ShareState
   } catch {
