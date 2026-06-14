@@ -31,6 +31,8 @@ export async function convertTable(
       cleanInput: table.cleanInput,
       xLabel: tikz.xLabel,
       yLabel: tikz.yLabel,
+      // TikZ と同じく系列ごとの近似手法をカンマ区切りで渡す。
+      fitMethod: (tikz.fitMethods?.length ? tikz.fitMethods : ["auto"]).join(","),
     }).catch(() => ""),
   ])
 

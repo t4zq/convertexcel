@@ -857,6 +857,7 @@ fn exponential_fit(points: &[Point]) -> FitResult {
     result.method = "exponential".to_string();
     result.expression = format!("({})*exp(({})*x)", format_double(a), format_double(b));
     result.tex_expression = format!("{}e^{{{}x}}", format_double(a), format_double(b));
+    result.coeffs = vec![a, b];
     result.r2 = r_squared(points, &move |x| a * (b * x).exp());
     result
 }
@@ -880,6 +881,7 @@ fn logarithmic_fit(points: &[Point]) -> FitResult {
     result.method = "logarithmic".to_string();
     result.expression = format!("({})*ln(x) + ({})", format_double(a), format_double(b));
     result.tex_expression = format!("{}\\ln x + {}", format_double(a), format_double(b));
+    result.coeffs = vec![a, b];
     result.r2 = r_squared(points, &move |x| if x > 0.0 { a * x.ln() + b } else { f64::NAN });
     result
 }
@@ -903,6 +905,7 @@ fn power_fit(points: &[Point]) -> FitResult {
     result.method = "power".to_string();
     result.expression = format!("({})*pow(x,{})", format_double(a), format_double(b));
     result.tex_expression = format!("{}x^{{{}}}", format_double(a), format_double(b));
+    result.coeffs = vec![a, b];
     result.r2 = r_squared(points, &move |x| if x > 0.0 { a * x.powf(b) } else { f64::NAN });
     result
 }
@@ -1479,16 +1482,76 @@ fn gnuplot_single_quote(s: &str) -> String {
     s.replace('\'', "''")
 }
 
+/// gnuplot の近似モデル定義・初期値・fit コマンドと、plot 用の式参照を返す。
+/// 係数は Rust 側で計算済みの値を初期値としてシードし、gnuplot に精緻化させる。
+/// 戻り値: (setup ブロック, plot 用の式 `f{col}(x)`)。生成できなければ None。
+fn gnuplot_fit_block(fit: &FitResult, col: usize, y_idx: usize) -> Option<(String, String)> {
+    let fname = format!("f{}", col);
+    let (model, params): (String, Vec<String>) = match fit.method.as_str() {
+        "linear" | "quadratic" | "cubic" => {
+            let degree = match fit.method.as_str() {
+                "linear" => 1,
+                "quadratic" => 2,
+                _ => 3,
+            };
+            if fit.coeffs.len() < degree + 1 {
+                return None;
+            }
+            let params: Vec<String> = (0..=degree).map(|i| format!("c{}_{}", col, i)).collect();
+            let terms: Vec<String> = (0..=degree)
+                .map(|i| match i {
+                    0 => params[0].clone(),
+                    1 => format!("{}*x", params[1]),
+                    _ => format!("{}*x**{}", params[i], i),
+                })
+                .collect();
+            (terms.join(" + "), params)
+        }
+        // gnuplot の log() は自然対数。Rust 側の ln と一致する。
+        "exponential" | "logarithmic" | "power" => {
+            if fit.coeffs.len() < 2 {
+                return None;
+            }
+            let a = format!("a{}", col);
+            let b = format!("b{}", col);
+            let model = match fit.method.as_str() {
+                "exponential" => format!("{}*exp({}*x)", a, b),
+                "logarithmic" => format!("{}*log(x) + {}", a, b),
+                _ => format!("{}*x**{}", a, b),
+            };
+            (model, vec![a, b])
+        }
+        _ => return None,
+    };
+
+    let mut setup = String::new();
+    for (i, p) in params.iter().enumerate() {
+        setup.push_str(&format!("{} = {}\n", p, format_double(fit.coeffs[i])));
+    }
+    setup.push_str(&format!("{}(x) = {}\n", fname, model));
+    setup.push_str(&format!(
+        "fit {}(x) $data using 1:{} via {}\n",
+        fname,
+        y_idx,
+        params.join(", ")
+    ));
+    Some((setup, format!("{}(x)", fname)))
+}
+
 /// gnuplot スクリプトを生成する。データはインラインデータブロック
 /// (`$data << EOD … EOD`) に埋め込み、列レイアウトは `to_graph_csv`（値列 +
 /// 末尾に誤差列）と同じ規則を共有する。`set terminal`/`set output` は付けない
 /// （ブラウザの gnuplot-wasm が svg 端末を自前で前置するため）。
+/// 近似は gnuplot の `fit` コマンドで行う（コピーしたスクリプトをローカルで
+/// 実行・編集してもデータに追従するように）。係数は Rust 側の計算結果を初期値
+/// としてシードし、収束を安定させる。
 fn to_gnuplot(
     t: &Table,
     scale_mode: &str,
     headers: &[String],
     x_label: &str,
     y_label: &str,
+    fit_methods: &str,
 ) -> String {
     if t.is_empty() {
         return String::new();
@@ -1500,6 +1563,43 @@ fn to_gnuplot(
 
     let x_label = if x_label.trim().is_empty() { "x" } else { x_label.trim() };
     let y_label = if y_label.trim().is_empty() { "y" } else { y_label.trim() };
+
+    let total_cols = t.iter().map(|r| r.len()).max().unwrap_or(num_cols);
+    let unc = uncertain_columns(t);
+
+    // 系列ごとに「データ点の plot 片」と、近似があれば「fit 定義 + 近似線の plot 片」を集める。
+    let mut fit_setups: Vec<String> = Vec::new();
+    let mut plot_entries: Vec<String> = Vec::new();
+    for col in 1..num_cols {
+        let title = if headers.len() > col && !headers[col].is_empty() {
+            headers[col].clone()
+        } else {
+            format!("y{}", col)
+        };
+        // gnuplot の列番号は 1 始まり。値列 = col+1、誤差列 = error_index_for+1。
+        let y_idx = col + 1;
+        // データ点と近似線を同じ線色 (lc) で揃える。
+        let data_entry = match error_index_for(&unc, total_cols, col) {
+            Some(ei) => format!(
+                "$data using 1:{}:{} with yerrorbars lc {} title '{}'",
+                y_idx, ei + 1, col, gnuplot_single_quote(&title)
+            ),
+            None => format!(
+                "$data using 1:{} with points lc {} title '{}'",
+                y_idx, col, gnuplot_single_quote(&title)
+            ),
+        };
+        plot_entries.push(data_entry);
+
+        let method = fit_method_for_series(fit_methods, col - 1);
+        let fit = select_fit(&points_for_column(t, col), &method);
+        if fit.ok {
+            if let Some((setup, expr)) = gnuplot_fit_block(&fit, col, y_idx) {
+                fit_setups.push(setup);
+                plot_entries.push(format!("{} with lines lc {} notitle", expr, col));
+            }
+        }
+    }
 
     let mut out = String::new();
     // 注: `set encoding utf8` は付けない。gnuplot-wasm では UTF-8 文字列が
@@ -1513,41 +1613,23 @@ fn to_gnuplot(
     } else if scale_mode == "loglog" {
         out.push_str("set logscale xy\n");
     }
-
-    let total_cols = t.iter().map(|r| r.len()).max().unwrap_or(num_cols);
-    let unc = uncertain_columns(t);
+    // fit のログ出力を抑制（gnuplot-wasm の FS への書き込みを避ける）。
+    if !fit_setups.is_empty() {
+        out.push_str("set fit quiet\n");
+        out.push_str("set fit logfile '/dev/null'\n");
+    }
 
     out.push_str("$data << EOD\n");
     out.push_str(&to_graph_csv(t));
     out.push('\n');
     out.push_str("EOD\n");
 
-    out.push_str("plot ");
-    for col in 1..num_cols {
-        if col > 1 {
-            out.push_str(", \\\n     ");
-        }
-        let title = if headers.len() > col && !headers[col].is_empty() {
-            headers[col].clone()
-        } else {
-            format!("y{}", col)
-        };
-        // gnuplot の列番号は 1 始まり。値列 = col+1、誤差列 = error_index_for+1。
-        let y_idx = col + 1;
-        match error_index_for(&unc, total_cols, col) {
-            Some(ei) => out.push_str(&format!(
-                "$data using 1:{}:{} with yerrorbars title '{}'",
-                y_idx,
-                ei + 1,
-                gnuplot_single_quote(&title)
-            )),
-            None => out.push_str(&format!(
-                "$data using 1:{} with points title '{}'",
-                y_idx,
-                gnuplot_single_quote(&title)
-            )),
-        }
+    for setup in &fit_setups {
+        out.push_str(setup);
     }
+
+    out.push_str("plot ");
+    out.push_str(&plot_entries.join(", \\\n     "));
     out.push('\n');
     out
 }
@@ -1655,6 +1737,7 @@ pub fn gen_csv_attachment(input: &str, has_header: i32, clean_input: i32) -> Str
     to_graph_csv(&t)
 }
 #[wasm_bindgen]
+#[allow(clippy::too_many_arguments)]
 pub fn gen_gnuplot_config(
     input: &str,
     scale_mode: &str,
@@ -1662,6 +1745,7 @@ pub fn gen_gnuplot_config(
     clean_input: i32,
     x_label: &str,
     y_label: &str,
+    fit_method: &str,
 ) -> String {
     let t = prepare_table(input, has_header != 0, clean_input != 0, false);
     let headers = if has_header != 0 {
@@ -1670,7 +1754,7 @@ pub fn gen_gnuplot_config(
     } else {
         Vec::new()
     };
-    to_gnuplot(&t, scale_mode, &headers, x_label, y_label)
+    to_gnuplot(&t, scale_mode, &headers, x_label, y_label, fit_method)
 }
 
 #[cfg(test)]
@@ -1834,7 +1918,7 @@ mod tests {
 
     #[test]
     fn gnuplot_basic_points() {
-        let out = gen_gnuplot_config("x,y\n1,2\n2,4\n3,6", "linear", 1, 1, "Voltage", "Current");
+        let out = gen_gnuplot_config("x,y\n1,2\n2,4\n3,6", "linear", 1, 1, "Voltage", "Current", "none");
         assert!(out.contains("set datafile separator ','"));
         // gnuplot-wasm での二重エンコード回避のため encoding は設定しない。
         assert!(!out.contains("set encoding"));
@@ -1842,7 +1926,10 @@ mod tests {
         assert!(out.contains("set ylabel \"Current\""));
         assert!(out.contains("$data << EOD"));
         assert!(out.contains("\nEOD\n"));
-        assert!(out.contains("$data using 1:2 with points title 'y'"));
+        assert!(out.contains("$data using 1:2 with points lc 1 title 'y'"));
+        // 近似なしなら fit 関連は出ない。
+        assert!(!out.contains("set fit"));
+        assert!(!out.contains("fit f1"));
         // 端末指定は付けない（wasm 側が前置する）。
         assert!(!out.contains("set terminal"));
         assert!(!out.contains("set output"));
@@ -1851,24 +1938,57 @@ mod tests {
     #[test]
     fn gnuplot_error_bars() {
         // 誤差付き系列は yerrorbars と誤差列インデックスを出す（to_graph_csv と同じ列規則）。
-        let out = gen_gnuplot_config("x,y\n1,2 ± 0.1\n2,4 ± 0.2\n3,6 ± 0.3", "linear", 1, 1, "", "");
+        let out = gen_gnuplot_config("x,y\n1,2 ± 0.1\n2,4 ± 0.2\n3,6 ± 0.3", "linear", 1, 1, "", "", "none");
         assert!(out.contains("$data using 1:2:3 with yerrorbars"));
     }
 
     #[test]
     fn gnuplot_logscale() {
-        let loglog = gen_gnuplot_config("x,y\n1,2\n2,4", "loglog", 1, 1, "", "");
+        let loglog = gen_gnuplot_config("x,y\n1,2\n2,4", "loglog", 1, 1, "", "", "none");
         assert!(loglog.contains("set logscale xy"));
-        let semilog = gen_gnuplot_config("x,y\n1,2\n2,4", "semilog", 1, 1, "", "");
+        let semilog = gen_gnuplot_config("x,y\n1,2\n2,4", "semilog", 1, 1, "", "", "none");
         assert!(semilog.contains("set logscale y"));
         assert!(!semilog.contains("set logscale xy"));
     }
 
     #[test]
     fn gnuplot_multi_series_titles() {
-        let out = gen_gnuplot_config("x,a,b\n1,2,3\n2,4,5", "linear", 1, 1, "", "");
-        assert!(out.contains("$data using 1:2 with points title 'a'"));
-        assert!(out.contains("$data using 1:3 with points title 'b'"));
+        let out = gen_gnuplot_config("x,a,b\n1,2,3\n2,4,5", "linear", 1, 1, "", "", "none");
+        assert!(out.contains("$data using 1:2 with points lc 1 title 'a'"));
+        assert!(out.contains("$data using 1:3 with points lc 2 title 'b'"));
+    }
+
+    #[test]
+    fn gnuplot_fit_linear() {
+        // 線形近似は gnuplot の fit コマンドで実装。係数は初期値としてシードする。
+        let out = gen_gnuplot_config("x,y\n1,2.1\n2,3.9\n3,6.2\n4,7.8", "linear", 1, 1, "", "", "linear");
+        // ログ抑制。
+        assert!(out.contains("set fit quiet"));
+        assert!(out.contains("set fit logfile '/dev/null'"));
+        // モデル定義・初期値・fit コマンド。
+        assert!(out.contains("f1(x) = c1_0 + c1_1*x"));
+        assert!(out.contains("c1_0 ="));
+        assert!(out.contains("c1_1 ="));
+        assert!(out.contains("fit f1(x) $data using 1:2 via c1_0, c1_1"));
+        // 近似線はデータ点と同じ lc、凡例なし。
+        assert!(out.contains("f1(x) with lines lc 1 notitle"));
+    }
+
+    #[test]
+    fn gnuplot_fit_exponential_uses_log() {
+        // 指数近似。gnuplot の自然対数は log()。
+        let out = gen_gnuplot_config("x,y\n1,2.7\n2,7.4\n3,20.1", "linear", 1, 1, "", "", "exponential");
+        assert!(out.contains("f1(x) = a1*exp(b1*x)"));
+        assert!(out.contains("fit f1(x) $data using 1:2 via a1, b1"));
+    }
+
+    #[test]
+    fn gnuplot_fit_none_has_no_fit() {
+        // none なら fit ブロックも近似線も出ない。
+        let out = gen_gnuplot_config("x,y\n1,2\n2,4\n3,6", "linear", 1, 1, "", "", "none");
+        assert!(!out.contains("fit f1"));
+        assert!(!out.contains("with lines"));
+        assert!(!out.contains("set fit"));
     }
 
     #[test]

@@ -52,7 +52,8 @@ export interface EngineModule {
     has_header: number,
     clean_input: number,
     x_label: string,
-    y_label: string
+    y_label: string,
+    fit_method: string
   ) => string
 }
 
@@ -171,6 +172,8 @@ export interface GnuplotOptions {
   cleanInput: boolean
   xLabel: string
   yLabel: string
+  // 系列ごとの近似手法をカンマ区切りで（エンジンが split_line で解釈）。
+  fitMethod: string
 }
 
 export async function genGnuplot(input: string, o: GnuplotOptions): Promise<string> {
@@ -181,6 +184,7 @@ export async function genGnuplot(input: string, o: GnuplotOptions): Promise<stri
     bool(o.hasHeader),
     bool(o.cleanInput),
     o.xLabel,
-    o.yLabel
+    o.yLabel,
+    o.fitMethod
   )
 }
