@@ -309,6 +309,7 @@ export const translations = {
       caption: "キャプション",
       label: "ラベル",
       colorMarker: "色・マーカー",
+      uncSigFigs: "不確かさの桁数",
     },
     previewConsent: {
       title: "PDF プレビューの送信確認",
@@ -471,6 +472,7 @@ export const translations = {
       caption: "Caption",
       label: "Label",
       colorMarker: "Color and marker",
+      uncSigFigs: "Uncertainty digits",
     },
     previewConsent: {
       title: "Confirm PDF preview submission",
@@ -633,6 +635,7 @@ export const translations = {
       caption: "标题",
       label: "标签",
       colorMarker: "颜色和标记",
+      uncSigFigs: "不确定度位数",
     },
     previewConsent: {
       title: "确认发送 PDF 预览数据",
@@ -795,6 +798,7 @@ export const translations = {
       caption: "標題",
       label: "標籤",
       colorMarker: "顏色和標記",
+      uncSigFigs: "不確定度位數",
     },
     previewConsent: {
       title: "確認送出 PDF 預覽資料",
@@ -957,6 +961,7 @@ export const translations = {
       caption: "캡션",
       label: "레이블",
       colorMarker: "색상 및 마커",
+      uncSigFigs: "불확도 자릿수",
     },
     previewConsent: {
       title: "PDF 미리보기 제출 확인",
@@ -1119,6 +1124,7 @@ export const translations = {
       caption: "Título",
       label: "Etiqueta",
       colorMarker: "Color y marcador",
+      uncSigFigs: "Dígitos de incertidumbre",
     },
     previewConsent: {
       title: "Confirmar envío para vista previa PDF",
@@ -1281,6 +1287,7 @@ export const translations = {
       caption: "Beschriftung",
       label: "Label",
       colorMarker: "Farbe und Marker",
+      uncSigFigs: "Stellen der Unsicherheit",
     },
     previewConsent: {
       title: "Übermittlung für PDF-Vorschau bestätigen",

@@ -119,6 +119,18 @@ export function TikzSettingsPanel({ value, onChange, seriesCount, seriesNames }:
             <FitMethodSelect value={fitAt(0)} onChange={setFitAll} methods={fitMethods} />
           </div>
         )}
+        <div className="min-w-0 space-y-1">
+          <Label htmlFor="unc">{t.settings.uncSigFigs}</Label>
+          <Input
+            id="unc"
+            type="number"
+            min={0}
+            max={3}
+            placeholder="0"
+            value={value.uncSigFigs ?? 0}
+            onChange={(e) => onChange({ uncSigFigs: Math.max(0, Math.min(3, Number(e.target.value) || 0)) })}
+          />
+        </div>
       </div>
       {perSeriesFit && (
         <div className="space-y-1">

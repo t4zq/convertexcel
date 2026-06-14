@@ -29,6 +29,8 @@ export interface TikzSettings {
   // 系列ごとの色・マーカー。空文字はエンジンのデフォルト（black / *）を維持する。
   seriesColors: string[]
   seriesMarks: string[]
+  // 近似式に付ける不確かさの有効桁数。0 = 表示しない。
+  uncSigFigs: number
 }
 
 export const DEFAULT_TABLE_SETTINGS: TableSettings = {
@@ -97,6 +99,7 @@ export function getDefaultTikzSettings(language: Language = "ja"): TikzSettings 
     label: "fig:label",
     seriesColors: [],
     seriesMarks: [],
+    uncSigFigs: 0,
   }
 }
 
@@ -141,5 +144,6 @@ export function toTikzOptions(tikz: TikzSettings, table: TableSettings): TikzOpt
     caption: tikz.caption,
     label: tikz.label,
     siunitx: table.siunitx,
+    uncSigFigs: tikz.uncSigFigs ?? 0,
   }
 }

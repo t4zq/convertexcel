@@ -674,6 +674,10 @@ struct FitResult {
     expression: String,
     tex_expression: String,
     r2: f64,
+    /// 多項式フィットの係数 [c0, c1, ...] (非多項式では空)
+    coeffs: Vec<f64>,
+    /// 係数の標準誤差 (同順)
+    coeff_se: Vec<f64>,
 }
 
 impl FitResult {
@@ -684,6 +688,8 @@ impl FitResult {
             expression: String::new(),
             tex_expression: String::new(),
             r2: f64::NEG_INFINITY,
+            coeffs: Vec::new(),
+            coeff_se: Vec::new(),
         }
     }
 }
@@ -827,6 +833,8 @@ fn polynomial_fit(points: &[Point], degree: usize, method: &str) -> FitResult {
     result.expression = expr;
     result.tex_expression = tex_expr;
     result.ok = true;
+    result.coeff_se = poly_coeff_se(points, &coeffs).unwrap_or_default();
+    result.coeffs = coeffs;
     result
 }
 
@@ -930,6 +938,145 @@ fn select_fit(points: &[Point], fit_method: &str) -> FitResult {
         }
     }
     best
+}
+
+// ─── OLS 不確かさ計算 ──────────────────────────────────────
+
+/// 行列の逆行列。特異またはほぼ特異なら None。
+fn mat_inverse(a: &[Vec<f64>]) -> Option<Vec<Vec<f64>>> {
+    let n = a.len();
+    let mut aug: Vec<Vec<f64>> = a.iter()
+        .enumerate()
+        .map(|(i, row)| {
+            let mut r = row.clone();
+            r.extend(std::iter::repeat(0.0).take(n));
+            r[n + i] = 1.0;
+            r
+        })
+        .collect();
+    for col in 0..n {
+        let mut pivot = col;
+        for r in (col + 1)..n {
+            if aug[r][col].abs() > aug[pivot][col].abs() {
+                pivot = r;
+            }
+        }
+        if aug[pivot][col].abs() < 1e-12 {
+            return None;
+        }
+        aug.swap(pivot, col);
+        let div = aug[col][col];
+        for j in 0..(2 * n) {
+            aug[col][j] /= div;
+        }
+        for r in 0..n {
+            if r == col { continue; }
+            let factor = aug[r][col];
+            for j in 0..(2 * n) {
+                aug[r][j] -= factor * aug[col][j];
+            }
+        }
+    }
+    let inv = (0..n).map(|i| (0..n).map(|j| aug[i][n + j]).collect()).collect();
+    Some(inv)
+}
+
+/// 多項式フィット係数の OLS 標準誤差を返す。自由度不足 (n <= k) なら None。
+fn poly_coeff_se(points: &[Point], coeffs: &[f64]) -> Option<Vec<f64>> {
+    let n = points.len();
+    let k = coeffs.len();
+    if n <= k { return None; }
+    let degree = k - 1;
+
+    let sse: f64 = points.iter().map(|p| {
+        let y_hat: f64 = coeffs.iter().enumerate()
+            .map(|(i, &c)| c * p.x.powi(i as i32)).sum();
+        (p.y - y_hat).powi(2)
+    }).sum();
+    let s2 = sse / (n - k) as f64;
+
+    let mut xtx = vec![vec![0.0; k]; k];
+    for p in points {
+        let mut pw = vec![1.0; 2 * degree + 1];
+        for i in 1..=(2 * degree) { pw[i] = pw[i - 1] * p.x; }
+        for row in 0..k {
+            for col in 0..k { xtx[row][col] += pw[row + col]; }
+        }
+    }
+    let inv = mat_inverse(&xtx)?;
+    let se = (0..k).map(|i| {
+        let v = s2 * inv[i][i];
+        if v >= 0.0 { v.sqrt() } else { 0.0 }
+    }).collect();
+    Some(se)
+}
+
+/// 不確かさ se を unc_sig_figs 桁に丸め、値をそれに合わせた桁数で丸める。
+/// (値の文字列, 不確かさの文字列の Option) を返す。se が正でなければ None。
+fn round_uncertainty_pair(value: f64, se: f64, unc_sig_figs: i32) -> (String, Option<String>) {
+    if se <= 0.0 || !se.is_finite() || !value.is_finite() {
+        return (format_double(value), None);
+    }
+    let sf = unc_sig_figs.max(1);
+    let exp = se.abs().log10().floor() as i32;
+    let dec = (sf - 1 - exp).max(0) as usize;
+    let mult = 10f64.powi(dec as i32);
+    let fmt_se = format!("{:.*}", dec, round_half_away(se * mult) / mult);
+    let fmt_val = format!("{:.*}", dec, round_half_away(value * mult) / mult);
+    (fmt_val, Some(fmt_se))
+}
+
+/// equation 環境（数式モード内）の LHS。`$...$` は不要。
+/// siunitx ON + ASCII 記号のとき `sym\,[\si{macro}]`、それ以外は `y_{col}`。
+fn format_eq_lhs(legend_text: &str, siunitx: bool, col: usize) -> String {
+    if siunitx {
+        let (name, unit) = split_header_unit(legend_text);
+        if is_mathy_symbol(&name) {
+            let sym = format_math_symbol(&name);
+            return match unit.as_deref() {
+                Some(u) => {
+                    let si = siunitx_unit(u).unwrap_or(u);
+                    format!("{}\\,[\\si{{{}}}]", sym, si)
+                }
+                None => sym,
+            };
+        }
+    }
+    format!("y_{{{}}}", col)
+}
+
+/// ヘッダーから数式用の x 記号を取り出す（ASCII 記号なら整形、それ以外は "x"）。
+fn format_x_symbol(x_header: &str) -> String {
+    let (name, _) = split_header_unit(x_header);
+    if is_mathy_symbol(&name) { format_math_symbol(&name) } else { "x".to_string() }
+}
+
+/// 不確かさ付き多項式右辺を整形する。
+/// 係数は [c0, c1, ..., cd]（低次から高次順）。
+fn format_poly_eq_rhs(coeffs: &[f64], coeff_se: &[f64], x_sym: &str, unc_sig_figs: i32) -> String {
+    let k = coeffs.len();
+    if k == 0 { return String::new(); }
+    let mut terms = Vec::new();
+    for i in (0..k).rev() {
+        let c = coeffs[i];
+        let se = coeff_se.get(i).copied().unwrap_or(0.0);
+        let coeff_str = if unc_sig_figs > 0 {
+            let (v, s_opt) = round_uncertainty_pair(c, se, unc_sig_figs);
+            match s_opt {
+                Some(s) => format!("({} \\pm {})", v, s),
+                None => format!("({})", format_double(c)),
+            }
+        } else {
+            format!("({})", format_double(c))
+        };
+        let term = match i {
+            0 => coeff_str,
+            1 => format!("{}\\,{}", coeff_str, x_sym),
+            _ => format!("{}\\,{}^{{{}}}", coeff_str, x_sym, i),
+        };
+        terms.push(term);
+    }
+    terms.join(" + ")
 }
 
 fn fit_method_for_series(fit_methods: &str, series_index: usize) -> String {
@@ -1041,6 +1188,7 @@ fn to_tikz_graph(
     caption: &str,
     label: &str,
     siunitx: bool,
+    unc_sig_figs: i32,
 ) -> String {
     if t.is_empty() {
         return String::new();
@@ -1185,19 +1333,19 @@ fn to_tikz_graph(
             out.push_str(&multiline_plot_expression(&fit.expression));
             out.push_str("\n");
             out.push_str("            };\n");
-            // 近似式の左辺。siunitx 時に列の記号が数式向き（ASCII）なら
-            // `y_{col}` の代わりに整形した記号（例: I_\mathrm{0}）を使う。
-            let eq_lhs = {
-                let (name, _) = split_header_unit(&legend_text);
-                if siunitx && is_mathy_symbol(&name) {
-                    format_math_symbol(&name)
-                } else {
-                    format!("y_{{{}}}", col)
-                }
+            // 近似式の左辺（equation 環境内、数式モード）。
+            let eq_lhs = format_eq_lhs(&legend_text, siunitx, col);
+            // 右辺：多項式かつ SE が計算できていれば不確かさ付き書式、それ以外は従来形式。
+            let eq_rhs = if unc_sig_figs > 0 && !fit.coeffs.is_empty() && !fit.coeff_se.is_empty() {
+                let x_header = headers.first().map(|s| s.as_str()).unwrap_or("x");
+                let x_sym = format_x_symbol(x_header);
+                format_poly_eq_rhs(&fit.coeffs, &fit.coeff_se, &x_sym, unc_sig_figs)
+            } else {
+                fit.tex_expression.clone()
             };
             fit_equations.push(FitEquation {
                 legend: legend_label,
-                equation: format!("{} = {}", eq_lhs, fit.tex_expression),
+                equation: format!("{} = {}", eq_lhs, eq_rhs),
                 r2: fit.r2,
             });
         }
@@ -1432,7 +1580,7 @@ pub fn gen_latex_sig_figs(input: &str, sig_figs: i32) -> String {
 }
 #[wasm_bindgen]
 pub fn gen_tikz_graph(input: &str, filename: &str, sig_figs: i32, legend_pos: &str, scale_mode: &str) -> String {
-    to_tikz_graph(&parse(input), filename, sig_figs, legend_pos, scale_mode, 0, "auto", &[], "", "", "", "", false)
+    to_tikz_graph(&parse(input), filename, sig_figs, legend_pos, scale_mode, 0, "auto", &[], "", "", "", "", false, 0)
 }
 #[wasm_bindgen]
 pub fn gen_tikz_graph_preview(input: &str, sig_figs: i32, legend_pos: &str, scale_mode: &str) -> String {
@@ -1475,6 +1623,7 @@ pub fn gen_tikz_graph_config(
     caption: &str,
     label: &str,
     siunitx: i32,
+    unc_sig_figs: i32,
 ) -> String {
     let t = prepare_table(input, has_header != 0, clean_input != 0, false);
     let headers = if has_header != 0 {
@@ -1497,6 +1646,7 @@ pub fn gen_tikz_graph_config(
         caption,
         label,
         siunitx != 0,
+        unc_sig_figs,
     )
 }
 #[wasm_bindgen]
@@ -1590,7 +1740,7 @@ mod tests {
         // 不確かさ付き系列は error bars と y error index を出す。
         let out = gen_tikz_graph_config(
             "x,y\n1,2 ± 0.1\n2,4 ± 0.2\n3,6 ± 0.3",
-            "data", 3, "north west", "linear", "none", 1, 1, 0, "", "", "", "", 0,
+            "data", 3, "north west", "linear", "none", 1, 1, 0, "", "", "", "", 0, 0,
         );
         // push_pgfplots_options が ", " を改行に割るので個別に確認する。
         assert!(out.contains("error bars/.cd"));
@@ -1627,13 +1777,13 @@ mod tests {
         let out = gen_tikz_graph_config(
             "x,I_0[A]\n1,2\n2,4\n3,6",
             "data", 3, "north west", "linear", "linear", 1, 1, 0,
-            "t[s]", "I[A]", "", "", 1,
+            "t[s]", "I[A]", "", "", 1, 0,
         );
         assert!(out.contains("xlabel={$t\\,[\\si{\\second}]$}"));
         assert!(out.contains("ylabel={$I\\,[\\si{\\ampere}]$}"));
         assert!(out.contains("\\addlegendentry{$I_\\mathrm{0}\\,[\\si{\\ampere}]$}"));
-        // 近似式の左辺は列の記号を使う。
-        assert!(out.contains("I_\\mathrm{0} ="));
+        // 近似式の左辺は siunitx 形式（equation 環境内）。
+        assert!(out.contains("I_\\mathrm{0}\\,[\\si{\\ampere}] ="));
     }
 
     #[test]
@@ -1641,7 +1791,7 @@ mod tests {
         let out = gen_tikz_graph_config(
             "x,I_0[A]\n1,2\n2,4",
             "data", 3, "north west", "linear", "none", 1, 1, 0,
-            "t[s]", "I[A]", "", "", 0,
+            "t[s]", "I[A]", "", "", 0, 0,
         );
         // siunitx OFF ならそのまま（数式化しない）。
         assert!(out.contains("xlabel={t[s]}"));
@@ -1673,6 +1823,7 @@ mod tests {
             "Current A",
             "IV curve",
             "fig:iv_curve",
+            0,
             0,
         );
         assert!(out.contains("xlabel={Voltage V}"));
@@ -1718,5 +1869,52 @@ mod tests {
         let out = gen_gnuplot_config("x,a,b\n1,2,3\n2,4,5", "linear", 1, 1, "", "");
         assert!(out.contains("$data using 1:2 with points title 'a'"));
         assert!(out.contains("$data using 1:3 with points title 'b'"));
+    }
+
+    #[test]
+    fn round_uncertainty_pair_basic() {
+        // 例: 不確かさ 0.2 → 0.2 (1桁)、値 14.9315 → 14.9
+        let (v, s) = round_uncertainty_pair(14.9315, 0.2, 1);
+        assert_eq!(s, Some("0.2".to_string()));
+        assert_eq!(v, "14.9");
+        // 不確かさ 20 → 20 (1桁)、値 -50.3 → -50
+        let (v2, s2) = round_uncertainty_pair(-50.3, 20.0, 1);
+        assert_eq!(s2, Some("20".to_string()));
+        assert_eq!(v2, "-50");
+        // 不確かさ 0.032 → 0.03 (1桁)、値 34.5315 → 34.53
+        let (v3, s3) = round_uncertainty_pair(34.5315, 0.032, 1);
+        assert_eq!(s3, Some("0.03".to_string()));
+        assert_eq!(v3, "34.53");
+    }
+
+    #[test]
+    fn tikz_uncertainty_equation_linear() {
+        // 残差ありの線形データ（y ≈ 2x + 1 だが完全一致ではない）で
+        // 不確かさ付き方程式が出るか確認。
+        let out = gen_tikz_graph_config(
+            "Va,N[rpm]\n1,2.8\n2,5.3\n3,6.9\n4,9.1\n5,11.2",
+            "data", 3, "north west", "linear", "linear", 1, 1, 0,
+            "Va", "N[rpm]", "", "", 1, 1,
+        );
+        // LHS は siunitx 形式（rpm は未知単位なのでリテラル）。
+        assert!(out.contains("N\\,[\\si{rpm}] ="), "missing LHS: {}", out);
+        // 不確かさ付き係数がある（\pm が含まれる）。
+        assert!(out.contains("\\pm"), "missing \\pm in: {}", out);
+        // x 変数名は x ヘッダーから取得。
+        assert!(out.contains("Va"), "missing Va in: {}", out);
+    }
+
+    #[test]
+    fn tikz_uncertainty_off_uses_plain_tex() {
+        // unc_sig_figs=0 のとき従来の tex_expression 形式を使う。
+        let out = gen_tikz_graph_config(
+            "x,y\n1,2\n2,4\n3,6",
+            "data", 3, "north west", "linear", "linear", 1, 1, 0,
+            "x", "y", "", "", 0, 0,
+        );
+        // \pm が含まれないこと。
+        assert!(!out.contains("\\pm"));
+        // 既存形式: 係数が括弧なしまたは従来形式で入る。
+        assert!(out.contains("\\begin{equation}"));
     }
 }
