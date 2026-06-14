@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react"
 import { BrowserRouter, Route, Routes } from "react-router-dom"
 
 import { AppHeader } from "@/components/AppHeader"
@@ -5,10 +6,11 @@ import { StatusBar } from "@/components/StatusBar"
 import { I18nProvider } from "@/hooks/useI18n"
 import { StatusBarProvider } from "@/hooks/useStatusBar"
 import { LANGUAGE_PATH_SEGMENTS, SUPPORTED_LANGUAGES } from "@/lib/i18n"
-import AddinPage from "@/pages/AddinPage"
-import ConvertPage from "@/pages/ConvertPage"
-import NotFoundPage from "@/pages/NotFoundPage"
-import PrivacyPage from "@/pages/PrivacyPage"
+
+const AddinPage = lazy(() => import("@/pages/AddinPage"))
+const ConvertPage = lazy(() => import("@/pages/ConvertPage"))
+const NotFoundPage = lazy(() => import("@/pages/NotFoundPage"))
+const PrivacyPage = lazy(() => import("@/pages/PrivacyPage"))
 
 const localizedRoutes = SUPPORTED_LANGUAGES
   .filter((language) => language !== "ja")
@@ -29,14 +31,16 @@ export default function App() {
         <I18nProvider>
           <AppHeader />
           <main className="pb-8">
-            <Routes>
-              <Route path="/" element={<ConvertPage />} />
-              <Route path="/convert" element={<ConvertPage />} />
-              <Route path="/privacy" element={<PrivacyPage />} />
-              <Route path="/excel-addin" element={<AddinPage />} />
-              {localizedRoutes}
-              <Route path="*" element={<NotFoundPage />} />
-            </Routes>
+            <Suspense fallback={<div className="p-4 sm:p-6" />}>
+              <Routes>
+                <Route path="/" element={<ConvertPage />} />
+                <Route path="/convert" element={<ConvertPage />} />
+                <Route path="/privacy" element={<PrivacyPage />} />
+                <Route path="/excel-addin" element={<AddinPage />} />
+                {localizedRoutes}
+                <Route path="*" element={<NotFoundPage />} />
+              </Routes>
+            </Suspense>
           </main>
           <StatusBar />
         </I18nProvider>
