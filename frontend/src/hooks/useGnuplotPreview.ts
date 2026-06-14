@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react"
 
 import { renderGnuplotSvg } from "@/lib/gnuplot"
 
-export function useGnuplotPreview(script: string, errorMessage: string) {
+export function useGnuplotPreview(script: string, errorMessage: string, autoPreview = false) {
   const [svg, setSvg] = useState<string | null>(null)
   const [rendering, setRendering] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -29,6 +29,14 @@ export function useGnuplotPreview(script: string, errorMessage: string) {
     setSvg(null)
     setError(null)
   }, [script])
+
+  useEffect(() => {
+    if (!autoPreview || !script.trim()) return
+    const timer = window.setTimeout(() => {
+      void renderPreview()
+    }, 450)
+    return () => window.clearTimeout(timer)
+  }, [autoPreview, renderPreview, script])
 
   return {
     svg,

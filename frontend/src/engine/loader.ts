@@ -41,7 +41,9 @@ export interface EngineModule {
     x_label: string,
     y_label: string,
     caption: string,
-    label: string
+    label: string,
+    siunitx: number,
+    unc_sig_figs: number
   ) => string
   gen_csv_attachment: (input: string, has_header: number, clean_input: number) => string
   gen_gnuplot_config: (
@@ -50,7 +52,13 @@ export interface EngineModule {
     has_header: number,
     clean_input: number,
     x_label: string,
-    y_label: string
+    y_label: string,
+    fit_method: string,
+    key_pos: string,
+    grid: number,
+    point_type: number,
+    point_size: number,
+    title: string
   ) => string
 }
 
@@ -108,6 +116,8 @@ export interface TikzOptions {
   yLabel: string
   caption: string
   label: string
+  siunitx: boolean
+  uncSigFigs: number
 }
 
 const bool = (b: boolean) => (b ? 1 : 0)
@@ -146,7 +156,9 @@ export async function genTikz(input: string, o: TikzOptions): Promise<string> {
     o.xLabel,
     o.yLabel,
     o.caption,
-    o.label
+    o.label,
+    bool(o.siunitx),
+    o.uncSigFigs
   )
 }
 
@@ -165,6 +177,14 @@ export interface GnuplotOptions {
   cleanInput: boolean
   xLabel: string
   yLabel: string
+  // 系列ごとの近似手法をカンマ区切りで（エンジンが split_line で解釈）。
+  fitMethod: string
+  // gnuplot 固有設定。
+  keyPos: string
+  grid: boolean
+  pointType: number
+  pointSize: number
+  title: string
 }
 
 export async function genGnuplot(input: string, o: GnuplotOptions): Promise<string> {
@@ -175,6 +195,12 @@ export async function genGnuplot(input: string, o: GnuplotOptions): Promise<stri
     bool(o.hasHeader),
     bool(o.cleanInput),
     o.xLabel,
-    o.yLabel
+    o.yLabel,
+    o.fitMethod,
+    o.keyPos,
+    bool(o.grid),
+    o.pointType,
+    o.pointSize,
+    o.title
   )
 }

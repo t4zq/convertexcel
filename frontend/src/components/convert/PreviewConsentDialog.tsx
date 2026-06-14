@@ -21,7 +21,13 @@ export function PreviewConsentDialog({ open, onCancel, onAccept }: PreviewConsen
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onCancel()}>
-      <DialogContent>
+      <DialogContent
+        onKeyDown={(event) => {
+          if (event.key !== "Enter" || event.nativeEvent.isComposing) return
+          event.preventDefault()
+          onAccept()
+        }}
+      >
         <DialogHeader>
           <DialogTitle>{t.previewConsent.title}</DialogTitle>
           <DialogDescription>
@@ -30,7 +36,7 @@ export function PreviewConsentDialog({ open, onCancel, onAccept }: PreviewConsen
         </DialogHeader>
         <DialogFooter>
           <Button variant="secondary" onClick={onCancel}>{t.previewConsent.cancel}</Button>
-          <Button onClick={onAccept}>{t.previewConsent.accept}</Button>
+          <Button autoFocus onClick={onAccept}>{t.previewConsent.accept}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

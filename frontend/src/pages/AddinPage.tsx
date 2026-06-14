@@ -11,6 +11,24 @@ import { localizedSiteUrls } from "@/lib/i18n"
 const SITE_URL = "https://convertexcel.net/"
 const addinUrls = localizedSiteUrls(SITE_URL, "/excel-addin")
 
+type Line = { text: string; link?: { label: string; url: string }; textAfter?: string }
+
+const lineText = (line: Line) => `${line.text}${line.link?.label ?? ""}${line.textAfter ?? ""}`
+
+function LineContent({ line }: { line: Line }) {
+  return (
+    <>
+      {line.text}
+      {line.link && (
+        <a className="underline underline-offset-4" href={line.link.url} target="_blank" rel="noopener">
+          {line.link.label}
+        </a>
+      )}
+      {line.textAfter}
+    </>
+  )
+}
+
 export default function AddinPage() {
   const { language, pathFor } = useI18n()
   const guide = addinGuide[language]
@@ -27,7 +45,7 @@ export default function AddinPage() {
       method.steps.map((step, index) => ({
         "@type": "HowToStep",
         name: `${method.title} ${index + 1}`,
-        text: step,
+        text: lineText(step),
       })),
     ),
   }
@@ -71,12 +89,6 @@ export default function AddinPage() {
               {guide.downloadButton}
             </a>
           </Button>
-          <p className="text-muted-foreground text-xs">
-            {guide.manifestUrlLabel}:{" "}
-            <a className="underline underline-offset-4" href={ADDIN_MANIFEST_URL} target="_blank" rel="noopener">
-              {ADDIN_MANIFEST_URL}
-            </a>
-          </p>
         </CardContent>
       </Card>
 
@@ -87,15 +99,10 @@ export default function AddinPage() {
             <div key={method.title} className="space-y-2">
               <p className="font-medium">{method.title}</p>
               <ol className="list-decimal space-y-1 pl-5">
-                {method.steps.map((step) => <li key={step}>{step}</li>)}
+                {method.steps.map((step) => (
+                  <li key={lineText(step)}><LineContent line={step} /></li>
+                ))}
               </ol>
-              {method.docUrl && (
-                <p className="text-muted-foreground text-xs">
-                  <a className="underline underline-offset-4" href={method.docUrl} target="_blank" rel="noopener">
-                    {guide.learnMoreLabel}
-                  </a>
-                </p>
-              )}
             </div>
           ))}
         </CardContent>
@@ -105,7 +112,9 @@ export default function AddinPage() {
         <CardHeader><CardTitle>{guide.notesTitle}</CardTitle></CardHeader>
         <CardContent className="text-sm">
           <ul className="list-disc space-y-1 pl-5">
-            {guide.notes.map((item) => <li key={item}>{item}</li>)}
+            {guide.notes.map((item) => (
+              <li key={lineText(item)}><LineContent line={item} /></li>
+            ))}
           </ul>
         </CardContent>
       </Card>

@@ -16,6 +16,35 @@
   <a href="#deutsch">Deutsch</a>
 </p>
 
+## Directory layout / ディレクトリ構成
+
+```text
+convertexcel/
+├─ frontend/                 # React + Vite frontend (web app UI)
+│  ├─ src/
+│  │  ├─ addin/              # Excel add-in source (Office.js task pane)
+│  │  ├─ pages/              # Routed pages (ConvertPage, PrivacyPage, AddinPage)
+│  │  ├─ components/         # UI components
+│  │  ├─ hooks/              # React hooks
+│  │  ├─ lib/                # Conversion settings, i18n, privacy/add-in content
+│  │  └─ engine/pkg/         # Rust -> WASM build output (generated)
+│  ├─ public/                # Static assets (icons, sitemap, robots)
+│  ├─ addin.html             # Add-in entry HTML
+│  └─ vite.addin.config.ts   # Vite config dedicated to the add-in build
+├─ addin/                    # Excel add-in distribution files
+│  ├─ manifest.xml           # Dev manifest (localhost)
+│  ├─ manifest.prod.xml      # Production manifest (convertexcel.net)
+│  └─ scripts/               # Dev certificate scripts
+├─ engine/                   # Rust -> WebAssembly calculation engine
+│  └─ src/
+├─ api/                      # Ruby on Rails 7 API (API-only)
+├─ scripts/                  # Build/deploy scripts (cloudflare-build.mjs)
+├─ memory/                   # Project notes
+├─ docker-compose.yml        # Local run for engine / api / frontend
+├─ wrangler.jsonc            # Cloudflare Workers config (serves frontend/dist)
+└─ package.json              # Root: build / deploy scripts
+```
+
 ## 日本語
 
 converTeXcel は、Excel やスプレッドシートの表を LaTeX 表、CSV、TikZ/PGFPlots コードへ変換する Web アプリです。計算とコード生成は Rust/WebAssembly によってブラウザ内で実行されます。

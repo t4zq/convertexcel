@@ -29,6 +29,32 @@ export interface TikzSettings {
   // 系列ごとの色・マーカー。空文字はエンジンのデフォルト（black / *）を維持する。
   seriesColors: string[]
   seriesMarks: string[]
+  // 近似式に付ける不確かさの有効桁数。0 = 表示しない。
+  uncSigFigs: number
+}
+
+// gnuplot 固有のグラフ設定。ラベル・軸スケール・近似手法は TikZ 設定を共有する。
+export interface GnuplotSettings {
+  // gnuplot の `set key` 引数（例: "left top" / "right bottom" / "outside" / "off"）。
+  keyPos: string
+  grid: boolean
+  // pointtype。0 = 既定（出力しない）。
+  pointType: number
+  // pointsize。0 = 既定（出力しない）。
+  pointSize: number
+  // グラフタイトル（set title）。空文字 = 出力しない。
+  title: string
+  // true のとき、gnuplot タブではコード生成後にブラウザ内 SVG プレビューを自動更新する。
+  autoPreview: boolean
+}
+
+export const DEFAULT_GNUPLOT_SETTINGS: GnuplotSettings = {
+  keyPos: "left top",
+  grid: false,
+  pointType: 0,
+  pointSize: 0,
+  title: "",
+  autoPreview: false,
 }
 
 export const DEFAULT_TABLE_SETTINGS: TableSettings = {
@@ -97,6 +123,7 @@ export function getDefaultTikzSettings(language: Language = "ja"): TikzSettings 
     label: "fig:label",
     seriesColors: [],
     seriesMarks: [],
+    uncSigFigs: 0,
   }
 }
 
@@ -140,5 +167,7 @@ export function toTikzOptions(tikz: TikzSettings, table: TableSettings): TikzOpt
     yLabel: tikz.yLabel,
     caption: tikz.caption,
     label: tikz.label,
+    siunitx: table.siunitx,
+    uncSigFigs: tikz.uncSigFigs ?? 0,
   }
 }
