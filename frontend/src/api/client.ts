@@ -1,6 +1,7 @@
-// Rails API のベース URL。dev では Vite の別オリジン (5173) から
-// Rails (3000) を直接叩く。CORS は Rails 側で許可する。
-const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:3000"
+// API のベース URL。本番では Cloudflare Worker が同一オリジンの /api を処理する。
+// dev (Vite) では vite.config.ts の proxy が /api を `wrangler dev` (:8787) に転送する。
+// 別オリジンの Worker を叩きたい場合のみ VITE_API_BASE で上書きする。
+const API_BASE = import.meta.env.VITE_API_BASE ?? ""
 
 export type DatasetRows = string[][]
 

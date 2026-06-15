@@ -12,18 +12,9 @@ services:
       wasm-pack build /workspace/engine --target web
       --out-dir /workspace/pkg
 
-  # ── Rails API ────────────────────────────────────────────────
-  api:
-    build: ./api
-    working_dir: /app
-    volumes:
-      - ./api:/app
-    environment:
-      RAILS_ENV: development
-    ports:
-      - "3000:3000"
-
   # ── フロント (Vite dev server) ───────────────────────────────
+  # データセット共有 API は Cloudflare Worker + D1 に移行済み。
+  # ローカルでフルスタック動作させる場合は `npm run dev:api` (wrangler dev) を併用する。
   frontend:
     image: node:24-bookworm
     working_dir: /app

@@ -1,0 +1,4 @@
+# Build artifacts
+*.vsix
+engine/*.wasm
+node_modules/

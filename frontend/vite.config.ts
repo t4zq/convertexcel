@@ -228,6 +228,31 @@ function applyStaticSeo(html: string, page: StaticSeo) {
     )
 }
 
+// 出力バンドルから言語別翻訳チャンク (src/lib/translations/<lang>.ts) のファイル名を抽出する。
+function translationChunks(bundle: Record<string, { type: string; facadeModuleId?: string | null; fileName: string }>) {
+  const map = {} as Record<Language, string>
+  // Rollup の facadeModuleId は OS を問わず posix 区切り。
+  const dir = "src/lib/translations/"
+  for (const chunk of Object.values(bundle)) {
+    if (chunk.type !== "chunk" || !chunk.facadeModuleId) continue
+    const id = chunk.facadeModuleId.replace(/\\/g, "/")
+    const idx = id.indexOf(dir)
+    if (idx === -1) continue
+    const rest = id.slice(idx + dir.length) // 例: "ja.ts"
+    if (!rest.endsWith(".ts") || rest.includes("/")) continue
+    const lang = rest.slice(0, -3) as Language
+    if (SUPPORTED_LANGUAGES.includes(lang)) map[lang] = chunk.fileName
+  }
+  return map
+}
+
+// アクティブ言語の翻訳チャンクを modulepreload で並列取得させ、entry→翻訳の直列待ちを防ぐ。
+function injectModulePreload(html: string, fileName: string | undefined) {
+  if (!fileName) return html
+  const tag = `    <link rel="modulepreload" href="/${fileName}" />\n`
+  return html.replace("</head>", `${tag}  </head>`)
+}
+
 function localizedHtmlPlugin(): Plugin {
   async function writeLocalizedHtml(outDir: string, fileName: string, source: string) {
     const target = path.join(outDir, fileName)
@@ -246,22 +271,24 @@ function localizedHtmlPlugin(): Plugin {
       if (!index || index.type !== "asset" || typeof index.source !== "string") return
       const outDir = options.dir ?? path.resolve(__dirname, "dist")
       const baseHtml = index.source
+      const langChunk = translationChunks(bundle as never)
+
+      // ベース index.html (日本語) にも翻訳チャンクの modulepreload を付与する。
+      await writeLocalizedHtml(outDir, "index.html", injectModulePreload(baseHtml, langChunk.ja))
 
       for (const language of SUPPORTED_LANGUAGES) {
         for (const page of ["convert", "privacy", "addin"] as const) {
           const fileName = outputFileName(language, page)
           if (fileName === "index.html") continue
-          await writeLocalizedHtml(outDir, fileName, applyStaticSeo(baseHtml, staticSeo(language, page)))
+          const html = injectModulePreload(applyStaticSeo(baseHtml, staticSeo(language, page)), langChunk[language])
+          await writeLocalizedHtml(outDir, fileName, html)
         }
       }
 
       for (const language of SUPPORTED_LANGUAGES) {
         const fileName = outputFileNameForPath(localizePath("/convert", language))
-        await writeLocalizedHtml(
-          outDir,
-          fileName,
-          applyStaticSeo(baseHtml, staticSeo(language, "convert")),
-        )
+        const html = injectModulePreload(applyStaticSeo(baseHtml, staticSeo(language, "convert")), langChunk[language])
+        await writeLocalizedHtml(outDir, fileName, html)
       }
     },
   }
@@ -269,7 +296,15 @@ function localizedHtmlPlugin(): Plugin {
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss(), localizedHtmlPlugin()],
+  plugins: [
+    react({
+      babel: {
+        plugins: [["babel-plugin-react-compiler", { target: "19" }]],
+      },
+    }),
+    tailwindcss(),
+    localizedHtmlPlugin(),
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
@@ -278,5 +313,9 @@ export default defineConfig({
   server: {
     host: true,
     port: 5173,
+    // /api を `wrangler dev` (Worker + ローカル D1) に転送し、フルスタックで開発できるようにする。
+    proxy: {
+      "/api": "http://localhost:8787",
+    },
   },
 })

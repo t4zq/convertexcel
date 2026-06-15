@@ -7,6 +7,16 @@
     "build": "node scripts/cloudflare-build.mjs",
     "build:cloudflare": "node scripts/cloudflare-build.mjs",
     "deploy": "npm run build && npx wrangler versions upload",
-    "deploy:cloudflare": "npm run build && npx wrangler versions upload"
+    "deploy:cloudflare": "npm run build && npx wrangler versions upload",
+    "dev:api": "wrangler dev",
+    "db:create": "wrangler d1 create convertexcel",
+    "db:migrate": "wrangler d1 migrations apply convertexcel --remote",
+    "db:migrate:local": "wrangler d1 migrations apply convertexcel --local",
+    "typecheck:worker": "tsc -p worker/tsconfig.json"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250524.0",
+    "typescript": "^5.7.2",
+    "wrangler": "^4.0.0"
   }
 }

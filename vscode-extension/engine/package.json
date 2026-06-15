@@ -1,0 +1,21 @@
+{
+  "name": "convertexcel-engine",
+  "type": "module",
+  "description": "converTeXcel statistics engine compiled to WebAssembly",
+  "version": "0.1.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/t4zq/convertexcel"
+  },
+  "files": [
+    "convertexcel_engine_bg.wasm",
+    "convertexcel_engine.js",
+    "convertexcel_engine.d.ts"
+  ],
+  "main": "convertexcel_engine.js",
+  "types": "convertexcel_engine.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

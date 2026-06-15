@@ -1,0 +1,49 @@
+{
+  "name": "convertexcel-vscode",
+  "displayName": "converTeXcel",
+  "description": "Insert LaTeX tables and TikZ/PGFPlots code from converTeXcel share URLs.",
+  "version": "0.1.0",
+  "publisher": "t4zq",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/t4zq/convertexcel"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./src/extension.js",
+  "activationEvents": [
+    "onCommand:convertexcel.insertLatexTableFromUrl",
+    "onCommand:convertexcel.insertTikzGraphFromUrl"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "convertexcel.insertLatexTableFromUrl",
+        "title": "converTeXcel: Insert LaTeX Table from Share URL"
+      },
+      {
+        "command": "convertexcel.insertTikzGraphFromUrl",
+        "title": "converTeXcel: Insert TikZ Graph from Share URL"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "convertexcel.insertLatexTableFromUrl",
+          "when": "editorLangId == latex || resourceExtname == .tex || resourceExtname == .latex || resourceExtname == .txt",
+          "group": "navigation@20"
+        },
+        {
+          "command": "convertexcel.insertTikzGraphFromUrl",
+          "when": "editorLangId == latex || resourceExtname == .tex || resourceExtname == .latex || resourceExtname == .txt",
+          "group": "navigation@21"
+        }
+      ]
+    }
+  }
+}
