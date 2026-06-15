@@ -4,6 +4,7 @@ interface CollapsibleHeightOptions {
   min?: number
   max?: number
   initial?: number
+  initialVisible?: boolean
   step?: number
   // この高さ以下までドラッグすると領域を折りたたむ
   collapseBelow?: number
@@ -17,12 +18,13 @@ export function useCollapsibleHeight({
   min = 90,
   max = 520,
   initial = 260,
+  initialVisible = true,
   step = 20,
   collapseBelow = 105,
   reopenHeight = 120,
 }: CollapsibleHeightOptions = {}) {
   const [height, setHeight] = useState(initial)
-  const [visible, setVisible] = useState(true)
+  const [visible, setVisible] = useState(initialVisible)
   const [isResizing, setIsResizing] = useState(false)
   const lastYRef = useRef(0)
 

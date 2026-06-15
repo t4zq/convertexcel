@@ -4,7 +4,6 @@ import logo from "@/assets/logo-2x.webp"
 import logoDark from "@/assets/logo-dark-2x.webp"
 import { ThemeToggle } from "@/components/ThemeToggle"
 import { useI18n } from "@/hooks/useI18n"
-import { addinGuide } from "@/lib/addin-guide"
 import { LANGUAGE_NAMES, LANGUAGE_SHORT_LABELS, SUPPORTED_LANGUAGES } from "@/lib/i18n"
 import { cn } from "@/lib/utils"
 
@@ -50,7 +49,7 @@ export function AppHeader() {
                 )
               }
             >
-              {addinGuide[language].navLabel}
+              {t.nav.addin}
             </NavLink>
             <NavLink
               to={pathFor("/privacy")}

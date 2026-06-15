@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="frontend/src/assets/logo.png" alt="converTeXcel" width="760">
+  <img src="frontend/src/assets/logo-2x.webp" alt="converTeXcel" width="760">
 </p>
 
 <p align="center">
