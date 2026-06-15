@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 
-import { genCsvAttachment } from "@/engine/loader"
 import { type TableSettings } from "@/lib/convert-settings"
 import {
   COOLDOWN_SECONDS,
@@ -84,6 +83,7 @@ export function usePreviewSubmission({
           resetPreviewStatus()
           return
         }
+        const { genCsvAttachment } = await import("@/engine/loader")
         const csv = await genCsvAttachment(source, table.hasHeader, table.cleanInput)
         const extra = getReferencedCsvFiles(tikzOut).map((name) => ({ name, contents: csv }))
         submitToTexlive(iframeName, wrapTikzDocument(tikzOut), extra)

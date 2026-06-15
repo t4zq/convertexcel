@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
 
-import { renderGnuplotSvg } from "@/lib/gnuplot"
-
 export function useGnuplotPreview(script: string, errorMessage: string, autoPreview = false) {
   const [svg, setSvg] = useState<string | null>(null)
   const [rendering, setRendering] = useState(false)
@@ -12,6 +10,7 @@ export function useGnuplotPreview(script: string, errorMessage: string, autoPrev
     setRendering(true)
     setError(null)
     try {
+      const { renderGnuplotSvg } = await import("@/lib/gnuplot")
       setSvg(await renderGnuplotSvg(script))
     } catch {
       setSvg(null)

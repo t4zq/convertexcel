@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react"
 
-import { isWasmAvailable } from "@/engine/loader"
 import { type InputDiagnostics } from "@/lib/input-diagnostics"
 import { useStatusSetter } from "@/hooks/useStatusBar"
 import { type OutputTab } from "@/hooks/usePreviewSubmission"
@@ -15,17 +14,24 @@ export function useConvertPageStatus(
   diagnostics: InputDiagnostics,
   inputLength: number,
   activeTab: OutputTab,
+  outputEnabled = true,
 ) {
   const setStatus = useStatusSetter()
   const [engineReady, setEngineReady] = useState<boolean | null>(null)
 
   useEffect(() => {
+    if (!outputEnabled) {
+      setEngineReady(null)
+      return
+    }
     let alive = true
-    isWasmAvailable().then((ok) => alive && setEngineReady(ok))
+    import("@/engine/loader")
+      .then(({ isWasmAvailable }) => isWasmAvailable())
+      .then((ok) => alive && setEngineReady(ok))
     return () => {
       alive = false
     }
-  }, [])
+  }, [outputEnabled])
 
   useEffect(() => {
     setStatus({
@@ -34,8 +40,8 @@ export function useConvertPageStatus(
       rows: diagnostics.rowCount,
       cols: diagnostics.maxCols,
       chars: inputLength,
-      activeOutput: getActiveOutputName(activeTab),
+      activeOutput: outputEnabled ? getActiveOutputName(activeTab) : "",
       engineReady,
     })
-  }, [activeTab, diagnostics, engineReady, inputLength, setStatus])
+  }, [activeTab, diagnostics, engineReady, inputLength, outputEnabled, setStatus])
 }

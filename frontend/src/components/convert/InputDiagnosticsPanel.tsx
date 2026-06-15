@@ -7,7 +7,13 @@ const SEVERITY: Record<DiagnosticSeverity, { label: string; glyph: string; color
   info: { label: "info", glyph: "ℹ", color: "text-info" },
 }
 
-export function InputDiagnosticsPanel({ diagnostics }: { diagnostics: InputDiagnostics }) {
+export function InputDiagnosticsPanel({
+  diagnostics,
+  showHeader = true,
+}: {
+  diagnostics: InputDiagnostics
+  showHeader?: boolean
+}) {
   const { t } = useI18n()
   const problems = diagnostics.problems ?? []
   if (problems.length === 0 && diagnostics.rowCount === 0) return null
@@ -20,27 +26,29 @@ export function InputDiagnosticsPanel({ diagnostics }: { diagnostics: InputDiagn
 
   return (
     <div className="overflow-hidden rounded-md border bg-muted/40 font-mono text-xs">
-      <div className="flex items-center justify-between border-b bg-muted/60 px-3 py-1.5">
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <span className="flex gap-1">
-            <span className="size-2 rounded-full bg-destructive/60" />
-            <span className="size-2 rounded-full bg-warning/60" />
-            <span className="size-2 rounded-full bg-success/60" />
-          </span>
-          <span className="tracking-widest uppercase">{t.diagnostics.title}</span>
+      {showHeader && (
+        <div className="flex items-center justify-between border-b bg-muted/60 px-3 py-1.5">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <span className="flex gap-1">
+              <span className="size-2 rounded-full bg-destructive/60" />
+              <span className="size-2 rounded-full bg-warning/60" />
+              <span className="size-2 rounded-full bg-success/60" />
+            </span>
+            <span className="tracking-widest uppercase">{t.diagnostics.title}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            {counts.error > 0 && (
+              <span className="text-destructive">{SEVERITY.error.glyph} {counts.error}</span>
+            )}
+            {counts.warning > 0 && (
+              <span className="text-warning">{SEVERITY.warning.glyph} {counts.warning}</span>
+            )}
+            {counts.info > 0 && (
+              <span className="text-info">{SEVERITY.info.glyph} {counts.info}</span>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          {counts.error > 0 && (
-            <span className="text-destructive">{SEVERITY.error.glyph} {counts.error}</span>
-          )}
-          {counts.warning > 0 && (
-            <span className="text-warning">{SEVERITY.warning.glyph} {counts.warning}</span>
-          )}
-          {counts.info > 0 && (
-            <span className="text-info">{SEVERITY.info.glyph} {counts.info}</span>
-          )}
-        </div>
-      </div>
+      )}
       <div className="grid gap-2 border-b px-3 py-2 text-muted-foreground sm:grid-cols-4">
         <span>形式: <strong className="text-foreground">{diagnostics.format.delimiterLabel}</strong></span>
         <span>行: <strong className="text-foreground">{diagnostics.rowCount}</strong></span>
