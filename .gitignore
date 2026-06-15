@@ -1,3 +1,4 @@
+node_modules/
 tools/emsdk/
 server.*.log
 dist/convert.wasm.tmp*

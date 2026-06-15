@@ -16,7 +16,7 @@ export function AppHeader() {
   return (
     <header className="border-b">
       <div className="flex w-full flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3 sm:px-6">
-        <NavLink to={pathFor("/")} className="shrink-0" aria-label="converTeXcel">
+        <NavLink to={pathFor("/")} viewTransition className="shrink-0" aria-label="converTeXcel">
           <img src={logo} alt="converTeXcel" width={209} height={36} className="h-9 w-auto dark:hidden" />
           <img src={logoDark} alt="converTeXcel" width={209} height={36} className="hidden h-9 w-auto dark:block" />
         </NavLink>
@@ -26,6 +26,7 @@ export function AppHeader() {
               key={item.to}
               to={item.to}
               end={item.end}
+              viewTransition
               className={({ isActive }) =>
                 cn(
                   "rounded-md border px-3 py-1.5 text-sm transition-colors",
@@ -42,6 +43,7 @@ export function AppHeader() {
           <div className="ml-auto flex items-center gap-3">
             <NavLink
               to={pathFor("/excel-addin")}
+              viewTransition
               className={({ isActive }) =>
                 cn(
                   "text-sm underline-offset-4 hover:underline",
@@ -53,6 +55,7 @@ export function AppHeader() {
             </NavLink>
             <NavLink
               to={pathFor("/privacy")}
+              viewTransition
               className={({ isActive }) =>
                 cn(
                   "text-sm underline-offset-4 hover:underline",

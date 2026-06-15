@@ -103,6 +103,35 @@
   --color-chart-5: var(--chart-5);
 }
 
+/* ── View Transitions ─────────────────────────────────────────
+   ルート遷移は既定のクロスフェード。テーマ切替時 (html[data-vt-theme])
+   だけ既定アニメを無効化し、新テーマをクリック地点から円形に展開する。 */
+::view-transition-group(root) {
+  animation-duration: 0.35s;
+}
+
+html[data-vt-theme]::view-transition-old(root),
+html[data-vt-theme]::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+html[data-vt-theme]::view-transition-old(root) {
+  z-index: 1;
+}
+
+html[data-vt-theme]::view-transition-new(root) {
+  z-index: 9999;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

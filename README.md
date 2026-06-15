@@ -37,11 +37,13 @@ convertexcel/
 │  └─ scripts/               # Dev certificate scripts
 ├─ engine/                   # Rust -> WebAssembly calculation engine
 │  └─ src/
-├─ api/                      # Ruby on Rails 7 API (API-only)
+├─ worker/                   # Cloudflare Worker (datasets API) + D1 migrations
+│  ├─ index.ts               # /api/* handler, falls back to static assets
+│  └─ migrations/            # D1 schema (SQL)
 ├─ scripts/                  # Build/deploy scripts (cloudflare-build.mjs)
 ├─ memory/                   # Project notes
-├─ docker-compose.yml        # Local run for engine / api / frontend
-├─ wrangler.jsonc            # Cloudflare Workers config (serves frontend/dist)
+├─ docker-compose.yml        # Local run for engine / frontend
+├─ wrangler.jsonc            # Cloudflare Workers config (Worker + frontend/dist + D1)
 └─ package.json              # Root: build / deploy scripts
 ```
 
@@ -55,7 +57,7 @@ converTeXcel は、Excel やスプレッドシートの表を LaTeX 表、CSV、
 | --- | --- | --- |
 | 画面 (UI) | React 19 + Vite + TypeScript + Tailwind v4 + shadcn/ui + react-router | `frontend/` |
 | 計算エンジン | Rust -> WebAssembly (`wasm-pack`) | `engine/` |
-| API | Ruby on Rails 7 (API-only) | `api/` |
+| API | Cloudflare Workers + D1 | `worker/` |
 
 ### 画面
 
@@ -67,11 +69,11 @@ converTeXcel は、Excel やスプレッドシートの表を LaTeX 表、CSV、
 
 ```powershell
 docker compose run --rm engine
-docker compose up api frontend
+docker compose up frontend
 ```
 
 - Frontend: <http://localhost:5173>
-- API health: <http://localhost:3000/api/health>
+- API health: <http://localhost:8787/api/health> (run `npm run dev:api`)
 
 ### フロントのみローカル実行
 
@@ -102,7 +104,7 @@ converTeXcel is a web app that converts Excel or spreadsheet tables into LaTeX t
 | --- | --- | --- |
 | UI | React 19 + Vite + TypeScript + Tailwind v4 + shadcn/ui + react-router | `frontend/` |
 | Engine | Rust -> WebAssembly (`wasm-pack`) | `engine/` |
-| API | Ruby on Rails 7 (API-only) | `api/` |
+| API | Cloudflare Workers + D1 | `worker/` |
 
 ### Pages
 
@@ -114,11 +116,11 @@ converTeXcel is a web app that converts Excel or spreadsheet tables into LaTeX t
 
 ```powershell
 docker compose run --rm engine
-docker compose up api frontend
+docker compose up frontend
 ```
 
 - Frontend: <http://localhost:5173>
-- API health: <http://localhost:3000/api/health>
+- API health: <http://localhost:8787/api/health> (run `npm run dev:api`)
 
 ### Run the frontend locally
 
@@ -149,7 +151,7 @@ converTeXcel 是一个 Web 应用，可将 Excel 或电子表格数据转换为 
 | --- | --- | --- |
 | 界面 | React 19 + Vite + TypeScript + Tailwind v4 + shadcn/ui + react-router | `frontend/` |
 | 引擎 | Rust -> WebAssembly (`wasm-pack`) | `engine/` |
-| API | Ruby on Rails 7 (API-only) | `api/` |
+| API | Cloudflare Workers + D1 | `worker/` |
 
 ### 页面
 
@@ -161,11 +163,11 @@ converTeXcel 是一个 Web 应用，可将 Excel 或电子表格数据转换为 
 
 ```powershell
 docker compose run --rm engine
-docker compose up api frontend
+docker compose up frontend
 ```
 
 - 前端: <http://localhost:5173>
-- API health: <http://localhost:3000/api/health>
+- API health: <http://localhost:8787/api/health> (run `npm run dev:api`)
 
 ### 仅本地运行前端
 
@@ -196,7 +198,7 @@ converTeXcel 是一個 Web 應用程式，可將 Excel 或試算表資料轉換�
 | --- | --- | --- |
 | 介面 | React 19 + Vite + TypeScript + Tailwind v4 + shadcn/ui + react-router | `frontend/` |
 | 引擎 | Rust -> WebAssembly (`wasm-pack`) | `engine/` |
-| API | Ruby on Rails 7 (API-only) | `api/` |
+| API | Cloudflare Workers + D1 | `worker/` |
 
 ### 頁面
 
@@ -208,11 +210,11 @@ converTeXcel 是一個 Web 應用程式，可將 Excel 或試算表資料轉換�
 
 ```powershell
 docker compose run --rm engine
-docker compose up api frontend
+docker compose up frontend
 ```
 
 - 前端: <http://localhost:5173>
-- API health: <http://localhost:3000/api/health>
+- API health: <http://localhost:8787/api/health> (run `npm run dev:api`)
 
 ### 只在本機執行前端
 
@@ -243,7 +245,7 @@ converTeXcel은 Excel 또는 스프레드시트 표를 LaTeX 표, CSV, TikZ/PGFP
 | --- | --- | --- |
 | UI | React 19 + Vite + TypeScript + Tailwind v4 + shadcn/ui + react-router | `frontend/` |
 | 엔진 | Rust -> WebAssembly (`wasm-pack`) | `engine/` |
-| API | Ruby on Rails 7 (API-only) | `api/` |
+| API | Cloudflare Workers + D1 | `worker/` |
 
 ### 페이지
 
@@ -255,11 +257,11 @@ converTeXcel은 Excel 또는 스프레드시트 표를 LaTeX 표, CSV, TikZ/PGFP
 
 ```powershell
 docker compose run --rm engine
-docker compose up api frontend
+docker compose up frontend
 ```
 
 - 프론트엔드: <http://localhost:5173>
-- API health: <http://localhost:3000/api/health>
+- API health: <http://localhost:8787/api/health> (run `npm run dev:api`)
 
 ### 프론트엔드만 로컬 실행
 
@@ -290,7 +292,7 @@ converTeXcel es una aplicación web que convierte tablas de Excel u hojas de cá
 | --- | --- | --- |
 | UI | React 19 + Vite + TypeScript + Tailwind v4 + shadcn/ui + react-router | `frontend/` |
 | Motor | Rust -> WebAssembly (`wasm-pack`) | `engine/` |
-| API | Ruby on Rails 7 (API-only) | `api/` |
+| API | Cloudflare Workers + D1 | `worker/` |
 
 ### Páginas
 
@@ -302,11 +304,11 @@ converTeXcel es una aplicación web que convierte tablas de Excel u hojas de cá
 
 ```powershell
 docker compose run --rm engine
-docker compose up api frontend
+docker compose up frontend
 ```
 
 - Frontend: <http://localhost:5173>
-- API health: <http://localhost:3000/api/health>
+- API health: <http://localhost:8787/api/health> (run `npm run dev:api`)
 
 ### Ejecutar solo el frontend localmente
 
@@ -337,7 +339,7 @@ converTeXcel ist eine Web-App, die Excel- oder Tabellenkalkulations-Tabellen in 
 | --- | --- | --- |
 | UI | React 19 + Vite + TypeScript + Tailwind v4 + shadcn/ui + react-router | `frontend/` |
 | Engine | Rust -> WebAssembly (`wasm-pack`) | `engine/` |
-| API | Ruby on Rails 7 (API-only) | `api/` |
+| API | Cloudflare Workers + D1 | `worker/` |
 
 ### Seiten
 
@@ -349,11 +351,11 @@ converTeXcel ist eine Web-App, die Excel- oder Tabellenkalkulations-Tabellen in 
 
 ```powershell
 docker compose run --rm engine
-docker compose up api frontend
+docker compose up frontend
 ```
 
 - Frontend: <http://localhost:5173>
-- API health: <http://localhost:3000/api/health>
+- API health: <http://localhost:8787/api/health> (run `npm run dev:api`)
 
 ### Nur das Frontend lokal ausführen
 

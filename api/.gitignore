@@ -1,7 +1,0 @@
-/log/*
-/tmp/*
-!/log/.keep
-!/tmp/.keep
-/.bundle
-Gemfile.lock
-/storage/*.json
