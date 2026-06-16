@@ -1,17 +1,9 @@
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { useI18n } from "@/hooks/useI18n"
 import type { TableSettings } from "@/lib/convert-settings"
-import { tableAlignmentLabels } from "@/lib/table-alignment-labels"
 
 interface InputSettingsPanelProps {
   value: TableSettings
@@ -19,8 +11,7 @@ interface InputSettingsPanelProps {
 }
 
 export function InputSettingsPanel({ value, onChange }: InputSettingsPanelProps) {
-  const { language, t } = useI18n()
-  const alignText = tableAlignmentLabels[language]
+  const { t } = useI18n()
 
   return (
     <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
@@ -52,30 +43,9 @@ export function InputSettingsPanel({ value, onChange }: InputSettingsPanelProps)
           <Input id="sigfigs" type="number" min={1} value={value.sigFigs} onChange={(e) => onChange({ sigFigs: Number(e.target.value) })} />
         </div>
       </div>
-      <div className="space-y-1">
-        <Label>{alignText.columnAlign}</Label>
-        <Select
-          value={value.columnAlign}
-          onValueChange={(v) => onChange({ columnAlign: v as TableSettings["columnAlign"] })}
-          disabled={value.siunitx}
-        >
-          <SelectTrigger className="w-full min-w-0">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="left">{alignText.alignLeft}</SelectItem>
-            <SelectItem value="center">{alignText.alignCenter}</SelectItem>
-            <SelectItem value="right">{alignText.alignRight}</SelectItem>
-          </SelectContent>
-        </Select>
-        {value.siunitx && (
-          <p className="text-muted-foreground text-xs">{alignText.siunitxHint}</p>
-        )}
-      </div>
       <div className="grid gap-2">
         <label className="flex items-center gap-2 text-sm"><Switch checked={value.hasHeader} onCheckedChange={(v) => onChange({ hasHeader: v })} /> {t.settings.hasHeader}</label>
         <label className="flex items-center gap-2 text-sm"><Switch checked={value.cleanInput} onCheckedChange={(v) => onChange({ cleanInput: v })} /> {t.settings.cleanInput}</label>
-        <label className="flex items-center gap-2 text-sm"><Switch checked={value.booktabs} onCheckedChange={(v) => onChange({ booktabs: v })} /> {t.settings.booktabs}</label>
         <label className="flex items-center gap-2 text-sm"><Switch checked={value.siunitx} onCheckedChange={(v) => onChange({ siunitx: v })} /> {t.settings.siunitx}</label>
       </div>
     </div>

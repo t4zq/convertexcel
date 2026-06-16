@@ -77,7 +77,7 @@ export const seo = {
       "Excelやスプレッドシートの表を貼り付けるだけで、LaTeXの表、レポート用グラフ、gnuplotを生成。TeXやgnuplotを普段使わない人でも確認しながら整えられる無料変換ツールです。",
     privacyTitle: "プライバシーポリシー - converTeXcel",
     privacyDescription:
-      "converTeXcelの入力データ、localStorage、共有リンク、PDFプレビュー時の外部サービス利用、gnuplotのブラウザ内描画について説明します。",
+      "converTeXcelの入力データ、localStorage、共有リンク、PDFプレビュー、Google Analytics、Google AdSense、gnuplotのブラウザ内描画について説明します。",
     features: [
       "Excelやスプレッドシートの表をLaTeXの表へ変換",
       "CSVを書き出し",
@@ -92,7 +92,7 @@ export const seo = {
       "Paste an Excel or spreadsheet table and generate LaTeX tables, CSV, TikZ/PGFPlots, and gnuplot code. A free converter with PDF preview and in-browser graph rendering.",
     privacyTitle: "Privacy Policy - converTeXcel",
     privacyDescription:
-      "Learn how converTeXcel handles input data, localStorage, share links, external services used for PDF previews, and in-browser gnuplot rendering.",
+      "Learn how converTeXcel handles input data, localStorage, share links, PDF preview services, Google Analytics, Google AdSense, and in-browser gnuplot rendering.",
     features: [
       "Convert Excel and spreadsheet tables to LaTeX tables",
       "Export CSV",
@@ -107,7 +107,7 @@ export const seo = {
       "粘贴 Excel 或电子表格数据，即可生成 LaTeX 表格、CSV、TikZ/PGFPlots 和 gnuplot 代码。支持 PDF 预览和浏览器内图表渲染的免费转换工具。",
     privacyTitle: "隐私政策 - converTeXcel",
     privacyDescription:
-      "了解 converTeXcel 如何处理输入数据、localStorage、共享链接、PDF 预览所使用的外部服务，以及 gnuplot 的浏览器内渲染。",
+      "了解 converTeXcel 如何处理输入数据、localStorage、共享链接、PDF 预览服务、Google Analytics、Google AdSense，以及 gnuplot 的浏览器内渲染。",
     features: [
       "将 Excel 和电子表格表格转换为 LaTeX 表格",
       "导出 CSV",
@@ -122,7 +122,7 @@ export const seo = {
       "貼上 Excel 或試算表資料，即可產生 LaTeX 表格、CSV、TikZ/PGFPlots 和 gnuplot 程式碼。這是一個支援 PDF 預覽與瀏覽器內圖表算繪的免費轉換工具。",
     privacyTitle: "隱私權政策 - converTeXcel",
     privacyDescription:
-      "了解 converTeXcel 如何處理輸入資料、localStorage、分享連結、PDF 預覽所使用的外部服務，以及 gnuplot 的瀏覽器內算繪。",
+      "了解 converTeXcel 如何處理輸入資料、localStorage、分享連結、PDF 預覽服務、Google Analytics、Google AdSense，以及 gnuplot 的瀏覽器內算繪。",
     features: [
       "將 Excel 和試算表表格轉換為 LaTeX 表格",
       "匯出 CSV",
@@ -137,7 +137,7 @@ export const seo = {
       "Pega una tabla de Excel u hoja de cálculo y genera tablas LaTeX, CSV, código TikZ/PGFPlots y gnuplot. Un conversor gratuito con vista previa PDF y renderizado de gráficos en el navegador.",
     privacyTitle: "Política de privacidad - converTeXcel",
     privacyDescription:
-      "Conoce cómo converTeXcel gestiona los datos de entrada, localStorage, enlaces compartidos, los servicios externos usados para la vista previa PDF y el renderizado de gnuplot en el navegador.",
+      "Conoce cómo converTeXcel gestiona los datos de entrada, localStorage, enlaces compartidos, servicios de vista previa PDF, Google Analytics, Google AdSense y el renderizado de gnuplot en el navegador.",
     features: [
       "Convertir tablas de Excel y hojas de cálculo a tablas LaTeX",
       "Exportar CSV",
@@ -152,7 +152,7 @@ export const seo = {
       "Füge eine Excel- oder Tabellenkalkulations-Tabelle ein und erzeuge LaTeX-Tabellen, CSV, TikZ/PGFPlots- und gnuplot-Code. Ein kostenloser Konverter mit PDF-Vorschau und Diagramm-Rendering im Browser.",
     privacyTitle: "Datenschutzerklärung - converTeXcel",
     privacyDescription:
-      "Erfahre, wie converTeXcel Eingabedaten, localStorage, Freigabelinks, externe Dienste für PDF-Vorschauen und das gnuplot-Rendering im Browser behandelt.",
+      "Erfahre, wie converTeXcel Eingabedaten, localStorage, Freigabelinks, PDF-Vorschaudienste, Google Analytics, Google AdSense und das gnuplot-Rendering im Browser behandelt.",
     features: [
       "Excel- und Tabellenkalkulations-Tabellen in LaTeX-Tabellen umwandeln",
       "CSV exportieren",

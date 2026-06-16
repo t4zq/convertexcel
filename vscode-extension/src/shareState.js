@@ -12,6 +12,11 @@ const DEFAULT_TABLE_SETTINGS = {
   hasHeader: true,
   cleanInput: true,
   booktabs: true,
+  siunitx: true,
+};
+
+const LEGACY_V2_TABLE_DEFAULTS = {
+  ...DEFAULT_TABLE_SETTINGS,
   siunitx: false,
 };
 
@@ -90,13 +95,14 @@ function decodeCompactState(hashValue) {
 
   try {
     const parsed = JSON.parse(raw);
-    if (parsed.v !== 2) return null;
+    if (parsed.v !== 2 && parsed.v !== 3) return null;
     const activeTab = parsed.a || "latex";
     if (!validActiveTab(activeTab)) return null;
+    const tableDefaults = parsed.v === 2 ? LEGACY_V2_TABLE_DEFAULTS : DEFAULT_TABLE_SETTINGS;
 
     return {
       input: typeof parsed.i === "string" ? parsed.i : "",
-      table: { ...DEFAULT_TABLE_SETTINGS, ...(parsed.tb || {}) },
+      table: { ...tableDefaults, ...(parsed.tb || {}) },
       tikz: { ...DEFAULT_TIKZ_SETTINGS, ...(parsed.tz || {}) },
       gnuplot: { ...DEFAULT_GNUPLOT_SETTINGS, ...(parsed.gp || {}) },
       activeTab,

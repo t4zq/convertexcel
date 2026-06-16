@@ -5,15 +5,30 @@ Windows 版 Excel を初期対象にした開発用 Office.js Task Pane Add-in �
 ## 開発
 
 ```powershell
-.\addin\scripts\create-dev-cert.ps1
-.\addin\scripts\trust-dev-cert.ps1
-cd frontend
+npm run addin:cert:create
+npm run addin:cert:trust
 npm run dev:addin
 ```
 
 開発サーバーは `https://localhost:5174/addin.html` を使います。Excel へ sideload する manifest は `addin/manifest.xml` です。
 
 Office Add-ins は HTTPS が必要です。初回は `addin/certs/convertexcel-dev-root-ca.crt` を信頼済みルート証明書として登録し、Excel を再起動してください。`localhost.crt` は開発サーバーが使う葉証明書なので、手動で信頼する対象ではありません。
+
+### デバッグ確認
+
+```powershell
+npm run check:addin
+```
+
+`check:addin` は証明書ファイル、TypeScript、アドインビルドを確認し、`npm run dev:addin` が起動中なら `https://localhost:5174/addin.html` に到達できるかも確認します。
+
+よく使う確認順:
+
+1. `npm run dev:addin` を起動する。
+2. ブラウザで `https://localhost:5174/addin.html` を開く。
+3. 証明書エラーが出る場合は `npm run addin:cert:trust` を実行し、Excel を完全に再起動する。
+4. Excel で `addin/manifest.xml` を sideload し直す。
+5. アドイン内の「選択範囲を取り込む」でエラーが出る場合は、表示されたエラーメッセージまたは DevTools Console の赤い行を確認する。
 
 ## 本番配信（サイドロード）
 
