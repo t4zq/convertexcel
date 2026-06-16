@@ -65,6 +65,60 @@ const de: Translations = {
     previewProgressLabel: "Fortschritt der PDF-Erstellung",
     previewComplete: "PDF-Vorschau aktualisiert",
     series: (index: number) => `Reihe ${index}`,
+    texError: {
+      title: "Kompilierung fehlgeschlagen",
+      intro: "texlive.net hat beim Kompilieren einen Fehler gemeldet. Prüfe die Details unten und korrigiere den Quelltext.",
+      introUnknown: "Die Kompilierung ist fehlgeschlagen, aber die Ursache konnte nicht automatisch ermittelt werden. Möglicherweise ein Problem des Tools. Bitte melde es mit dem Protokoll unten.",
+      reportIntro: "Dieser Fehler lässt sich möglicherweise nicht durch Bearbeiten deines Codes beheben. Bitte melde ihn mit angehängtem Protokoll.",
+      reportButton: "Auf GitHub Issues melden",
+      copyLog: "Protokoll kopieren",
+      networkTitle: "Senden fehlgeschlagen",
+      network: (detail: string) => `texlive.net konnte nicht erreicht werden (${detail}). Prüfe deine Verbindung und versuche es gleich erneut.`,
+      showLog: "Vollständiges Protokoll anzeigen",
+      hideLog: "Vollständiges Protokoll ausblenden",
+      dismiss: "Schließen",
+      line: (n: number) => `etwa in Zeile ${n} deines Codes`,
+      compiledLine: (n: number) => `etwa in Zeile ${n} des erzeugten Dokuments`,
+      noLocation: "Position konnte nicht bestimmt werden",
+      kinds: {
+        undefinedControlSequence: {
+          label: "Undefinierter Befehl",
+          hint: (s: string | null) => `${s ?? "Dieser Befehl"} ist nicht definiert. Möglicherweise ein Tippfehler oder ein benötigtes Paket ist nicht geladen.`,
+        },
+        undefinedEnvironment: {
+          label: "Undefinierte Umgebung",
+          hint: (s: string | null) => `Die Umgebung ${s ? `„${s}“` : ""} ist nicht definiert. Prüfe die Schreibweise von \\begin / \\end oder lade das benötigte Paket.`,
+        },
+        mismatchedEnvironment: {
+          label: "Nicht passende Umgebung",
+          hint: (s: string | null) => `${s ? `\\begin{${s}}` : "Eine Umgebung"} hat kein passendes \\end. Prüfe auf ein fehlendes Ende oder falsche Verschachtelung.`,
+        },
+        missingMath: {
+          label: "Mathe-Symbol außerhalb des Mathemodus",
+          hint: (_s: string | null) => `Symbole wie _ und ^ funktionieren nur im Mathemodus. Setze sie in $ ... $.`,
+        },
+        missingFile: {
+          label: "Datei nicht gefunden",
+          hint: (s: string | null) => `${s ? `„${s}“` : "Eine Datei"} wurde nicht gefunden. Prüfe den Paket- oder Anhangsdateinamen.`,
+        },
+        runaway: {
+          label: "Möglicherweise nicht geschlossen",
+          hint: (s: string | null) => `Die Datei endete beim Lesen des Arguments von ${s ?? "einem Befehl"}. Prüfe auf eine fehlende schließende }.`,
+        },
+        braces: {
+          label: "Unausgeglichene Klammern",
+          hint: (_s: string | null) => `Die geschweiften Klammern { } passen nicht zusammen. Prüfe, ob öffnende und schließende Klammern ausgeglichen sind.`,
+        },
+        emergencyStop: {
+          label: "Kompilierung abgebrochen",
+          hint: (_s: string | null) => `Die Kompilierung wurde wegen eines anderen Fehlers abgebrochen. Den ersten Fehler zu beheben löst das meist.`,
+        },
+        generic: {
+          label: "Fehler",
+          hint: (_s: string | null) => `TeX hat einen Fehler gemeldet. Prüfe die Meldung und das Protokoll unten.`,
+        },
+      },
+    },
   },
   share: {
     title: "Teilen",

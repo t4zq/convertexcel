@@ -35,13 +35,6 @@ export const tableAlignmentLabels: Record<Language, {
     alignRight: "靠右",
     siunitxHint: "啟用 siunitx 時會優先依數值欄對齊。",
   },
-  ko: {
-    columnAlign: "열 정렬",
-    alignLeft: "왼쪽",
-    alignCenter: "가운데",
-    alignRight: "오른쪽",
-    siunitxHint: "siunitx가 켜져 있으면 숫자 열 정렬을 우선합니다.",
-  },
   es: {
     columnAlign: "Alineación de columnas",
     alignLeft: "Izquierda",

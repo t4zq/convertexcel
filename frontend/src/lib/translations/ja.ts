@@ -63,6 +63,60 @@ const ja = {
     previewProgressLabel: "PDF作成の進捗",
     previewComplete: "PDFプレビューを更新しました",
     series: (index: number) => `系列${index}`,
+    texError: {
+      title: "コンパイルに失敗しました",
+      intro: "texlive.net でのコンパイル中にエラーが見つかりました。下の内容を確認して修正してください。",
+      introUnknown: "コンパイルに失敗しましたが、原因を自動で特定できませんでした。ツール側の問題の可能性があります。お手数ですが、下のログを添えて報告してください。",
+      reportIntro: "このエラーはコードの修正では直せない可能性があります。ログを添えて報告してください。",
+      reportButton: "GitHub Issues で報告",
+      copyLog: "ログをコピー",
+      networkTitle: "送信できませんでした",
+      network: (detail: string) => `texlive.net に接続できませんでした（${detail}）。通信環境を確認し、しばらくしてから再試行してください。`,
+      showLog: "詳細なログを表示",
+      hideLog: "詳細なログを隠す",
+      dismiss: "閉じる",
+      line: (n: number) => `本文 ${n} 行目付近`,
+      compiledLine: (n: number) => `生成された文書の ${n} 行目付近`,
+      noLocation: "該当箇所を特定できませんでした",
+      kinds: {
+        undefinedControlSequence: {
+          label: "未定義のコマンド",
+          hint: (s: string | null) => `${s ?? "そのコマンド"} は定義されていません。スペルミスか、必要なパッケージが読み込まれていない可能性があります。`,
+        },
+        undefinedEnvironment: {
+          label: "未定義の環境",
+          hint: (s: string | null) => `環境 ${s ? `「${s}」` : ""}は定義されていません。\\begin / \\end の名前のスペルや、必要なパッケージを確認してください。`,
+        },
+        mismatchedEnvironment: {
+          label: "環境の対応ずれ",
+          hint: (s: string | null) => `${s ? `\\begin{${s}}` : "ある環境"} に対応する \\end が見つかりません。閉じ忘れや入れ子の順序を確認してください。`,
+        },
+        missingMath: {
+          label: "数式モード外の数式記号",
+          hint: (_s: string | null) => `_ や ^ などの記号は数式モードでのみ使えます。$ ... $ で囲んでください。`,
+        },
+        missingFile: {
+          label: "ファイルが見つかりません",
+          hint: (s: string | null) => `${s ? `「${s}」` : "ファイル"} が見つかりません。パッケージ名や添付ファイル名のスペルを確認してください。`,
+        },
+        runaway: {
+          label: "閉じ忘れの可能性",
+          hint: (s: string | null) => `${s ?? "コマンド"} の引数が閉じられないままファイルが終わりました。} の閉じ忘れがないか確認してください。`,
+        },
+        braces: {
+          label: "括弧の過不足",
+          hint: (_s: string | null) => `{ } の対応が取れていません。開き括弧と閉じ括弧の数を確認してください。`,
+        },
+        emergencyStop: {
+          label: "処理の中断",
+          hint: (_s: string | null) => `別のエラーが原因でコンパイルが中断されました。最初のエラーを修正すると解消することが多いです。`,
+        },
+        generic: {
+          label: "エラー",
+          hint: (_s: string | null) => `TeX がエラーを報告しました。下のメッセージとログを確認してください。`,
+        },
+      },
+    },
   },
   share: {
     title: "共有",

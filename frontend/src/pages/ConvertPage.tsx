@@ -88,6 +88,11 @@ const PreviewConsentDialog = lazy(() =>
     default: module.PreviewConsentDialog,
   }))
 )
+const PreviewErrorPanel = lazy(() =>
+  import("@/components/convert/PreviewErrorPanel").then((module) => ({
+    default: module.PreviewErrorPanel,
+  }))
+)
 const TikzSettingsPanel = lazy(() =>
   import("@/components/convert/TikzSettingsPanel").then((module) => ({
     default: module.TikzSettingsPanel,
@@ -673,6 +678,11 @@ export default function ConvertPage() {
                   className="h-1.5 bg-background [&_[data-slot=progress-indicator]]:bg-info [&_[data-slot=progress-indicator]]:duration-500 [&_[data-slot=progress-indicator]]:ease-out"
                 />
               </div>
+            )}
+            {preview.previewError && (
+              <Suspense fallback={null}>
+                <PreviewErrorPanel error={preview.previewError} onDismiss={preview.dismissPreviewError} />
+              </Suspense>
             )}
             <iframe
               ref={preview.iframeRef}

@@ -65,6 +65,60 @@ const es: Translations = {
     previewProgressLabel: "Progreso de creación del PDF",
     previewComplete: "Vista previa PDF actualizada",
     series: (index: number) => `Serie ${index}`,
+    texError: {
+      title: "La compilación falló",
+      intro: "texlive.net informó de un error durante la compilación. Revisa los detalles y corrige el código.",
+      introUnknown: "La compilación falló, pero no se pudo identificar la causa automáticamente. Puede ser un problema de la herramienta. Por favor, repórtalo adjuntando el registro de abajo.",
+      reportIntro: "Es posible que este error no se pueda corregir editando tu código. Repórtalo adjuntando el registro.",
+      reportButton: "Reportar en GitHub Issues",
+      copyLog: "Copiar registro",
+      networkTitle: "No se pudo enviar",
+      network: (detail: string) => `No se pudo conectar con texlive.net (${detail}). Comprueba tu conexión e inténtalo de nuevo en un momento.`,
+      showLog: "Mostrar registro completo",
+      hideLog: "Ocultar registro completo",
+      dismiss: "Cerrar",
+      line: (n: number) => `cerca de la línea ${n} de tu código`,
+      compiledLine: (n: number) => `cerca de la línea ${n} del documento generado`,
+      noLocation: "No se pudo determinar la ubicación",
+      kinds: {
+        undefinedControlSequence: {
+          label: "Comando no definido",
+          hint: (s: string | null) => `${s ?? "Ese comando"} no está definido. Puede ser un error de escritura o falta cargar el paquete necesario.`,
+        },
+        undefinedEnvironment: {
+          label: "Entorno no definido",
+          hint: (s: string | null) => `El entorno ${s ? `«${s}»` : ""} no está definido. Revisa la ortografía de \\begin / \\end o carga el paquete necesario.`,
+        },
+        mismatchedEnvironment: {
+          label: "Entorno sin cerrar",
+          hint: (s: string | null) => `${s ? `\\begin{${s}}` : "Un entorno"} no tiene su \\end correspondiente. Revisa si falta cerrarlo o el orden de anidación.`,
+        },
+        missingMath: {
+          label: "Símbolo matemático fuera del modo math",
+          hint: (_s: string | null) => `Símbolos como _ y ^ solo funcionan en modo matemático. Enciérralos entre $ ... $.`,
+        },
+        missingFile: {
+          label: "Archivo no encontrado",
+          hint: (s: string | null) => `No se encontró ${s ? `«${s}»` : "un archivo"}. Revisa el nombre del paquete o del archivo adjunto.`,
+        },
+        runaway: {
+          label: "Posible argumento sin cerrar",
+          hint: (s: string | null) => `El archivo terminó mientras se leía el argumento de ${s ?? "un comando"}. Revisa si falta una } de cierre.`,
+        },
+        braces: {
+          label: "Llaves desbalanceadas",
+          hint: (_s: string | null) => `Las llaves { } no coinciden. Comprueba que las de apertura y cierre estén equilibradas.`,
+        },
+        emergencyStop: {
+          label: "Compilación interrumpida",
+          hint: (_s: string | null) => `La compilación se interrumpió por otro error. Corregir el primer error suele resolverlo.`,
+        },
+        generic: {
+          label: "Error",
+          hint: (_s: string | null) => `TeX informó de un error. Revisa el mensaje y el registro de abajo.`,
+        },
+      },
+    },
   },
   share: {
     title: "Compartir",
