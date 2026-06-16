@@ -1,5 +1,6 @@
 node_modules/
 tools/emsdk/
+tmp/
 server.*.log
 dist/convert.wasm.tmp*
 addin/dist/
@@ -15,3 +16,6 @@ addin/certs/
 !.dev.vars.example
 .env*
 !.env.example
+
+# PDF files
+*.pdf

@@ -43,7 +43,7 @@ const ISSUES_URL = "https://github.com/t4zq/convertexcel/issues"
 export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
   ja: {
     notice:
-      "converTeXcel は無料・広告なし・アカウント不要の変換ツールです。変換は主にブラウザ内で行い、個人情報の収集を目的としません。本ページは透明性のための概要です。",
+      "converTeXcel は無料・アカウント不要の変換ツールです。変換は主にブラウザ内で行い、入力データの収集を目的としません。サービス改善や広告配信のため、Google Analytics と Google AdSense を利用する場合があります。本ページは透明性のための概要です。",
     sections: [
       {
         title: "基本方針",
@@ -51,8 +51,18 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           "変換処理は主にブラウザ内の Rust/WebAssembly で行います。",
           "グラフ（gnuplot）のプレビューもブラウザ内で描画し、外部へ送信しません。",
           "PDFプレビューを実行する場合のみ、同意のうえ生成コードと必要なデータを texlive.net へ送信します。",
-          "広告トラッキング、行動ターゲティング、データの販売は行いません。",
+          "Google Analytics はページ閲覧状況の把握に利用し、貼り付けた表データや生成コードを意図的に送信しません。",
+          "Google AdSense による広告が表示される場合があります。広告は変換作業を妨げない位置に限定します。",
+          "入力データや生成コードの販売は行いません。",
           "氏名・メールアドレス・アカウント登録は不要です。",
+        ],
+      },
+      {
+        title: "Cookie・広告・アクセス解析",
+        paragraphs: [
+          "Google を含む第三者配信事業者は、Cookie 等を使用して、利用者が本サイトや他のサイトへ過去にアクセスした情報に基づいて広告を配信する場合があります。",
+          "Google の広告 Cookie により、Google とそのパートナーは本サイトや他サイトへのアクセス情報に基づいて広告を表示できます。パーソナライズ広告は Google の広告設定（https://www.google.com/settings/ads）から無効にできます。",
+          "Google Analytics は、ページURL、参照元、ブラウザや端末の情報、おおまかな地域、イベント情報などを処理する場合があります。表の入力内容や生成コードを分析イベントとして送信しない設計です。",
         ],
       },
       {
@@ -96,6 +106,12 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           legalBasis: "正当な利益または法的義務",
           retention: "ホスティング/CDN 提供者のログ保持設定に従います。",
         },
+        {
+          category: "ページ閲覧、参照元、ブラウザ/端末情報、広告 Cookie 等",
+          purpose: "アクセス解析、サービス改善、広告配信、広告効果測定、不正利用防止",
+          legalBasis: "利用者の同意が必要な地域では同意、その他の地域では正当な利益",
+          retention: "Google Analytics / Google AdSense の設定および Google のポリシーに従います。",
+        },
       ],
     },
     thirdParties: {
@@ -114,6 +130,18 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           data: "IPアドレス、User-Agent、リクエストメタデータ等",
           timing: "サイトアクセス時",
         },
+        {
+          service: "Google Analytics",
+          purpose: "アクセス解析、利用状況の把握、サービス改善",
+          data: "ページURL、参照元、ブラウザ/端末情報、おおまかな地域、イベント情報等",
+          timing: "サイトアクセス時（設定されている場合）",
+        },
+        {
+          service: "Google AdSense",
+          purpose: "広告配信、広告効果測定、不正利用防止",
+          data: "Cookie、広告識別子、IPアドレス、ブラウザ/端末情報、ページURL等",
+          timing: "広告枠が表示されるページの閲覧時（設定されている場合）",
+        },
       ],
     },
     regional: {
@@ -125,7 +153,7 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
   },
   en: {
     notice:
-      "converTeXcel is a free converter with no ads and no account. Conversion runs mainly in your browser, and the service is not designed to collect personal data. This page is a transparency summary.",
+      "converTeXcel is a free converter with no account required. Conversion runs mainly in your browser, and the service is not designed to collect your input data. Google Analytics and Google AdSense may be used for service improvement and advertising. This page is a transparency summary.",
     sections: [
       {
         title: "Basic policy",
@@ -133,8 +161,18 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           "Conversion runs mainly in your browser via Rust/WebAssembly.",
           "Graph (gnuplot) previews are also rendered in the browser and are not sent externally.",
           "Only when you run a PDF preview, the generated code and necessary data are sent to texlive.net after your consent.",
-          "No ad tracking, behavioral targeting, or sale of data.",
+          "Google Analytics is used to understand page usage, and pasted table data or generated code is not intentionally sent.",
+          "Google AdSense ads may be displayed in locations that do not interrupt conversion work.",
+          "Input data and generated code are not sold.",
           "No name, email address, or account registration is required.",
+        ],
+      },
+      {
+        title: "Cookies, ads, and analytics",
+        paragraphs: [
+          "Third-party vendors, including Google, may use cookies and similar technologies to serve ads based on your prior visits to this site or other sites.",
+          "Google's advertising cookies enable Google and its partners to serve ads based on visits to this site and/or other sites. You can opt out of personalized advertising from Google Ads Settings: https://www.google.com/settings/ads",
+          "Google Analytics may process page URL, referrer, browser and device information, approximate region, and event data. Pasted table data and generated code are not sent as analytics events by design.",
         ],
       },
       {
@@ -178,6 +216,12 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           legalBasis: "Legitimate interest or legal obligation",
           retention: "According to the hosting/CDN provider's log retention settings.",
         },
+        {
+          category: "Page views, referrer, browser/device information, advertising cookies, etc.",
+          purpose: "Analytics, service improvement, ad serving, ad measurement, and abuse prevention",
+          legalBasis: "Consent where required by local law, otherwise legitimate interest",
+          retention: "According to Google Analytics / Google AdSense settings and Google's policies.",
+        },
       ],
     },
     thirdParties: {
@@ -196,6 +240,18 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           data: "IP address, User-Agent, request metadata, etc.",
           timing: "When you access the site",
         },
+        {
+          service: "Google Analytics",
+          purpose: "Analytics, usage measurement, and service improvement",
+          data: "Page URL, referrer, browser/device information, approximate region, event data, etc.",
+          timing: "When you access the site, if configured",
+        },
+        {
+          service: "Google AdSense",
+          purpose: "Ad serving, ad measurement, and abuse prevention",
+          data: "Cookies, advertising identifiers, IP address, browser/device information, page URL, etc.",
+          timing: "When viewing a page with an ad unit, if configured",
+        },
       ],
     },
     regional: {
@@ -207,7 +263,7 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
   },
   zh: {
     notice:
-      "converTeXcel 是一款免费、无广告、无需账户的转换工具。转换主要在您的浏览器中完成，本服务并非以收集个人信息为目的。本页面为透明度概要。",
+      "converTeXcel 是一款免费、无需账户的转换工具。转换主要在您的浏览器中完成，本服务并非以收集输入数据为目的。可能会使用 Google Analytics 和 Google AdSense 进行服务改进和广告展示。本页面为透明度概要。",
     sections: [
       {
         title: "基本方针",
@@ -215,8 +271,18 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           "转换处理主要通过浏览器内的 Rust/WebAssembly 完成。",
           "图表（gnuplot）预览同样在浏览器内渲染，不会发送到外部。",
           "仅在您运行 PDF 预览时，会在您同意后将生成的代码及必要数据发送至 texlive.net。",
-          "不进行广告追踪、行为定向或数据销售。",
+          "Google Analytics 用于了解页面使用情况，不会有意发送粘贴的表格数据或生成代码。",
+          "可能会显示 Google AdSense 广告，广告位置会尽量不干扰转换操作。",
+          "不会出售输入数据或生成代码。",
           "无需姓名、电子邮箱或注册账户。",
+        ],
+      },
+      {
+        title: "Cookie、广告与访问分析",
+        paragraphs: [
+          "包括 Google 在内的第三方供应商可能会使用 Cookie 等技术，根据您过去访问本网站或其他网站的情况投放广告。",
+          "Google 的广告 Cookie 使 Google 及其合作伙伴可以根据您访问本网站和/或互联网上其他网站的情况投放广告。您可以通过 Google 广告设置停用个性化广告：https://www.google.com/settings/ads",
+          "Google Analytics 可能处理页面 URL、来源、浏览器和设备信息、大致地区以及事件数据。设计上不会将粘贴的表格数据或生成代码作为分析事件发送。",
         ],
       },
       {
@@ -260,6 +326,12 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           legalBasis: "正当利益或法律义务",
           retention: "依据托管/CDN 提供商的日志保留设置。",
         },
+        {
+          category: "页面浏览、来源、浏览器/设备信息、广告 Cookie 等",
+          purpose: "访问分析、服务改进、广告投放、广告效果衡量与防止滥用",
+          legalBasis: "当地法律要求同意时基于同意，其他情况下基于正当利益",
+          retention: "依据 Google Analytics / Google AdSense 的设置及 Google 政策。",
+        },
       ],
     },
     thirdParties: {
@@ -278,6 +350,18 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           data: "IP 地址、User-Agent、请求元数据等",
           timing: "访问网站时",
         },
+        {
+          service: "Google Analytics",
+          purpose: "访问分析、使用情况把握与服务改进",
+          data: "页面 URL、来源、浏览器/设备信息、大致地区、事件数据等",
+          timing: "访问网站时（如果已设置）",
+        },
+        {
+          service: "Google AdSense",
+          purpose: "广告投放、广告效果衡量与防止滥用",
+          data: "Cookie、广告标识符、IP 地址、浏览器/设备信息、页面 URL 等",
+          timing: "浏览显示广告位的页面时（如果已设置）",
+        },
       ],
     },
     regional: {
@@ -289,7 +373,7 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
   },
   "zh-Hant": {
     notice:
-      "converTeXcel 是一款免費、無廣告、無需帳號的轉換工具。轉換主要在您的瀏覽器中完成，本服務並非以收集個人資訊為目的。本頁面為透明度概要。",
+      "converTeXcel 是一款免費、無需帳號的轉換工具。轉換主要在您的瀏覽器中完成，本服務並非以收集輸入資料為目的。可能會使用 Google Analytics 和 Google AdSense 進行服務改善與廣告顯示。本頁面為透明度概要。",
     sections: [
       {
         title: "基本方針",
@@ -297,8 +381,18 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           "轉換處理主要透過瀏覽器內的 Rust/WebAssembly 完成。",
           "圖表（gnuplot）預覽同樣在瀏覽器內算繪，不會傳送到外部。",
           "僅在您執行 PDF 預覽時，會在您同意後將產生的程式碼及必要資料傳送至 texlive.net。",
-          "不進行廣告追蹤、行為定向或資料販售。",
+          "Google Analytics 用於了解頁面使用情況，不會有意傳送貼上的表格資料或產生的程式碼。",
+          "可能會顯示 Google AdSense 廣告，廣告位置會盡量不干擾轉換操作。",
+          "不會販售輸入資料或產生的程式碼。",
           "無需姓名、電子郵件或註冊帳號。",
+        ],
+      },
+      {
+        title: "Cookie、廣告與存取分析",
+        paragraphs: [
+          "包括 Google 在內的第三方供應商可能會使用 Cookie 等技術，根據您過去造訪本網站或其他網站的情況投放廣告。",
+          "Google 的廣告 Cookie 使 Google 及其合作夥伴可以根據您造訪本網站和/或網際網路上其他網站的情況投放廣告。您可以透過 Google 廣告設定停用個人化廣告：https://www.google.com/settings/ads",
+          "Google Analytics 可能處理頁面 URL、來源、瀏覽器和裝置資訊、大致地區以及事件資料。設計上不會將貼上的表格資料或產生的程式碼作為分析事件傳送。",
         ],
       },
       {
@@ -342,6 +436,12 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           legalBasis: "正當利益或法律義務",
           retention: "依託管/CDN 供應商的日誌保留設定。",
         },
+        {
+          category: "頁面瀏覽、來源、瀏覽器/裝置資訊、廣告 Cookie 等",
+          purpose: "存取分析、服務改善、廣告投放、廣告效果衡量與防止濫用",
+          legalBasis: "當地法律要求同意時基於同意，其他情況下基於正當利益",
+          retention: "依 Google Analytics / Google AdSense 的設定及 Google 政策。",
+        },
       ],
     },
     thirdParties: {
@@ -360,6 +460,18 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           data: "IP 位址、User-Agent、請求中繼資料等",
           timing: "存取網站時",
         },
+        {
+          service: "Google Analytics",
+          purpose: "存取分析、使用情況掌握與服務改善",
+          data: "頁面 URL、來源、瀏覽器/裝置資訊、大致地區、事件資料等",
+          timing: "存取網站時（如果已設定）",
+        },
+        {
+          service: "Google AdSense",
+          purpose: "廣告投放、廣告效果衡量與防止濫用",
+          data: "Cookie、廣告識別碼、IP 位址、瀏覽器/裝置資訊、頁面 URL 等",
+          timing: "瀏覽顯示廣告位的頁面時（如果已設定）",
+        },
       ],
     },
     regional: {
@@ -371,7 +483,7 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
   },
   es: {
     notice:
-      "converTeXcel es un conversor gratuito, sin anuncios y sin cuenta. La conversión se realiza principalmente en tu navegador y el servicio no está diseñado para recopilar datos personales. Esta página es un resumen de transparencia.",
+      "converTeXcel es un conversor gratuito que no requiere cuenta. La conversión se realiza principalmente en tu navegador y el servicio no está diseñado para recopilar tus datos de entrada. Se pueden usar Google Analytics y Google AdSense para mejorar el servicio y mostrar anuncios. Esta página es un resumen de transparencia.",
     sections: [
       {
         title: "Política básica",
@@ -379,8 +491,18 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           "La conversión se realiza principalmente en tu navegador mediante Rust/WebAssembly.",
           "Las vistas previas de gráficos (gnuplot) también se renderizan en el navegador y no se envían al exterior.",
           "Solo al ejecutar una vista previa en PDF se envían el código generado y los datos necesarios a texlive.net tras tu consentimiento.",
-          "Sin seguimiento publicitario, segmentación por comportamiento ni venta de datos.",
+          "Google Analytics se usa para entender el uso de las páginas, y los datos de tabla pegados o el código generado no se envían intencionadamente.",
+          "Pueden mostrarse anuncios de Google AdSense en ubicaciones que no interrumpan el trabajo de conversión.",
+          "No se venden los datos de entrada ni el código generado.",
           "No se requiere nombre, correo electrónico ni registro de cuenta.",
+        ],
+      },
+      {
+        title: "Cookies, anuncios y analítica",
+        paragraphs: [
+          "Terceros, incluido Google, pueden usar cookies y tecnologías similares para mostrar anuncios basados en visitas anteriores a este sitio u otros sitios.",
+          "Las cookies publicitarias de Google permiten que Google y sus socios muestren anuncios basados en visitas a este sitio y/o a otros sitios de Internet. Puedes inhabilitar los anuncios personalizados desde la configuración de anuncios de Google: https://www.google.com/settings/ads",
+          "Google Analytics puede procesar URL de página, referente, información del navegador y dispositivo, región aproximada y datos de eventos. Por diseño, los datos de tabla pegados y el código generado no se envían como eventos de analítica.",
         ],
       },
       {
@@ -424,6 +546,12 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           legalBasis: "Interés legítimo u obligación legal",
           retention: "Según la configuración de retención de registros del proveedor de hosting/CDN.",
         },
+        {
+          category: "Vistas de página, referente, información de navegador/dispositivo, cookies publicitarias, etc.",
+          purpose: "Analítica, mejora del servicio, publicación de anuncios, medición publicitaria y prevención de abuso",
+          legalBasis: "Consentimiento cuando lo exija la ley local; en otros casos, interés legítimo",
+          retention: "Según la configuración de Google Analytics / Google AdSense y las políticas de Google.",
+        },
       ],
     },
     thirdParties: {
@@ -442,6 +570,18 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           data: "Dirección IP, User-Agent, metadatos de solicitud, etc.",
           timing: "Al acceder al sitio",
         },
+        {
+          service: "Google Analytics",
+          purpose: "Analítica, medición de uso y mejora del servicio",
+          data: "URL de página, referente, información de navegador/dispositivo, región aproximada, datos de eventos, etc.",
+          timing: "Al acceder al sitio, si está configurado",
+        },
+        {
+          service: "Google AdSense",
+          purpose: "Publicación de anuncios, medición publicitaria y prevención de abuso",
+          data: "Cookies, identificadores publicitarios, dirección IP, información de navegador/dispositivo, URL de página, etc.",
+          timing: "Al ver una página con un bloque de anuncios, si está configurado",
+        },
       ],
     },
     regional: {
@@ -453,7 +593,7 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
   },
   de: {
     notice:
-      "converTeXcel ist ein kostenloser Konverter ohne Werbung und ohne Konto. Die Umwandlung erfolgt hauptsächlich in Ihrem Browser, und der Dienst ist nicht darauf ausgelegt, personenbezogene Daten zu erheben. Diese Seite ist eine Transparenzzusammenfassung.",
+      "converTeXcel ist ein kostenloser Konverter ohne Kontoerfordernis. Die Umwandlung erfolgt hauptsächlich in Ihrem Browser, und der Dienst ist nicht darauf ausgelegt, Ihre Eingabedaten zu sammeln. Google Analytics und Google AdSense können zur Verbesserung des Dienstes und für Werbung verwendet werden. Diese Seite ist eine Transparenzzusammenfassung.",
     sections: [
       {
         title: "Grundsätze",
@@ -461,8 +601,18 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           "Die Umwandlung erfolgt hauptsächlich im Browser über Rust/WebAssembly.",
           "Diagramm-Vorschauen (gnuplot) werden ebenfalls im Browser gerendert und nicht nach außen gesendet.",
           "Nur wenn Sie eine PDF-Vorschau ausführen, werden der generierte Code und die erforderlichen Daten nach Ihrer Einwilligung an texlive.net gesendet.",
-          "Kein Werbe-Tracking, kein verhaltensbasiertes Targeting, kein Datenverkauf.",
+          "Google Analytics wird verwendet, um die Seitennutzung zu verstehen; eingefügte Tabellendaten oder generierter Code werden nicht absichtlich gesendet.",
+          "Google AdSense-Anzeigen können an Stellen erscheinen, die die Konvertierungsarbeit nicht unterbrechen.",
+          "Eingabedaten und generierter Code werden nicht verkauft.",
           "Kein Name, keine E-Mail-Adresse und keine Kontoregistrierung erforderlich.",
+        ],
+      },
+      {
+        title: "Cookies, Anzeigen und Analyse",
+        paragraphs: [
+          "Drittanbieter, einschließlich Google, können Cookies und ähnliche Technologien verwenden, um Anzeigen auf Grundlage früherer Besuche auf dieser oder anderen Websites zu schalten.",
+          "Die Werbe-Cookies von Google ermöglichen Google und seinen Partnern, Anzeigen basierend auf Besuchen dieser Website und/oder anderer Websites im Internet zu schalten. Personalisierte Werbung kann über die Google-Anzeigeneinstellungen deaktiviert werden: https://www.google.com/settings/ads",
+          "Google Analytics kann Seiten-URL, Referrer, Browser- und Geräteinformationen, ungefähre Region und Ereignisdaten verarbeiten. Eingefügte Tabellendaten und generierter Code werden bewusst nicht als Analyseereignisse gesendet.",
         ],
       },
       {
@@ -506,6 +656,12 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           legalBasis: "Berechtigtes Interesse oder gesetzliche Pflicht",
           retention: "Gemäß den Protokoll-Aufbewahrungseinstellungen des Hosting-/CDN-Anbieters.",
         },
+        {
+          category: "Seitenaufrufe, Referrer, Browser-/Geräteinformationen, Werbe-Cookies usw.",
+          purpose: "Analyse, Verbesserung des Dienstes, Anzeigenschaltung, Anzeigenmessung und Missbrauchsvermeidung",
+          legalBasis: "Einwilligung, wo lokal gesetzlich erforderlich; andernfalls berechtigtes Interesse",
+          retention: "Gemäß den Einstellungen von Google Analytics / Google AdSense und den Google-Richtlinien.",
+        },
       ],
     },
     thirdParties: {
@@ -523,6 +679,18 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           purpose: "Auslieferung der Website, TLS, Sicherheit, Protokolle",
           data: "IP-Adresse, User-Agent, Anfrage-Metadaten usw.",
           timing: "Beim Zugriff auf die Website",
+        },
+        {
+          service: "Google Analytics",
+          purpose: "Analyse, Nutzungsmetrik und Verbesserung des Dienstes",
+          data: "Seiten-URL, Referrer, Browser-/Geräteinformationen, ungefähre Region, Ereignisdaten usw.",
+          timing: "Beim Zugriff auf die Website, sofern konfiguriert",
+        },
+        {
+          service: "Google AdSense",
+          purpose: "Anzeigenschaltung, Anzeigenmessung und Missbrauchsvermeidung",
+          data: "Cookies, Werbe-IDs, IP-Adresse, Browser-/Geräteinformationen, Seiten-URL usw.",
+          timing: "Beim Anzeigen einer Seite mit Anzeigenblock, sofern konfiguriert",
         },
       ],
     },

@@ -21,6 +21,11 @@ import { privacyPolicy } from "@/lib/privacy-policy"
 
 const SITE_URL = "https://convertexcel.net/"
 const privacyUrls = localizedSiteUrls(SITE_URL, "/privacy")
+const serviceLinks: Record<string, string> = {
+  "texlive.net": "https://texlive.net",
+  "Google Analytics": "https://policies.google.com/technologies/partner-sites",
+  "Google AdSense": "https://policies.google.com/technologies/ads",
+}
 
 export default function PrivacyPage() {
   const { language, t, seo: seoText, pathFor } = useI18n()
@@ -131,8 +136,8 @@ export default function PrivacyPage() {
               {policy.thirdParties.rows.map((row) => (
                 <TableRow key={row.service}>
                   <TableCell className="min-w-44 align-top">
-                    {row.service === "texlive.net" ? (
-                      <a className="underline" href="https://texlive.net" target="_blank" rel="noopener">texlive.net</a>
+                    {serviceLinks[row.service] ? (
+                      <a className="underline" href={serviceLinks[row.service]} target="_blank" rel="noopener">{row.service}</a>
                     ) : row.service}
                   </TableCell>
                   <TableCell className="min-w-48 align-top">{row.purpose}</TableCell>

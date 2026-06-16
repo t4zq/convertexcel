@@ -15,6 +15,18 @@ declare global {
 
     interface Workbook {
       getSelectedRange(): Range
+      getSelectedRanges(): RangeAreas
+    }
+
+    interface RangeAreas {
+      address: string
+      areas: RangeCollection
+      load(properties: string | string[]): void
+    }
+
+    interface RangeCollection {
+      items: Range[]
+      load(properties: string | string[]): void
     }
 
     interface Range {
@@ -22,6 +34,10 @@ declare global {
       values: unknown[][]
       rowCount: number
       columnCount: number
+      rowIndex: number
+      columnIndex: number
+      isNullObject?: boolean
+      getUsedRangeOrNullObject(valuesOnly?: boolean): Range
       load(properties: string | string[]): void
     }
   }

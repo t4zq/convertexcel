@@ -1,9 +1,11 @@
 import { Check, Copy, ExternalLink } from "lucide-react"
+import { QRCodeSVG } from "qrcode.react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 interface WebAppCardProps {
+  shareUrl: string
   hasContent: boolean
   copied: boolean
   onOpen: () => void
@@ -11,7 +13,7 @@ interface WebAppCardProps {
 }
 
 /** 取り込んだ表を Web 版で開く／共有リンクをコピーするカード。 */
-export function WebAppCard({ hasContent, copied, onOpen, onCopy }: WebAppCardProps) {
+export function WebAppCard({ shareUrl, hasContent, copied, onOpen, onCopy }: WebAppCardProps) {
   return (
     <Card className="gap-3 rounded-lg py-3 shadow-xs">
       <CardHeader className="px-3.5">
@@ -29,6 +31,22 @@ export function WebAppCard({ hasContent, copied, onOpen, onCopy }: WebAppCardPro
           {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
           {copied ? "リンクをコピーしました" : "Web 版リンクをコピー"}
         </Button>
+        <div className="rounded-md border bg-muted/30 p-3">
+          {hasContent ? (
+            <div className="flex flex-col items-center gap-2">
+              <div className="rounded bg-white p-2">
+                <QRCodeSVG value={shareUrl} size={156} />
+              </div>
+              <p className="text-muted-foreground text-center text-xs">
+                スマートフォンや別端末で開く場合は、この QR コードを読み取ります。
+              </p>
+            </div>
+          ) : (
+            <div className="flex min-h-[196px] items-center justify-center text-center text-xs text-muted-foreground">
+              範囲を取り込むと QR コードを表示します。
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   )

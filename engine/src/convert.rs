@@ -1126,6 +1126,16 @@ fn plot_mark_style(index: usize) -> &'static str {
     STYLES[index % 8]
 }
 
+fn is_asymptote_series(headers: &[String], col: usize) -> bool {
+    headers
+        .get(col)
+        .map(|header| {
+            let header = header.to_lowercase();
+            header.contains("asymptote") || header.contains("漸近") || header.contains("折れ線")
+        })
+        .unwrap_or(false)
+}
+
 fn push_pgfplots_options(out: &mut String, indent: &str, options: &str) {
     let parts: Vec<&str> = options.split(", ").collect();
     for (index, part) in parts.iter().enumerate() {
@@ -1174,6 +1184,89 @@ fn axis_bounds(t: &Table) -> (i32, i32, i32, i32) {
         y_min.floor() as i32,
         y_max.floor() as i32 + 1,
     )
+}
+
+fn positive_axis_range(t: &Table, x_axis: bool) -> Option<(f64, f64)> {
+    let (mut min_value, mut max_value) = (f64::INFINITY, f64::NEG_INFINITY);
+    for row in t {
+        if x_axis {
+            if let Some((value, _)) = row.first().and_then(|cell| parse_value_error(cell)) {
+                let value = parse_f64(&value);
+                if value.is_finite() && value > 0.0 {
+                    min_value = min_value.min(value);
+                    max_value = max_value.max(value);
+                }
+            }
+            continue;
+        }
+        for cell in row.iter().skip(1) {
+            if let Some((value, _)) = parse_value_error(cell) {
+                let value = parse_f64(&value);
+                if value.is_finite() && value > 0.0 {
+                    min_value = min_value.min(value);
+                    max_value = max_value.max(value);
+                }
+            }
+        }
+    }
+    if min_value.is_finite() && max_value.is_finite() {
+        Some((min_value, max_value))
+    } else {
+        None
+    }
+}
+
+fn log_axis_parts(t: &Table, x_axis: bool) -> Option<(String, String, Vec<String>)> {
+    let (min_value, max_value) = positive_axis_range(t, x_axis)?;
+    let mut lower_exp = min_value.log10().floor() as i32;
+    let mut upper_exp = max_value.log10().ceil() as i32;
+    if lower_exp == upper_exp {
+        lower_exp -= 1;
+        upper_exp += 1;
+    }
+    let decade_count = (upper_exp - lower_exp).max(1);
+    let step = ((decade_count as f64) / 6.0).ceil().max(1.0) as i32;
+    let mut ticks = Vec::new();
+    let mut exp = lower_exp;
+    while exp <= upper_exp {
+        ticks.push(format_double(10f64.powi(exp)));
+        exp += step;
+    }
+    let upper_tick = format_double(10f64.powi(upper_exp));
+    if ticks.last() != Some(&upper_tick) {
+        ticks.push(upper_tick);
+    }
+    Some((
+        format_double(10f64.powi(lower_exp)),
+        format_double(10f64.powi(upper_exp)),
+        ticks,
+    ))
+}
+
+fn linear_ticks(min_value: i32, max_value: i32) -> Vec<String> {
+    let mut step = (max_value - min_value) / 5;
+    if step < 1 {
+        step = 1;
+    }
+    let mut ticks = Vec::new();
+    let mut value = min_value;
+    while value <= max_value {
+        ticks.push(value.to_string());
+        value += step;
+    }
+    ticks
+}
+
+fn push_tick_list(out: &mut String, indent: &str, name: &str, ticks: &[String], trailing_comma: bool) {
+    out.push_str(indent);
+    out.push_str(name);
+    out.push_str("={");
+    out.push_str(&ticks.join(","));
+    out.push('}');
+    if trailing_comma {
+        out.push(',');
+    }
+    out.push('\n');
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1239,7 +1332,12 @@ fn to_tikz_graph(
     out.push_str("            legend cell align = {left},\n");
     out.push_str(&format!("            legend pos = {},\n", legend_pos));
 
-    if scale_mode == "semilog" {
+    let x_is_log = scale_mode == "xlog" || scale_mode == "loglog";
+    let y_is_log = scale_mode == "semilog" || scale_mode == "loglog";
+
+    if scale_mode == "xlog" {
+        out.push_str("            xmode=log,\n");
+    } else if scale_mode == "semilog" {
         out.push_str("            ymode=log,\n");
     } else if scale_mode == "loglog" {
         out.push_str("            xmode=log,\n");
@@ -1253,39 +1351,20 @@ fn to_tikz_graph(
 
     out.push_str(&format!("            xlabel={{{}}},\n", label_for_si(x_label, siunitx)));
     out.push_str(&format!("            ylabel={{{}}},\n", label_for_si(y_label, siunitx)));
-    out.push_str(&format!("            xmin={}, xmax={},\n", xmin_val, xmax_val));
-    out.push_str(&format!("            ymin={}, ymax={},\n", ymin_val, ymax_val));
-
-    let mut x_step = (xmax_val - xmin_val) / 5;
-    let mut y_step = (ymax_val - ymin_val) / 5;
-    if x_step < 1 {
-        x_step = 1;
-    }
-    if y_step < 1 {
-        y_step = 1;
-    }
-
-    out.push_str("            xtick={");
-    let mut i = xmin_val;
-    while i <= xmax_val {
-        if i != xmin_val {
-            out.push(',');
-        }
-        out.push_str(&i.to_string());
-        i += x_step;
-    }
-    out.push_str("},\n");
-
-    out.push_str("            ytick={");
-    let mut i = ymin_val;
-    while i <= ymax_val {
-        if i != ymin_val {
-            out.push(',');
-        }
-        out.push_str(&i.to_string());
-        i += y_step;
-    }
-    out.push_str("}\n");
+    let x_log_parts = if x_is_log { log_axis_parts(t, true) } else { None };
+    let y_log_parts = if y_is_log { log_axis_parts(t, false) } else { None };
+    let (x_min, x_max, x_ticks) = match x_log_parts {
+        Some((min_value, max_value, ticks)) => (min_value, max_value, ticks),
+        None => (xmin_val.to_string(), xmax_val.to_string(), linear_ticks(xmin_val, xmax_val)),
+    };
+    let (y_min, y_max, y_ticks) = match y_log_parts {
+        Some((min_value, max_value, ticks)) => (min_value, max_value, ticks),
+        None => (ymin_val.to_string(), ymax_val.to_string(), linear_ticks(ymin_val, ymax_val)),
+    };
+    out.push_str(&format!("            xmin={}, xmax={},\n", x_min, x_max));
+    out.push_str(&format!("            ymin={}, ymax={},\n", y_min, y_max));
+    push_tick_list(&mut out, "            ", "xtick", &x_ticks, true);
+    push_tick_list(&mut out, "            ", "ytick", &y_ticks, false);
     out.push_str("        ]\n");
 
     let total_cols = t.iter().map(|r| r.len()).max().unwrap_or(num_cols);
@@ -1294,7 +1373,11 @@ fn to_tikz_graph(
     for col in 1..num_cols {
         let err_idx = error_index_for(&unc, total_cols, col);
         out.push_str("            \\addplot [\n");
-        let mut opts = plot_mark_style(col - 1).to_string();
+        let mut opts = if is_asymptote_series(headers, col) {
+            "color=black, no markers, thick".to_string()
+        } else {
+            plot_mark_style(col - 1).to_string()
+        };
         if err_idx.is_some() {
             opts.push_str(", error bars/.cd, y dir=both, y explicit");
         }
@@ -1319,7 +1402,11 @@ fn to_tikz_graph(
         out.push_str(&format!("            \\addlegendentry{{{}}}\n", legend_label));
 
         let fit_method = fit_method_for_series(fit_methods, col - 1);
-        let fit = select_fit(&points_for_column(t, col), &fit_method);
+        let fit = if is_asymptote_series(headers, col) {
+            FitResult::empty()
+        } else {
+            select_fit(&points_for_column(t, col), &fit_method)
+        };
         if fit.ok {
             out.push_str("            \\addplot [\n");
             push_pgfplots_options(
@@ -1403,7 +1490,12 @@ fn to_tikz_graph_preview(t: &Table, sig_figs: i32, legend_pos: &str, scale_mode:
     out.push_str("    legend cell align = {left},\n");
     out.push_str(&format!("    legend pos = {},\n", legend_pos));
 
-    if scale_mode == "semilog" {
+    let x_is_log = scale_mode == "xlog" || scale_mode == "loglog";
+    let y_is_log = scale_mode == "semilog" || scale_mode == "loglog";
+
+    if scale_mode == "xlog" {
+        out.push_str("    xmode=log,\n");
+    } else if scale_mode == "semilog" {
         out.push_str("    ymode=log,\n");
     } else if scale_mode == "loglog" {
         out.push_str("    xmode=log,\n");
@@ -1412,39 +1504,20 @@ fn to_tikz_graph_preview(t: &Table, sig_figs: i32, legend_pos: &str, scale_mode:
 
     out.push_str("    xlabel={x軸},\n");
     out.push_str("    ylabel={y軸},\n");
-    out.push_str(&format!("    xmin={}, xmax={},\n", xmin_val, xmax_val));
-    out.push_str(&format!("    ymin={}, ymax={},\n", ymin_val, ymax_val));
-
-    let mut x_step = (xmax_val - xmin_val) / 5;
-    let mut y_step = (ymax_val - ymin_val) / 5;
-    if x_step < 1 {
-        x_step = 1;
-    }
-    if y_step < 1 {
-        y_step = 1;
-    }
-
-    out.push_str("    xtick={");
-    let mut i = xmin_val;
-    while i <= xmax_val {
-        if i != xmin_val {
-            out.push(',');
-        }
-        out.push_str(&i.to_string());
-        i += x_step;
-    }
-    out.push_str("},\n");
-
-    out.push_str("    ytick={");
-    let mut i = ymin_val;
-    while i <= ymax_val {
-        if i != ymin_val {
-            out.push(',');
-        }
-        out.push_str(&i.to_string());
-        i += y_step;
-    }
-    out.push_str("}\n");
+    let x_log_parts = if x_is_log { log_axis_parts(t, true) } else { None };
+    let y_log_parts = if y_is_log { log_axis_parts(t, false) } else { None };
+    let (x_min, x_max, x_ticks) = match x_log_parts {
+        Some((min_value, max_value, ticks)) => (min_value, max_value, ticks),
+        None => (xmin_val.to_string(), xmax_val.to_string(), linear_ticks(xmin_val, xmax_val)),
+    };
+    let (y_min, y_max, y_ticks) = match y_log_parts {
+        Some((min_value, max_value, ticks)) => (min_value, max_value, ticks),
+        None => (ymin_val.to_string(), ymax_val.to_string(), linear_ticks(ymin_val, ymax_val)),
+    };
+    out.push_str(&format!("    xmin={}, xmax={},\n", x_min, x_max));
+    out.push_str(&format!("    ymin={}, ymax={},\n", y_min, y_max));
+    push_tick_list(&mut out, "    ", "xtick", &x_ticks, true);
+    push_tick_list(&mut out, "    ", "ytick", &y_ticks, false);
     out.push_str("  ]\n");
 
     for col in 1..num_cols {
@@ -1608,7 +1681,14 @@ fn to_gnuplot(
         // gnuplot の列番号は 1 始まり。値列 = col+1、誤差列 = error_index_for+1。
         let y_idx = col + 1;
         // データ点と近似線を同じ線色 (lc) で揃える。
-        let data_entry = match error_index_for(&unc, total_cols, col) {
+        let is_asymptote = is_asymptote_series(headers, col);
+        let data_entry = if is_asymptote {
+            format!(
+                "$data using 1:{} with lines lc {} title '{}'",
+                y_idx, col, gnuplot_single_quote(&title)
+            )
+        } else {
+            match error_index_for(&unc, total_cols, col) {
             Some(ei) => format!(
                 "$data using 1:{}:{} with yerrorbars lc {}{} title '{}'",
                 y_idx, ei + 1, col, point_style, gnuplot_single_quote(&title)
@@ -1617,11 +1697,16 @@ fn to_gnuplot(
                 "$data using 1:{} with points lc {}{} title '{}'",
                 y_idx, col, point_style, gnuplot_single_quote(&title)
             ),
+            }
         };
         plot_entries.push(data_entry);
 
         let method = fit_method_for_series(fit_methods, col - 1);
-        let fit = select_fit(&points_for_column(t, col), &method);
+        let fit = if is_asymptote {
+            FitResult::empty()
+        } else {
+            select_fit(&points_for_column(t, col), &method)
+        };
         if fit.ok {
             if let Some((setup, expr)) = gnuplot_fit_block(&fit, col, y_idx) {
                 fit_setups.push(setup);
@@ -1645,7 +1730,9 @@ fn to_gnuplot(
     if grid {
         out.push_str("set grid\n");
     }
-    if scale_mode == "semilog" {
+    if scale_mode == "xlog" {
+        out.push_str("set logscale x\n");
+    } else if scale_mode == "semilog" {
         out.push_str("set logscale y\n");
     } else if scale_mode == "loglog" {
         out.push_str("set logscale xy\n");
@@ -1971,6 +2058,46 @@ mod tests {
     }
 
     #[test]
+    fn tikz_xlog_scale() {
+        let out = gen_tikz_graph_config(
+            "f,gain\n10,-0.1\n100,-3\n1000,-20",
+            "bode", 3, "south west", "xlog", "none", 1, 1, 0,
+            "frequency [Hz]", "gain [dB]", "", "", 0, 0,
+        );
+        assert!(out.contains("xmode=log"));
+        assert!(!out.contains("ymode=log"));
+        assert!(out.contains("xmin=10, xmax=1000"));
+        assert!(out.contains("xtick={10,100,1000}"));
+        assert!(!out.contains("xtick={10,208"));
+    }
+
+    #[test]
+    fn tikz_loglog_uses_decade_ticks_on_both_axes() {
+        let out = gen_tikz_graph_config(
+            "f,gain\n10,0.1\n100,1\n1000,10",
+            "loglog", 3, "south west", "loglog", "none", 1, 1, 0,
+            "frequency [Hz]", "gain", "", "", 0, 0,
+        );
+        assert!(out.contains("xmode=log"));
+        assert!(out.contains("ymode=log"));
+        assert!(out.contains("xtick={10,100,1000}"));
+        assert!(out.contains("ytick={0.1,1,10}"));
+    }
+
+    #[test]
+    fn tikz_asymptote_series_uses_solid_lines() {
+        let out = gen_tikz_graph_config(
+            "f,gain,gain asymptote [dB]\n10,0,0\n100,-3,0\n1000,-20,-20",
+            "bode", 3, "south west", "xlog", "none", 1, 1, 0,
+            "frequency [Hz]", "gain [dB]", "", "", 0, 0,
+        );
+        assert!(out.contains("gain asymptote [dB]"));
+        assert!(out.contains("no markers"));
+        // 折れ線近似は破線ではなく実線で描く。
+        assert!(!out.contains("dashed"));
+    }
+
+    #[test]
     fn gnuplot_basic_points() {
         let out = gen_gnuplot_config("x,y\n1,2\n2,4\n3,6", "linear", 1, 1, "Voltage", "Current", "none", "left top", 0, 0, 0.0, "");
         assert!(out.contains("set datafile separator ','"));
@@ -2009,6 +2136,23 @@ mod tests {
         let semilog = gen_gnuplot_config("x,y\n1,2\n2,4", "semilog", 1, 1, "", "", "none", "left top", 0, 0, 0.0, "");
         assert!(semilog.contains("set logscale y"));
         assert!(!semilog.contains("set logscale xy"));
+        let xlog = gen_gnuplot_config("x,y\n1,2\n2,4", "xlog", 1, 1, "", "", "none", "left top", 0, 0, 0.0, "");
+        assert!(xlog.contains("set logscale x"));
+        assert!(!xlog.contains("set logscale y"));
+        assert!(!xlog.contains("set logscale xy"));
+    }
+
+    #[test]
+    fn gnuplot_asymptote_series_uses_lines() {
+        let out = gen_gnuplot_config(
+            "f,gain,gain asymptote [dB]\n10,0,0\n100,-3,0\n1000,-20,-20",
+            "xlog", 1, 1, "", "", "none", "left top", 0, 0, 0.0, "",
+        );
+        assert!(out.contains("$data using 1:2 with points"));
+        assert!(out.contains("$data using 1:3 with lines"));
+        // 折れ線近似は実線（dt 2 を付けない）。
+        assert!(!out.contains("dt 2"));
+        assert!(out.contains("with lines lc 2 title 'gain asymptote [dB]'"));
     }
 
     #[test]

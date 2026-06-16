@@ -1,6 +1,7 @@
-import { lazy, Suspense, type CSSProperties, useCallback, useEffect, useMemo, useState } from "react"
+import { lazy, Suspense, type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { CheckCircle2, ClipboardPaste, FileText, Link2, LoaderCircle, Settings2, Table2 } from "lucide-react"
 
+import { AdSenseUnit } from "@/components/ads/AdSenseUnit"
 import { CopyButton } from "@/components/convert/CopyButton"
 import { InputDiagnosticsPanel } from "@/components/convert/InputDiagnosticsPanel"
 import { Button } from "@/components/ui/button"
@@ -29,12 +30,14 @@ import { useSplitResize } from "@/hooks/useSplitResize"
 import {
   DEFAULT_TABLE_SETTINGS,
   DEFAULT_GNUPLOT_SETTINGS,
+  DEFAULT_BODE_SETTINGS,
   getDefaultTikzSettings,
   localizeDefaultTikzText,
   type GnuplotSettings,
   type TableSettings,
   type TikzSettings,
 } from "@/lib/convert-settings"
+import { ASYMPTOTE_FIT, getAutoBodeSettings, getBodeColumnOptions, makeBodeGraphInput } from "@/lib/bode"
 import { localizedSiteUrls } from "@/lib/i18n"
 import { diagnoseInput } from "@/lib/input-diagnostics"
 
@@ -48,6 +51,7 @@ const SAMPLE = `x\ty1\ty2
 const OUTPUT_MIN_HEIGHT = 273
 const SITE_URL = "https://convertexcel.net/"
 const convertUrls = localizedSiteUrls(SITE_URL, "/")
+const outputAdSlot = import.meta.env.VITE_ADSENSE_OUTPUT_SLOT?.trim()
 const CodeAssistEditor = lazy(() =>
   import("@/components/CodeAssistEditor").then((module) => ({
     default: module.CodeAssistEditor,
@@ -81,6 +85,11 @@ const GnuplotSettingsPanel = lazy(() =>
 const InputSettingsPanel = lazy(() =>
   import("@/components/convert/InputSettingsPanel").then((module) => ({
     default: module.InputSettingsPanel,
+  }))
+)
+const TableOutputSettingsPanel = lazy(() =>
+  import("@/components/convert/TableOutputSettingsPanel").then((module) => ({
+    default: module.TableOutputSettingsPanel,
   }))
 )
 const PreviewConsentDialog = lazy(() =>
@@ -181,10 +190,12 @@ export default function ConvertPage() {
   const [inputMode, setInputMode] = useState<"paste" | "form">("paste")
   const [formKey, setFormKey] = useState(0)
   const [showInputSettings, setShowInputSettings] = useState(false)
+  const [showTableSettings, setShowTableSettings] = useState(false)
   const [showTikzSettings, setShowTikzSettings] = useState(false)
   const [showGnuplotSettings, setShowGnuplotSettings] = useState(false)
   const [activeTab, setActiveTab] = useState<OutputTab>("latex")
   const [sharedStateRestored, setSharedStateRestored] = useState(false)
+  const lastAutoBodeHeaderRef = useRef<string | null>(null)
 
   const updateTable = (patch: Partial<TableSettings>) => setTable((s) => ({ ...s, ...patch }))
   const updateTikz = (patch: Partial<TikzSettings>) => setTikz((s) => ({ ...s, ...patch }))
@@ -208,6 +219,11 @@ export default function ConvertPage() {
     reopenHeight: 760,
   })
 
+  const bodeGraphInput = useMemo(() => makeBodeGraphInput(source, table, tikz), [source, table, tikz])
+  const graphSource = bodeGraphInput ?? source
+  const graphTable = bodeGraphInput ? { ...table, hasHeader: true, cleanInput: true } : table
+  const bodeColumnOptions = useMemo(() => getBodeColumnOptions(source, table), [source, table])
+
   const { latexOut, csvOut, tikzOut, gnuplotOut, setLatexOut, setTikzOut, setGnuplotOut } = useConversionOutputs(
     source,
     table,
@@ -230,12 +246,12 @@ export default function ConvertPage() {
     latexOut,
     tikzOut,
     gnuplotOut,
-    source,
-    table,
+    source: graphSource,
+    table: graphTable,
     renderGnuplotPreview,
     startCooldown,
   })
-  const inputSplit = useSplitResize({ initial: 58 })
+  const inputSplit = useSplitResize()
   const split = useSplitResize()
   const [shareDialogOpen, setShareDialogOpen] = useState(false)
   const defaultTikzForLanguage = useMemo(() => getDefaultTikzSettings(language), [language])
@@ -277,6 +293,50 @@ export default function ConvertPage() {
     if (!output.trim()) return
     void navigator.clipboard.writeText(output)
   }, [activeTab, gnuplotOut, latexOut, tikzOut])
+
+  const applyBodeGraphSettings = useCallback((bodePatch: Partial<TikzSettings["bode"]> = {}) => {
+    setTable((current) => ({ ...current, hasHeader: true, cleanInput: true }))
+    setTikz((current) => ({
+      ...current,
+      filename: "bode",
+      legendPos: "south west",
+      scaleMode: "xlog",
+      // 既定で gain・phase 列を折れ線（漸近線）近似にする。
+      fitMethods: [ASYMPTOTE_FIT, ASYMPTOTE_FIT],
+      xLabel: "frequency [Hz]",
+      yLabel: "gain [dB] / phase [deg]",
+      caption: "Bode plot",
+      label: "fig:bode",
+      seriesColors: ["blue", "red"],
+      seriesMarks: ["*", "square*"],
+      bode: { ...DEFAULT_BODE_SETTINGS, ...(current.bode ?? {}), enabled: true, ...bodePatch },
+    }))
+    setGnuplot((current) => ({
+      ...current,
+      keyPos: "left bottom",
+      grid: true,
+      pointType: 0,
+      pointSize: 0,
+      title: "Bode plot",
+    }))
+    setActiveTab("gnuplot")
+  }, [setGnuplot, setTable, setTikz])
+
+  const autoBodeSettings = useMemo(
+    () => getAutoBodeSettings(source, table),
+    [source, table],
+  )
+
+  useEffect(() => {
+    if (!autoBodeSettings) {
+      lastAutoBodeHeaderRef.current = null
+      return
+    }
+    const key = JSON.stringify(autoBodeSettings)
+    if (lastAutoBodeHeaderRef.current === key) return
+    lastAutoBodeHeaderRef.current = key
+    applyBodeGraphSettings(autoBodeSettings)
+  }, [applyBodeGraphSettings, autoBodeSettings])
 
   const toggleActiveGraphSettings = useCallback(() => {
     if (activeTab === "gnuplot") {
@@ -451,12 +511,14 @@ export default function ConvertPage() {
             aria-valuenow={inputSplit.width}
             tabIndex={0}
             {...inputSplit.separatorProps}
-            className={`hidden cursor-col-resize touch-none items-stretch justify-center rounded-md transition-colors xl:flex ${
-              inputSplit.isResizing ? "bg-primary/15" : "hover:bg-accent"
+            className={`group hidden cursor-col-resize touch-none items-stretch justify-center rounded-md transition-[background-color,box-shadow] duration-200 ease-out xl:flex ${
+              inputSplit.isResizing ? "bg-primary/15 shadow-inner" : "hover:bg-accent/80"
             }`}
             title={`${t.convert.inputTitle} / ${t.diagnostics.title}`}
           >
-            <span className="my-4 w-1 rounded-full bg-border" />
+            <span className={`my-4 w-1 rounded-full bg-border transition-all duration-200 ease-out ${
+              inputSplit.isResizing ? "bg-primary/50" : "group-hover:bg-border/80"
+            }`} />
           </div>
 
           <Card>
@@ -483,12 +545,14 @@ export default function ConvertPage() {
           aria-valuenow={inputArea.visible ? inputArea.height : 0}
           tabIndex={0}
           {...inputArea.separatorProps}
-          className={`flex h-5 cursor-row-resize touch-none items-center justify-center rounded-md transition-colors ${
-            inputArea.isResizing ? "bg-primary/15" : "hover:bg-accent"
+          className={`flex h-5 cursor-row-resize touch-none items-center justify-center rounded-md transition-[background-color,box-shadow] duration-200 ease-out ${
+            inputArea.isResizing ? "bg-primary/15 shadow-inner" : "hover:bg-accent/80"
           }`}
           title={t.convert.inputResizeTitle}
         >
-          <span className="h-1 w-full max-w-5xl rounded-full bg-border" />
+          <span className={`h-1 w-full max-w-5xl rounded-full bg-border transition-colors duration-200 ease-out ${
+            inputArea.isResizing ? "bg-primary/50" : ""
+          }`} />
         </div>
 
         {outputArea.visible && (
@@ -521,6 +585,16 @@ export default function ConvertPage() {
               </TabsList>
               <TabsContent value="latex" className="space-y-2">
                 <div className="flex flex-wrap justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setShowTableSettings((v) => !v)}
+                    title={showTableSettings ? t.convert.hideTableSettings : t.convert.showTableSettings}
+                  >
+                    <Settings2 className="h-4 w-4" />
+                    <span>{showTableSettings ? t.convert.hideTableSettings : t.convert.showTableSettings}</span>
+                  </Button>
                   <Button size="sm" onClick={preview.requestPreview} disabled={!preview.canPreviewLatex} title={`${t.convert.previewTable} (Ctrl+Enter)`}>
                     <FileText className="h-4 w-4" />
                     <span>{t.convert.previewTable}</span>
@@ -528,6 +602,11 @@ export default function ConvertPage() {
                   <CopyButton value={latexOut} label={t.convert.copyTable} />
                   {cooldown > 0 && <span className="text-muted-foreground self-center text-sm">{t.convert.cooldown(cooldown)}</span>}
                 </div>
+                {showTableSettings && (
+                  <Suspense fallback={<PanelFallback />}>
+                    <TableOutputSettingsPanel value={table} onChange={updateTable} />
+                  </Suspense>
+                )}
                 <div className={ghost}>
                   <OutputCodeEditor
                     kind="latex"
@@ -563,6 +642,7 @@ export default function ConvertPage() {
                       onChange={updateTikz}
                       seriesCount={seriesCount}
                       seriesNames={seriesNames}
+                      bodeColumnOptions={bodeColumnOptions}
                     />
                   </Suspense>
                 )}
@@ -595,7 +675,13 @@ export default function ConvertPage() {
                 </div>
                 {showGnuplotSettings && (
                   <Suspense fallback={<PanelFallback />}>
-                    <GnuplotSettingsPanel value={gnuplot} onChange={updateGnuplot} />
+                    <GnuplotSettingsPanel
+                      value={gnuplot}
+                      onChange={updateGnuplot}
+                      tikzValue={tikz}
+                      onTikzChange={updateTikz}
+                      bodeColumnOptions={bodeColumnOptions}
+                    />
                   </Suspense>
                 )}
                 <div className={ghost}>
@@ -620,12 +706,14 @@ export default function ConvertPage() {
           aria-valuenow={split.width}
           tabIndex={0}
           {...split.separatorProps}
-          className={`hidden cursor-col-resize touch-none items-stretch justify-center rounded-md transition-colors xl:flex ${
-            split.isResizing ? "bg-primary/15" : "hover:bg-accent"
-          }`}
+            className={`hidden cursor-col-resize touch-none items-stretch justify-center rounded-md transition-[background-color,box-shadow] duration-200 ease-out xl:flex ${
+              split.isResizing ? "bg-primary/15 shadow-inner" : "hover:bg-accent/80"
+            }`}
           title={t.convert.splitResizeTitle}
         >
-          <span className="my-4 w-1 rounded-full bg-border" />
+          <span className={`my-4 w-1 rounded-full bg-border transition-colors duration-200 ease-out ${
+            split.isResizing ? "bg-primary/50" : ""
+          }`} />
         </div>
 
         <Card>
@@ -696,6 +784,11 @@ export default function ConvertPage() {
           </CardContent>
         </Card>
           </div>
+          <AdSenseUnit
+            slot={outputAdSlot}
+            label={t.convert.advertisement}
+            className="mt-4"
+          />
           </div>
         )}
         {!outputArea.visible && (
@@ -722,12 +815,14 @@ export default function ConvertPage() {
               aria-valuenow={split.width}
               tabIndex={0}
               {...split.separatorProps}
-              className={`hidden cursor-col-resize touch-none items-stretch justify-center rounded-md transition-colors xl:flex ${
-                split.isResizing ? "bg-primary/15" : "hover:bg-accent"
+              className={`hidden cursor-col-resize touch-none items-stretch justify-center rounded-md transition-[background-color,box-shadow] duration-200 ease-out xl:flex ${
+                split.isResizing ? "bg-primary/15 shadow-inner" : "hover:bg-accent/80"
               }`}
               title={t.convert.splitResizeTitle}
             >
-              <span className="my-4 w-1 rounded-full bg-border" />
+              <span className={`my-4 w-1 rounded-full bg-border transition-colors duration-200 ease-out ${
+                split.isResizing ? "bg-primary/50" : ""
+              }`} />
             </div>
 
             <Card>
@@ -747,12 +842,14 @@ export default function ConvertPage() {
           aria-valuenow={outputArea.visible ? outputArea.height : 0}
           tabIndex={0}
           {...outputArea.separatorProps}
-          className={`flex h-5 cursor-row-resize touch-none items-center justify-center rounded-md transition-colors ${
-            outputArea.isResizing ? "bg-primary/15" : "hover:bg-accent"
+          className={`flex h-5 cursor-row-resize touch-none items-center justify-center rounded-md transition-[background-color,box-shadow] duration-200 ease-out ${
+            outputArea.isResizing ? "bg-primary/15 shadow-inner" : "hover:bg-accent/80"
           }`}
           title={`${t.convert.outputTitle} / ${t.convert.pdfTitle}`}
         >
-          <span className="h-1 w-full max-w-5xl rounded-full bg-border" />
+          <span className={`h-1 w-full max-w-5xl rounded-full bg-border transition-colors duration-200 ease-out ${
+            outputArea.isResizing ? "bg-primary/50" : ""
+          }`} />
         </div>
       </div>
 

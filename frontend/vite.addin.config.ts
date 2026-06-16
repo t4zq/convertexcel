@@ -51,6 +51,14 @@ export default defineConfig(({ command }) => ({
     host: "127.0.0.1",
     port: 5174,
     https: command === "serve" ? devHttpsOptions() : undefined,
+    watch: {
+      ignored: ["**/dist/**", "**/*.tsbuildinfo"],
+    },
+    // アドイン開発サーバーで Web 版を開いた場合も PDF プレビューが動くよう、
+    // /api を `wrangler dev` (:8787) へ転送する（メインの vite.config.ts と同じ）。
+    proxy: {
+      "/api": "http://localhost:8787",
+    },
   },
   build: {
     // メインの build (frontend/dist) を空にした後で実行し、その配下に書き出す。
