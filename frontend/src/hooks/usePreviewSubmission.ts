@@ -3,10 +3,13 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { type TableSettings } from "@/lib/convert-settings"
 import {
   COOLDOWN_SECONDS,
+  LATEX_PREAMBLE_LINES,
+  TIKZ_PREAMBLE_LINES,
   submitToTexlive,
   wrapLatexDocument,
   wrapTikzDocument,
 } from "@/lib/texlive"
+import { parseTexLog, type TexLogError } from "@/lib/texlive-log"
 
 export type OutputTab = "latex" | "tikz" | "gnuplot"
 
@@ -17,6 +20,10 @@ export type PreviewStatus = {
   kind: null | "latex" | "tikz"
   progress: number
 }
+
+export type PreviewError =
+  | { type: "compile"; kind: "latex" | "tikz"; errors: TexLogError[]; rawLog: string }
+  | { type: "network"; detail: string }
 
 type UsePreviewSubmissionOptions = {
   activeTab: OutputTab
@@ -62,6 +69,7 @@ export function usePreviewSubmission({
   const previewDoneTimerRef = useRef<number | null>(null)
   const [pending, setPending] = useState<null | "latex" | "tikz">(null)
   const [previewStatus, setPreviewStatus] = useState<PreviewStatus>(INITIAL_PREVIEW_STATUS)
+  const [previewError, setPreviewError] = useState<PreviewError | null>(null)
 
   const resetPreviewStatus = useCallback(() => {
     setPreviewStatus(INITIAL_PREVIEW_STATUS)
@@ -69,15 +77,18 @@ export function usePreviewSubmission({
 
   const submitPreview = useCallback(
     async (kind: "latex" | "tikz") => {
-      const iframeName = iframeRef.current?.name ?? "tex-iframe"
+      setPreviewError(null)
       setPreviewStatus({ phase: "submitting", kind, progress: 8 })
+      startCooldown(COOLDOWN_SECONDS)
 
+      let result
       if (kind === "latex") {
         if (!latexOut.trim()) {
           resetPreviewStatus()
           return
         }
-        submitToTexlive(iframeName, wrapLatexDocument(latexOut), [])
+        setPreviewStatus((current) => ({ ...current, phase: "compiling", progress: Math.max(current.progress, 36) }))
+        result = await submitToTexlive(wrapLatexDocument(latexOut), [])
       } else {
         if (!tikzOut.trim()) {
           resetPreviewStatus()
@@ -86,15 +97,30 @@ export function usePreviewSubmission({
         const { genCsvAttachment } = await import("@/engine/loader")
         const csv = await genCsvAttachment(source, table.hasHeader, table.cleanInput)
         const extra = getReferencedCsvFiles(tikzOut).map((name) => ({ name, contents: csv }))
-        submitToTexlive(iframeName, wrapTikzDocument(tikzOut), extra)
+        setPreviewStatus((current) => ({ ...current, phase: "compiling", progress: Math.max(current.progress, 36) }))
+        result = await submitToTexlive(wrapTikzDocument(tikzOut), extra)
       }
 
-      setPreviewStatus((current) => ({
-        ...current,
-        phase: "compiling",
-        progress: Math.max(current.progress, 36),
-      }))
-      startCooldown(COOLDOWN_SECONDS)
+      if (result.ok) {
+        // PDF を pdf.js ビューアで表示。読み込み完了は iframe の onLoad で検知する。
+        if (iframeRef.current) iframeRef.current.src = result.viewerUrl
+        return
+      }
+
+      // 失敗時は進捗 UI を畳み、解析済みエラーを表示する。古い PDF も消す。
+      if (iframeRef.current) iframeRef.current.src = "about:blank"
+      resetPreviewStatus()
+      if (result.reason === "compile") {
+        const lineOffset = kind === "latex" ? LATEX_PREAMBLE_LINES : TIKZ_PREAMBLE_LINES
+        setPreviewError({
+          type: "compile",
+          kind,
+          errors: parseTexLog(result.log, { lineOffset }),
+          rawLog: result.log,
+        })
+      } else {
+        setPreviewError({ type: "network", detail: result.detail })
+      }
     },
     [latexOut, resetPreviewStatus, source, startCooldown, table.cleanInput, table.hasHeader, tikzOut],
   )
@@ -148,6 +174,8 @@ export function usePreviewSubmission({
     iframeRef,
     pending,
     previewStatus,
+    previewError,
+    dismissPreviewError: () => setPreviewError(null),
     requestPreview,
     acceptConsent,
     cancelConsent: () => setPending(null),

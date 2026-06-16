@@ -21,11 +21,6 @@
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://convertexcel.net/ko</loc>
-    <lastmod>2026-06-15</lastmod>
-    <priority>1.0</priority>
-  </url>
-  <url>
     <loc>https://convertexcel.net/es</loc>
     <lastmod>2026-06-15</lastmod>
     <priority>1.0</priority>
@@ -56,11 +51,6 @@
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://convertexcel.net/ko/privacy</loc>
-    <lastmod>2026-06-15</lastmod>
-    <priority>0.3</priority>
-  </url>
-  <url>
     <loc>https://convertexcel.net/es/privacy</loc>
     <lastmod>2026-06-15</lastmod>
     <priority>0.3</priority>
@@ -87,11 +77,6 @@
   </url>
   <url>
     <loc>https://convertexcel.net/zh-hant/excel-addin</loc>
-    <lastmod>2026-06-15</lastmod>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://convertexcel.net/ko/excel-addin</loc>
     <lastmod>2026-06-15</lastmod>
     <priority>0.5</priority>
   </url>

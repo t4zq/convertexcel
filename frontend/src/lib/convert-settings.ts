@@ -89,11 +89,6 @@ const DEFAULT_TIKZ_TEXT: Record<Language, Pick<TikzSettings, "xLabel" | "yLabel"
     yLabel: "y 軸",
     caption: "圖題",
   },
-  ko: {
-    xLabel: "x축",
-    yLabel: "y축",
-    caption: "그림 제목",
-  },
   es: {
     xLabel: "eje x",
     yLabel: "eje y",

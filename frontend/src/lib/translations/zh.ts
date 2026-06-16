@@ -65,6 +65,60 @@ const zh: Translations = {
     previewProgressLabel: "PDF 创建进度",
     previewComplete: "PDF 预览已更新",
     series: (index: number) => `系列 ${index}`,
+    texError: {
+      title: "编译失败",
+      intro: "texlive.net 在编译时报告了错误。请查看下方详情并修正源代码。",
+      introUnknown: "编译失败，但无法自动确定原因。这可能是工具本身的问题。请附上下方日志进行反馈。",
+      reportIntro: "此错误可能无法通过修改代码解决。请附上日志进行反馈。",
+      reportButton: "在 GitHub Issues 反馈",
+      copyLog: "复制日志",
+      networkTitle: "提交失败",
+      network: (detail: string) => `无法连接 texlive.net（${detail}）。请检查网络后稍后重试。`,
+      showLog: "显示完整日志",
+      hideLog: "隐藏完整日志",
+      dismiss: "关闭",
+      line: (n: number) => `约在代码第 ${n} 行`,
+      compiledLine: (n: number) => `约在生成文档的第 ${n} 行`,
+      noLocation: "无法确定具体位置",
+      kinds: {
+        undefinedControlSequence: {
+          label: "未定义的命令",
+          hint: (s: string | null) => `${s ?? "该命令"} 未定义。可能是拼写错误，或未加载所需的宏包。`,
+        },
+        undefinedEnvironment: {
+          label: "未定义的环境",
+          hint: (s: string | null) => `环境 ${s ? `“${s}”` : ""} 未定义。请检查 \\begin / \\end 的名称拼写，或加载所需宏包。`,
+        },
+        mismatchedEnvironment: {
+          label: "环境不匹配",
+          hint: (s: string | null) => `${s ? `\\begin{${s}}` : "某个环境"} 没有对应的 \\end。请检查是否漏写结束或嵌套顺序有误。`,
+        },
+        missingMath: {
+          label: "数学符号用在了数学模式之外",
+          hint: (_s: string | null) => `_ 和 ^ 等符号只能在数学模式中使用。请用 $ ... $ 包裹。`,
+        },
+        missingFile: {
+          label: "找不到文件",
+          hint: (s: string | null) => `找不到 ${s ? `“${s}”` : "文件"}。请检查宏包名称或附件文件名。`,
+        },
+        runaway: {
+          label: "可能有未闭合的括号",
+          hint: (s: string | null) => `在读取 ${s ?? "某个命令"} 的参数时文件就结束了。请检查是否漏写了 }。`,
+        },
+        braces: {
+          label: "括号不匹配",
+          hint: (_s: string | null) => `{ } 括号不匹配。请检查左右括号的数量是否一致。`,
+        },
+        emergencyStop: {
+          label: "编译中断",
+          hint: (_s: string | null) => `编译因另一个错误而中断。修正第一个错误通常即可解决。`,
+        },
+        generic: {
+          label: "错误",
+          hint: (_s: string | null) => `TeX 报告了错误。请查看下方的消息和日志。`,
+        },
+      },
+    },
   },
   share: {
     title: "共享",

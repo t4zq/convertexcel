@@ -11,7 +11,6 @@
   <a href="#english">English</a> ·
   <a href="#简体中文">简体中文</a> ·
   <a href="#繁體中文">繁體中文</a> ·
-  <a href="#한국어">한국어</a> ·
   <a href="#español">Español</a> ·
   <a href="#deutsch">Deutsch</a>
 </p>
@@ -47,6 +46,36 @@ convertexcel/
 └─ package.json              # Root: build / deploy scripts
 ```
 
+## Local debug quick start / ローカルデバッグ早見表
+
+```powershell
+npm install
+npm --prefix frontend install
+npm run dev
+```
+
+- Frontend: <http://localhost:5173>
+- API health: <http://localhost:8787/api/health>
+- 初回または `frontend/src/engine/pkg/` が無い場合は、`npm run dev` が先に `docker compose run --rm engine` 相当の engine ビルドを実行します。
+- engine を作り直したい場合: `$env:FORCE_ENGINE_BUILD="1"; npm run dev`
+- Optional ports: `$env:FRONTEND_PORT="5174"; $env:WORKER_PORT="8788"; npm run dev`
+
+今まで通り分けて起動したい場合:
+
+```powershell
+npm run dev:engine
+npm run dev:api
+npm run dev:frontend
+```
+
+別ターミナルで簡易確認:
+
+```powershell
+npm run check:local
+```
+
+`check:local` は Worker と frontend の TypeScript チェックを実行し、`npm run dev` が起動中なら frontend と `/api/health` も軽く確認します。
+
 ## 日本語
 
 converTeXcel は、Excel やスプレッドシートの表を LaTeX 表、CSV、TikZ/PGFPlots コードへ変換する Web アプリです。計算とコード生成は Rust/WebAssembly によってブラウザ内で実行されます。
@@ -63,7 +92,7 @@ converTeXcel は、Excel やスプレッドシートの表を LaTeX 表、CSV、
 
 - 変換: `/`, `/convert`
 - プライバシー: `/privacy`
-- 対応言語: 日本語、英語、簡体字中国語、繁体字中国語、韓国語、スペイン語、ドイツ語
+- 対応言語: 日本語、英語、簡体字中国語、繁体字中国語、スペイン語、ドイツ語
 
 ### Docker で起動
 
@@ -85,6 +114,8 @@ npm run build
 ```
 
 > `frontend/src/engine/pkg/` は先に engine ビルドで生成してください。
+
+> PDF プレビューは Worker の `/api/tex-preview` 経由で texlive.net をコンパイルします（texlive.net の 301 リダイレクトに CORS が無く、ブラウザから直接叩けないため）。ローカルで PDF プレビューを使うには `npm run dev:api`（`wrangler dev`, :8787）も起動してください。Vite が `/api` を :8787 へ転送します。
 
 ### Cloudflare
 
@@ -110,7 +141,7 @@ converTeXcel is a web app that converts Excel or spreadsheet tables into LaTeX t
 
 - Converter: `/`, `/convert`
 - Privacy: `/privacy`
-- Languages: Japanese, English, Simplified Chinese, Traditional Chinese, Korean, Spanish, German
+- Languages: Japanese, English, Simplified Chinese, Traditional Chinese, Spanish, German
 
 ### Run with Docker
 
@@ -132,6 +163,8 @@ npm run build
 ```
 
 > Generate `frontend/src/engine/pkg/` with the engine build before running or building the frontend.
+
+> PDF preview compiles on texlive.net through the Worker's `/api/tex-preview` (texlive.net's 301 redirect has no CORS, so the browser can't call it directly). To use PDF preview locally, also run `npm run dev:api` (`wrangler dev`, :8787); Vite proxies `/api` to :8787.
 
 ### Cloudflare
 
@@ -157,7 +190,7 @@ converTeXcel 是一个 Web 应用，可将 Excel 或电子表格数据转换为 
 
 - 转换: `/`, `/convert`
 - 隐私: `/privacy`
-- 支持语言: 日语、英语、简体中文、繁体中文、韩语、西班牙语、德语
+- 支持语言: 日语、英语、简体中文、繁体中文、西班牙语、德语
 
 ### 使用 Docker 运行
 
@@ -179,6 +212,8 @@ npm run build
 ```
 
 > 运行或构建前端前，请先通过 engine 构建生成 `frontend/src/engine/pkg/`。
+
+> PDF 预览通过 Worker 的 `/api/tex-preview` 在 texlive.net 上编译（texlive.net 的 301 重定向没有 CORS，浏览器无法直接调用）。本地使用 PDF 预览还需运行 `npm run dev:api`（`wrangler dev`，:8787）；Vite 会将 `/api` 转发到 :8787。
 
 ### Cloudflare
 
@@ -204,7 +239,7 @@ converTeXcel 是一個 Web 應用程式，可將 Excel 或試算表資料轉換�
 
 - 轉換: `/`, `/convert`
 - 隱私: `/privacy`
-- 支援語言: 日文、英文、簡體中文、繁體中文、韓文、西班牙文、德文
+- 支援語言: 日文、英文、簡體中文、繁體中文、西班牙文、德文
 
 ### 使用 Docker 執行
 
@@ -227,6 +262,8 @@ npm run build
 
 > 執行或建置前端前，請先透過 engine 建置產生 `frontend/src/engine/pkg/`。
 
+> PDF 預覽透過 Worker 的 `/api/tex-preview` 在 texlive.net 上編譯（texlive.net 的 301 轉址沒有 CORS，瀏覽器無法直接呼叫）。本機使用 PDF 預覽還需執行 `npm run dev:api`（`wrangler dev`，:8787）；Vite 會將 `/api` 轉發到 :8787。
+
 ### Cloudflare
 
 - Pages build command: `npm run build`
@@ -234,53 +271,6 @@ npm run build
 - Workers deploy command: `npm run deploy`
 
 `npm run build` 會先產生 Rust/WASM 引擎，然後執行 Vite build。
-
-## 한국어
-
-converTeXcel은 Excel 또는 스프레드시트 표를 LaTeX 표, CSV, TikZ/PGFPlots 코드로 변환하는 웹 앱입니다. 계산과 코드 생성은 Rust/WebAssembly를 통해 브라우저 안에서 실행됩니다.
-
-### 아키텍처
-
-| 레이어 | 기술 | 디렉터리 |
-| --- | --- | --- |
-| UI | React 19 + Vite + TypeScript + Tailwind v4 + shadcn/ui + react-router | `frontend/` |
-| 엔진 | Rust -> WebAssembly (`wasm-pack`) | `engine/` |
-| API | Cloudflare Workers + D1 | `worker/` |
-
-### 페이지
-
-- 변환: `/`, `/convert`
-- 개인정보: `/privacy`
-- 지원 언어: 일본어, 영어, 중국어 간체, 중국어 번체, 한국어, 스페인어, 독일어
-
-### Docker로 실행
-
-```powershell
-docker compose run --rm engine
-docker compose up frontend
-```
-
-- 프론트엔드: <http://localhost:5173>
-- API health: <http://localhost:8787/api/health> (run `npm run dev:api`)
-
-### 프론트엔드만 로컬 실행
-
-```powershell
-cd frontend
-npm install
-npm run dev
-npm run build
-```
-
-> 프론트엔드를 실행하거나 빌드하기 전에 engine 빌드로 `frontend/src/engine/pkg/`를 생성해 주세요.
-
-### Cloudflare
-
-- Pages build command: `npm run build`
-- Pages build output directory: `frontend/dist`
-- Workers deploy command: `npm run deploy`
-
-`npm run build`는 Rust/WASM 엔진을 생성한 뒤 Vite build를 실행합니다.
 
 ## Español
 
@@ -298,7 +288,7 @@ converTeXcel es una aplicación web que convierte tablas de Excel u hojas de cá
 
 - Conversor: `/`, `/convert`
 - Privacidad: `/privacy`
-- Idiomas: japonés, inglés, chino simplificado, chino tradicional, coreano, español, alemán
+- Idiomas: japonés, inglés, chino simplificado, chino tradicional, español, alemán
 
 ### Ejecutar con Docker
 
@@ -320,6 +310,8 @@ npm run build
 ```
 
 > Genera `frontend/src/engine/pkg/` con la compilación del motor antes de ejecutar o compilar el frontend.
+
+> La vista previa PDF compila en texlive.net a través de `/api/tex-preview` del Worker (la redirección 301 de texlive.net no tiene CORS, así que el navegador no puede llamarlo directamente). Para usar la vista previa PDF en local, ejecuta también `npm run dev:api` (`wrangler dev`, :8787); Vite redirige `/api` a :8787.
 
 ### Cloudflare
 
@@ -345,7 +337,7 @@ converTeXcel ist eine Web-App, die Excel- oder Tabellenkalkulations-Tabellen in 
 
 - Konverter: `/`, `/convert`
 - Datenschutz: `/privacy`
-- Sprachen: Japanisch, Englisch, vereinfachtes Chinesisch, traditionelles Chinesisch, Koreanisch, Spanisch, Deutsch
+- Sprachen: Japanisch, Englisch, vereinfachtes Chinesisch, traditionelles Chinesisch, Spanisch, Deutsch
 
 ### Mit Docker starten
 
@@ -367,6 +359,8 @@ npm run build
 ```
 
 > Erzeuge `frontend/src/engine/pkg/` vor dem Starten oder Bauen des Frontends durch den Engine-Build.
+
+> Die PDF-Vorschau kompiliert über `/api/tex-preview` des Workers auf texlive.net (der 301-Redirect von texlive.net hat kein CORS, der Browser kann ihn also nicht direkt aufrufen). Um die PDF-Vorschau lokal zu nutzen, starte zusätzlich `npm run dev:api` (`wrangler dev`, :8787); Vite leitet `/api` an :8787 weiter.
 
 ### Cloudflare
 

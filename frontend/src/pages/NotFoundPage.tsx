@@ -37,13 +37,6 @@ const copy = {
     body: "請檢查 URL，或返回轉換工具。",
     action: "返回轉換工具",
   },
-  ko: {
-    title: "페이지를 찾을 수 없습니다 - converTeXcel",
-    description: "요청한 페이지를 찾을 수 없습니다.",
-    heading: "페이지를 찾을 수 없습니다",
-    body: "URL을 확인하거나 변환기로 돌아가세요.",
-    action: "변환기로 돌아가기",
-  },
   es: {
     title: "Página no encontrada - converTeXcel",
     description: "No se pudo encontrar la página solicitada.",

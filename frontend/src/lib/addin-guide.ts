@@ -227,55 +227,6 @@ export const addinGuide: Record<Language, AddinGuideContent> = {
     ],
     back: "返回轉換工具",
   },
-  ko: {
-    navLabel: "Excel 추가 기능",
-    seoTitle: "Excel 추가 기능 설치 - converTeXcel",
-    seoDescription:
-      "converTeXcel Excel 추가 기능(manifest.xml)을 받는 위치와 Excel에 로드하는 방법을 안내합니다.",
-    eyebrow: "Excel 추가 기능",
-    title: "Excel 추가 기능 설치",
-    intro:
-      "선택한 표를 converTeXcel로 가져오는 Excel 추가 기능입니다. 아래 매니페스트를 Excel에 로드해야 합니다.",
-    requirementsTitle: "사용 조건",
-    requirements: [
-      "Microsoft 365 Excel - Windows 데스크톱 또는 웹용 Excel",
-      "인터넷 연결 - 추가 기능은 https://convertexcel.net 에서 로드됩니다",
-      "계정 등록이나 추가 설치가 필요하지 않습니다.",
-    ],
-    downloadTitle: "매니페스트 받기",
-    downloadDescription: "manifest.xml을 다운로드합니다. 이 파일을 Excel에 로드합니다.",
-    downloadButton: "manifest.xml 다운로드",
-    methodsTitle: "로드 방법",
-    methods: [
-      {
-        title: "웹용 Excel",
-        steps: [
-          { text: "브라우저에서 Excel 통합 문서를 엽니다." },
-          { text: "홈 → 추가 기능 → 추가 기능 더 보기로 이동합니다." },
-          { text: "“내 추가 기능 업로드”를 선택하고 다운로드한 manifest.xml을 지정합니다." },
-          { text: "리본의 converTeXcel 그룹에서 “표와 그래프로 변환”을 엽니다." },
-        ],
-      },
-      {
-        title: "Excel(Windows 데스크톱)",
-        steps: [
-          {
-            text: "manifest.xml을 공유 폴더(네트워크 경로)에 둡니다.",
-            link: { label: "자세한 단계(Microsoft Learn)", url: learnSharedFolderUrl("ko-kr") },
-          },
-          { text: "파일 → 옵션 → 보안 센터 → 보안 센터 설정 → 신뢰할 수 있는 추가 기능 카탈로그로 이동합니다." },
-          { text: "공유 폴더 경로를 추가하고 “메뉴에 표시”를 선택한 후 Excel을 다시 시작합니다." },
-          { text: "삽입 → 추가 기능 → 더 보기에서 converTeXcel을 선택합니다." },
-        ],
-      },
-    ],
-    notesTitle: "참고",
-    notes: [
-      { text: "추가 기능은 선택 영역을 읽기만 하며 쓰지 않습니다." },
-      { text: "버그나 요청은 ", link: { label: "GitHub issue", url: ISSUES_URL }, textAfter: "로 알려 주세요." },
-    ],
-    back: "변환기로 돌아가기",
-  },
   es: {
     navLabel: "Complemento de Excel",
     seoTitle: "Instalar el complemento de Excel - converTeXcel",

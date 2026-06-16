@@ -1,4 +1,4 @@
-export const SUPPORTED_LANGUAGES = ["ja", "en", "zh", "zh-Hant", "ko", "es", "de"] as const
+export const SUPPORTED_LANGUAGES = ["ja", "en", "zh", "zh-Hant", "es", "de"] as const
 export type Language = (typeof SUPPORTED_LANGUAGES)[number]
 
 export const DEFAULT_LANGUAGE: Language = "ja"
@@ -8,7 +8,6 @@ export const LANGUAGE_NAMES: Record<Language, string> = {
   en: "English",
   zh: "简体中文",
   "zh-Hant": "繁體中文",
-  ko: "한국어",
   es: "Español",
   de: "Deutsch",
 }
@@ -18,7 +17,6 @@ export const LANGUAGE_SHORT_LABELS: Record<Language, string> = {
   en: "EN",
   zh: "简",
   "zh-Hant": "繁",
-  ko: "KO",
   es: "ES",
   de: "DE",
 }
@@ -28,7 +26,6 @@ export const LANGUAGE_PATH_SEGMENTS: Record<Language, string> = {
   en: "en",
   zh: "zh",
   "zh-Hant": "zh-hant",
-  ko: "ko",
   es: "es",
   de: "de",
 }
@@ -132,21 +129,6 @@ export const seo = {
       "產生 TikZ/PGFPlots 程式碼",
       "產生 gnuplot 指令稿並在瀏覽器中預覽圖表",
       "透過 texlive.net 預覽 PDF",
-    ],
-  },
-  ko: {
-    convertTitle: "converTeXcel - Excel 표를 LaTeX, CSV, TikZ, gnuplot로 변환",
-    convertDescription:
-      "Excel 또는 스프레드시트 표를 붙여 넣으면 LaTeX 표, CSV, TikZ/PGFPlots, gnuplot 코드를 생성합니다. PDF 미리보기와 브라우저 내 그래프 렌더링을 지원하는 무료 변환 도구입니다.",
-    privacyTitle: "개인정보 처리방침 - converTeXcel",
-    privacyDescription:
-      "converTeXcel이 입력 데이터, localStorage, 공유 링크, PDF 미리보기에 사용하는 외부 서비스, gnuplot의 브라우저 내 렌더링을 어떻게 처리하는지 설명합니다.",
-    features: [
-      "Excel 및 스프레드시트 표를 LaTeX 표로 변환",
-      "CSV 내보내기",
-      "TikZ/PGFPlots 코드 생성",
-      "gnuplot 스크립트를 생성하고 브라우저에서 그래프 미리보기",
-      "texlive.net으로 PDF 미리보기",
     ],
   },
   es: {

@@ -11,7 +11,6 @@ const loaders: Record<Language, () => Promise<{ default: Translations }>> = {
   en: () => import("./en"),
   zh: () => import("./zh"),
   "zh-Hant": () => import("./zh-Hant"),
-  ko: () => import("./ko"),
   es: () => import("./es"),
   de: () => import("./de"),
 }

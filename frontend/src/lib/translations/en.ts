@@ -65,6 +65,60 @@ const en: Translations = {
     previewProgressLabel: "PDF creation progress",
     previewComplete: "PDF preview updated",
     series: (index: number) => `Series ${index}`,
+    texError: {
+      title: "Compilation failed",
+      intro: "texlive.net reported an error while compiling. Check the details below and fix the source.",
+      introUnknown: "Compilation failed, but the cause couldn't be identified automatically. This may be a problem with the tool. Please report it with the log below.",
+      reportIntro: "This error may not be fixable by editing your code. Please report it with the log attached.",
+      reportButton: "Report on GitHub Issues",
+      copyLog: "Copy log",
+      networkTitle: "Couldn't submit",
+      network: (detail: string) => `Couldn't reach texlive.net (${detail}). Check your connection and try again in a moment.`,
+      showLog: "Show full log",
+      hideLog: "Hide full log",
+      dismiss: "Dismiss",
+      line: (n: number) => `near line ${n} of your code`,
+      compiledLine: (n: number) => `near line ${n} of the generated document`,
+      noLocation: "Location could not be determined",
+      kinds: {
+        undefinedControlSequence: {
+          label: "Undefined command",
+          hint: (s: string | null) => `${s ?? "That command"} is not defined. It may be a typo, or a required package may not be loaded.`,
+        },
+        undefinedEnvironment: {
+          label: "Undefined environment",
+          hint: (s: string | null) => `The environment ${s ? `"${s}"` : ""} is not defined. Check the \\begin / \\end name spelling, or load the required package.`,
+        },
+        mismatchedEnvironment: {
+          label: "Mismatched environment",
+          hint: (s: string | null) => `${s ? `\\begin{${s}}` : "An environment"} has no matching \\end. Check for a missing close or wrong nesting order.`,
+        },
+        missingMath: {
+          label: "Math symbol outside math mode",
+          hint: (_s: string | null) => `Symbols like _ and ^ only work in math mode. Wrap them in $ ... $.`,
+        },
+        missingFile: {
+          label: "File not found",
+          hint: (s: string | null) => `${s ? `"${s}"` : "A file"} could not be found. Check the package name or attached file name.`,
+        },
+        runaway: {
+          label: "Possible unclosed argument",
+          hint: (s: string | null) => `The file ended while reading the argument of ${s ?? "a command"}. Check for a missing closing }.`,
+        },
+        braces: {
+          label: "Unbalanced braces",
+          hint: (_s: string | null) => `The { } braces don't match. Check that opening and closing braces are balanced.`,
+        },
+        emergencyStop: {
+          label: "Compilation aborted",
+          hint: (_s: string | null) => `Compilation was aborted because of another error. Fixing the first error usually resolves this.`,
+        },
+        generic: {
+          label: "Error",
+          hint: (_s: string | null) => `TeX reported an error. Check the message and log below.`,
+        },
+      },
+    },
   },
   share: {
     title: "Share",

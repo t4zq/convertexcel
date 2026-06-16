@@ -18,7 +18,6 @@ const OG_LOCALES: Record<string, string> = {
   en: "en_US",
   zh: "zh_CN",
   "zh-Hant": "zh_TW",
-  ko: "ko_KR",
   es: "es_ES",
   de: "de_DE",
 }

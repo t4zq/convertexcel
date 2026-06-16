@@ -20,7 +20,6 @@ const OG_LOCALES: Record<Language, string> = {
   en: "en_US",
   zh: "zh_CN",
   "zh-Hant": "zh_TW",
-  ko: "ko_KR",
   es: "es_ES",
   de: "de_DE",
 }
@@ -41,10 +40,6 @@ const ADDIN_SEO: Record<Language, { title: string; description: string }> = {
   "zh-Hant": {
     title: "安裝 Excel 增益集 - converTeXcel",
     description: "取得 converTeXcel 的 Excel 增益集（manifest.xml），以及如何將其載入 Excel。",
-  },
-  ko: {
-    title: "Excel 추가 기능 설치 - converTeXcel",
-    description: "converTeXcel Excel 추가 기능(manifest.xml)을 받는 위치와 Excel에 로드하는 방법을 안내합니다.",
   },
   es: {
     title: "Instalar el complemento de Excel - converTeXcel",
