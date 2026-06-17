@@ -72,7 +72,6 @@ export interface SheetEditorHandle {
 
 interface SheetEditorProps {
   input: string
-  sample: string
   // アップロード等で外部から取り込みたいシート群。ready 後に新しいシートとして取り込む。
   pendingImport?: PendingSheetImport[] | null
   onImported?: () => void
@@ -110,18 +109,16 @@ function uniqueSheetName(base: string, existingNames: Set<string>): string {
 }
 
 export const SheetEditor = forwardRef<SheetEditorHandle, SheetEditorProps>(
-  function SheetEditor({ input, sample, pendingImport, onImported }, ref) {
+  function SheetEditor({ input, pendingImport, onImported }, ref) {
     const { language, t } = useI18n()
     const containerRef = useRef<HTMLDivElement>(null)
     const univerApiRef = useRef<FUniver | null>(null)
     const univerRef = useRef<ReturnType<typeof createUniver>["univer"] | null>(null)
     const saveTimerRef = useRef<number | null>(null)
     const inputRef = useRef(input)
-    const sampleRef = useRef(sample)
     const [ready, setReady] = useState(false)
 
     inputRef.current = input
-    sampleRef.current = sample
 
     const flushSnapshot = () => {
       if (saveTimerRef.current !== null) {
@@ -196,7 +193,7 @@ export const SheetEditor = forwardRef<SheetEditorHandle, SheetEditorProps>(
         if (!restoredSnapshot) {
           const sheet = workbook.getSheets()[0]
             ?? workbook.create("Sheet1", DEFAULT_ROWS, DEFAULT_COLUMNS)
-          const rows = parseTsv(inputRef.current.trim() ? inputRef.current : sampleRef.current)
+          const rows = parseTsv(inputRef.current)
           if (rows.length > 0) {
             sheet
               .getRange(0, 0, rows.length, rows[0].length)

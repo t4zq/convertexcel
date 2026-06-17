@@ -48,13 +48,6 @@ type Step = "input" | "convert" | "sheet"
 
 const STEPS: Step[] = ["input", "convert", "sheet"]
 
-const SAMPLE = `x\ty1\ty2
-1\t2.3\t4.5
-2\t3.1\t5.2
-3\t4.8\t5.9
-4\t6.0\t6.1
-5\t7.2\t6.4`
-
 const OUTPUT_MIN_HEIGHT = 273
 const SITE_URL = "https://convertexcel.net/"
 const convertUrls = localizedSiteUrls(SITE_URL, "/")
@@ -205,10 +198,9 @@ export default function ConvertPage() {
     setTikz((current) => localizeDefaultTikzText(current, language))
   }, [language, setTikz])
 
-  // 入力が空のときはサンプルを「透過した例」として表示する。
-  // 出力・診断・PDF はこの実効ソースから生成し、ユーザーが入力すると実データに切り替わる。
-  const isExample = input.trim() === ""
-  const source = isExample ? SAMPLE : input
+  // 出力・診断・PDF は入力そのものから生成する（空のときは何も表示しない）。
+  const source = input
+  const hasContent = input.trim() !== ""
 
   // 入力 → 変換 → シート → 入力のリングを横スライドで切り替える。
   // direction: 1 = 順方向（右から）, -1 = 逆方向（左から）。
@@ -377,9 +369,6 @@ export default function ConvertPage() {
     [seriesCount, diagnostics.numericColumns, t.convert]
   )
 
-  // 透過表示中のコードは閲覧用の例なので、編集や選択を無効化する。
-  const ghost = isExample ? "pointer-events-none opacity-60 select-none" : undefined
-
   useConvertPageStatus(diagnostics, input.length, activeTab, outputActive)
 
   return (
@@ -398,24 +387,24 @@ export default function ConvertPage() {
           aria-label={t.sheet.previousStep(stepTitle(previousStep))}
           onClick={() => moveStep(-1)}
           className={`group fixed inset-y-0 left-0 z-20 flex w-10 items-center justify-start gap-2 pl-0.5 transition-colors sm:w-14 ${
-            !isExample && step === "input"
+            hasContent && step === "input"
               ? "hover:bg-gradient-to-r hover:from-primary/[0.08] hover:to-transparent"
               : "hover:bg-gradient-to-r hover:from-foreground/[0.05] hover:to-transparent"
           }`}
         >
           <span
             className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border shadow-sm backdrop-blur transition-all group-hover:scale-105 ${
-              !isExample && step === "input"
+              hasContent && step === "input"
                 ? "border-primary bg-primary text-primary-foreground opacity-100"
                 : "bg-background/80 text-muted-foreground opacity-60 group-hover:text-foreground group-hover:opacity-100"
             }`}
           >
-            {!isExample && step === "input" && (
+            {hasContent && step === "input" && (
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/40" aria-hidden="true" />
             )}
             <ChevronLeft className="relative h-5 w-5" />
           </span>
-          {!isExample && step === "input" && (
+          {hasContent && step === "input" && (
             <span className="hidden shrink-0 rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground shadow-sm lg:inline">
               {t.sheet.title}
             </span>
@@ -426,24 +415,24 @@ export default function ConvertPage() {
           aria-label={t.sheet.nextStep(stepTitle(nextStep))}
           onClick={() => moveStep(1)}
           className={`group fixed inset-y-0 right-0 z-20 flex w-10 items-center justify-end gap-2 pr-0.5 transition-colors sm:w-14 ${
-            !isExample && step === "input"
+            hasContent && step === "input"
               ? "hover:bg-gradient-to-l hover:from-primary/[0.08] hover:to-transparent"
               : "hover:bg-gradient-to-l hover:from-foreground/[0.05] hover:to-transparent"
           }`}
         >
-          {!isExample && step === "input" && (
+          {hasContent && step === "input" && (
             <span className="hidden rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground shadow-sm lg:inline">
               {t.convert.outputTitle}
             </span>
           )}
           <span
             className={`relative flex h-10 w-10 items-center justify-center rounded-full border shadow-sm backdrop-blur transition-all group-hover:scale-105 ${
-              !isExample && step === "input"
+              hasContent && step === "input"
                 ? "border-primary bg-primary text-primary-foreground opacity-100"
                 : "bg-background/80 text-muted-foreground opacity-60 group-hover:text-foreground group-hover:opacity-100"
             }`}
           >
-            {!isExample && step === "input" && (
+            {hasContent && step === "input" && (
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/40" aria-hidden="true" />
             )}
             <ChevronRight className="relative h-5 w-5" />
@@ -514,7 +503,7 @@ export default function ConvertPage() {
                   value={input}
                   onChange={setInput}
                   diagnostics={diagnostics}
-                  placeholder={SAMPLE}
+                  placeholder={t.convert.pasteDescription}
                 />
 
                 <div className="flex justify-end">
@@ -551,7 +540,6 @@ export default function ConvertPage() {
                 <SheetEditor
                   ref={sheetEditorRef}
                   input={input}
-                  sample={SAMPLE}
                   pendingImport={pendingImport}
                   onImported={() => setPendingImport(null)}
                 />
@@ -597,7 +585,7 @@ export default function ConvertPage() {
                   <CopyButton value={latexOut} label={t.convert.copyTable} />
                   {cooldown > 0 && <span className="text-muted-foreground self-center text-sm">{t.convert.cooldown(cooldown)}</span>}
                 </div>
-                <div className={ghost}>
+                <div>
                   <OutputCodeEditor
                     kind="latex"
                     value={latexOut}
@@ -635,7 +623,7 @@ export default function ConvertPage() {
                     />
                   </Suspense>
                 )}
-                <div className={ghost}>
+                <div>
                   <OutputCodeEditor
                     kind="tikz"
                     value={tikzOut}
@@ -667,7 +655,7 @@ export default function ConvertPage() {
                     <GnuplotSettingsPanel value={gnuplot} onChange={updateGnuplot} />
                   </Suspense>
                 )}
-                <div className={ghost}>
+                <div>
                   <OutputCodeEditor
                     kind="gnuplot"
                     value={gnuplotOut}

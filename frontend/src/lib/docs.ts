@@ -228,55 +228,6 @@ export const docsSections: DocsSection[] = [
     },
   },
   {
-    id: "graph-templates",
-    heading: {
-      ja: "グラフテンプレート",
-      en: "Graph templates",
-      zh: "图表模板",
-      "zh-Hant": "圖表範本",
-      es: "Plantillas de gráficos",
-      de: "Diagrammvorlagen",
-    },
-    paragraphs: {
-      ja: [
-        "グラフ設定からボード線図モードを使えます。frequency [Hz] と gain [dB] がある場合、または frequency [Hz], Vin [V], Vout [V] がある場合に、周波数軸を対数にしたボード線図向けのグラフを生成できます。",
-        "Vin [V] と Vout [V] からは 20 log10(Vout / Vin) で gain [dB] を計算します。phase [deg] があれば位相として使い、delay [s] または delay [ms] があれば -360 f delay で phase [deg] を計算します。",
-        "折れ線近似をオンにすると、低周波側の利得から -3 dB となる遮断周波数 fc を推定し、振幅は fc 以降 -20 dB/dec、位相は 0.1fc, fc, 10fc を 0°, -45°, -90° とする折れ線を重ねます。",
-        "自動検出で足りない場合は、グラフ設定のボード線図モードをオンにして、周波数・入力電圧・出力電圧・ゲイン・位相・遅延時間の列を手動で選べます。",
-      ],
-      en: [
-        "Use Bode plot mode from the graph settings. If your data has frequency [Hz] and gain [dB], or frequency [Hz], Vin [V], and Vout [V], converTeXcel can generate a Bode-style graph with a logarithmic frequency axis.",
-        "When Vin [V] and Vout [V] are selected, gain [dB] is computed as 20 log10(Vout / Vin). phase [deg] is used directly when present; delay [s] or delay [ms] is converted to phase [deg] with -360 f delay.",
-        "When asymptotic approximation is enabled, the cutoff frequency fc is estimated at -3 dB from the low-frequency gain. The gain line stays flat before fc and falls at -20 dB/dec after fc; the phase line uses 0.1fc, fc, and 10fc as 0°, -45°, and -90°.",
-        "When auto-detection is not enough, turn on Bode plot mode in the graph settings and choose the frequency, input voltage, output voltage, gain, phase, and delay columns manually.",
-      ],
-      zh: [
-        "可以在图表设置中使用 Bode 图模式。数据包含 frequency [Hz] 和 gain [dB]，或包含 frequency [Hz]、Vin [V]、Vout [V] 时，可以生成频率轴为对数轴的 Bode 图。",
-        "选择 Vin [V] 和 Vout [V] 时，会用 20 log10(Vout / Vin) 计算 gain [dB]。如果有 phase [deg] 会直接作为相位；如果有 delay [s] 或 delay [ms]，会用 -360 f delay 转换为 phase [deg]。",
-        "开启折线近似后，会根据低频增益估计 -3 dB 的截止频率 fc；幅度在 fc 前保持平坦、fc 后按 -20 dB/dec 下降，相位用 0.1fc、fc、10fc 对应 0°、-45°、-90° 的折线表示。",
-        "如果自动检测不够，可以在图表设置中开启 Bode 图模式，手动选择频率、输入电压、输出电压、增益、相位和延迟列。",
-      ],
-      "zh-Hant": [
-        "可以在圖表設定中使用 Bode 圖模式。資料包含 frequency [Hz] 和 gain [dB]，或包含 frequency [Hz]、Vin [V]、Vout [V] 時，可以產生頻率軸為對數軸的 Bode 圖。",
-        "選擇 Vin [V] 和 Vout [V] 時，會用 20 log10(Vout / Vin) 計算 gain [dB]。如果有 phase [deg] 會直接作為相位；如果有 delay [s] 或 delay [ms]，會用 -360 f delay 轉換為 phase [deg]。",
-        "開啟折線近似後，會根據低頻增益估計 -3 dB 的截止頻率 fc；振幅在 fc 前保持平坦、fc 後以 -20 dB/dec 下降，相位用 0.1fc、fc、10fc 對應 0°、-45°、-90° 的折線表示。",
-        "如果自動偵測不夠，可以在圖表設定中開啟 Bode 圖模式，手動選擇頻率、輸入電壓、輸出電壓、增益、相位和延遲欄位。",
-      ],
-      es: [
-        "Usa el modo Bode desde los ajustes de gráfico. Si los datos tienen frequency [Hz] y gain [dB], o frequency [Hz], Vin [V] y Vout [V], converTeXcel puede generar un gráfico Bode con eje de frecuencia logarítmico.",
-        "Al seleccionar Vin [V] y Vout [V], gain [dB] se calcula como 20 log10(Vout / Vin). phase [deg] se usa directamente si existe; delay [s] o delay [ms] se convierte a phase [deg] con -360 f delay.",
-        "Al activar la aproximación asintótica, fc se estima en -3 dB respecto de la ganancia de baja frecuencia. La magnitud es plana antes de fc y cae a -20 dB/dec después de fc; la fase usa 0.1fc, fc y 10fc como 0°, -45° y -90°.",
-        "Si la detección automática no basta, activa el modo Bode en los ajustes de gráfico y elige manualmente las columnas de frecuencia, voltaje de entrada, voltaje de salida, ganancia, fase y retardo.",
-      ],
-      de: [
-        "Nutze den Bode-Diagramm-Modus in den Diagrammeinstellungen. Wenn die Daten frequency [Hz] und gain [dB] oder frequency [Hz], Vin [V] und Vout [V] enthalten, kann converTeXcel ein Bode-Diagramm mit logarithmischer Frequenzachse erzeugen.",
-        "Bei ausgewählten Spalten Vin [V] und Vout [V] wird gain [dB] als 20 log10(Vout / Vin) berechnet. phase [deg] wird direkt verwendet; delay [s] oder delay [ms] wird mit -360 f delay in phase [deg] umgerechnet.",
-        "Wenn die asymptotische Näherung aktiv ist, wird die Grenzfrequenz fc bei -3 dB gegenüber der Niederfrequenz-Verstärkung geschätzt. Die Amplitude bleibt vor fc flach und fällt danach mit -20 dB/dec; die Phase nutzt 0.1fc, fc und 10fc als 0°, -45° und -90°.",
-        "Wenn die automatische Erkennung nicht ausreicht, aktiviere den Bode-Diagramm-Modus und wähle Frequenz, Eingangsspannung, Ausgangsspannung, Verstärkung, Phase und Verzögerung manuell aus.",
-      ],
-    },
-  },
-  {
     id: "numbers",
     heading: {
       ja: "数値の整え方",
