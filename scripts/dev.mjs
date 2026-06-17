@@ -4,8 +4,15 @@ import { spawn, spawnSync } from "node:child_process"
 const isWindows = process.platform === "win32"
 const frontendPort = process.env.FRONTEND_PORT ?? "5173"
 const workerPort = process.env.WORKER_PORT ?? "8787"
+const addinPort = process.env.ADDIN_PORT ?? "5174"
 const enginePackage = "frontend/src/engine/pkg/package.json"
 const forceEngineBuild = process.env.FORCE_ENGINE_BUILD === "1"
+const skipAddinDev = process.env.SKIP_ADDIN_DEV === "1"
+const addinCertFiles = [
+  "addin/certs/convertexcel-dev-root-ca.crt",
+  "addin/certs/localhost.crt",
+  "addin/certs/localhost.key",
+]
 
 const processes = []
 
@@ -73,7 +80,17 @@ if (forceEngineBuild || !existsSync(enginePackage)) {
 console.log("Starting local full-stack dev servers:")
 console.log(`- Frontend: http://localhost:${frontendPort}`)
 console.log(`- API health: http://localhost:${workerPort}/api/health`)
+if (skipAddinDev) {
+  console.log("- Excel add-in: skipped (SKIP_ADDIN_DEV=1)")
+} else if (addinCertFiles.every((file) => existsSync(file))) {
+  console.log(`- Excel add-in: https://localhost:${addinPort}/addin.html`)
+} else {
+  console.log("- Excel add-in: skipped (missing dev certs; run npm run addin:cert:create)")
+}
 console.log("")
 
 start("worker", "npx", ["wrangler", "dev", "--port", workerPort])
 start("frontend", "npm", ["--prefix", "frontend", "run", "dev", "--", "--host", "127.0.0.1", "--port", frontendPort])
+if (!skipAddinDev && addinCertFiles.every((file) => existsSync(file))) {
+  start("addin", "npm", ["--prefix", "frontend", "run", "dev:addin", "--", "--host", "127.0.0.1", "--port", addinPort])
+}

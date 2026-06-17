@@ -12,6 +12,10 @@ import {
 const LEGACY_INPUT_PREFIX = "d="
 const SHARE_STATE_PREFIX = "s="
 const COMPACT_SHARE_STATE_PREFIX = "c="
+const LEGACY_V2_TABLE_DEFAULTS: TableSettings = {
+  ...DEFAULT_TABLE_SETTINGS,
+  siunitx: false,
+}
 
 export interface ShareState {
   input: string
@@ -56,7 +60,7 @@ function encodeCompactState(state: ShareState): string {
   const tikz = compactObject(state.tikz as unknown as Record<string, unknown>, DEFAULT_TIKZ_SETTINGS as unknown as Record<string, unknown>)
   const gnuplot = compactObject(state.gnuplot as unknown as Record<string, unknown>, DEFAULT_GNUPLOT_SETTINGS as unknown as Record<string, unknown>)
   return encodeUrlSafe(JSON.stringify({
-    v: 2,
+    v: 3,
     i: state.input || undefined,
     a: state.activeTab === "latex" ? undefined : state.activeTab,
     tb: Object.keys(table).length ? table : undefined,
@@ -110,12 +114,13 @@ function decodeCompactState(hashValue: string): ShareState | null {
       tz?: Partial<TikzSettings>
       gp?: Partial<GnuplotSettings>
     }
-    if (parsed.v !== 2) return null
+    if (parsed.v !== 2 && parsed.v !== 3) return null
     const activeTab = parsed.a ?? "latex"
     if (activeTab !== "latex" && activeTab !== "tikz" && activeTab !== "gnuplot") return null
+    const tableDefaults = parsed.v === 2 ? LEGACY_V2_TABLE_DEFAULTS : DEFAULT_TABLE_SETTINGS
     return {
       input: typeof parsed.i === "string" ? parsed.i : "",
-      table: { ...DEFAULT_TABLE_SETTINGS, ...parsed.tb },
+      table: { ...tableDefaults, ...parsed.tb },
       tikz: { ...DEFAULT_TIKZ_SETTINGS, ...parsed.tz },
       gnuplot: { ...DEFAULT_GNUPLOT_SETTINGS, ...parsed.gp },
       activeTab,

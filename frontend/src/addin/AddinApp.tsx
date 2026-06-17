@@ -6,7 +6,7 @@ import { WebAppCard } from "@/addin/components/WebAppCard"
 export function AddinApp() {
   const { officeReady, selection, loading, error, importSelection } = useExcelSelection()
   const input = selection?.tsv ?? ""
-  const { hasContent, copied, openInWebApp, copyLink } = useWebAppLink(input)
+  const { shareUrl, hasContent, copied, openInWebApp, copyLink } = useWebAppLink(input)
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -29,6 +29,7 @@ export function AddinApp() {
         />
 
         <WebAppCard
+          shareUrl={shareUrl}
           hasContent={hasContent}
           copied={copied}
           onOpen={openInWebApp}

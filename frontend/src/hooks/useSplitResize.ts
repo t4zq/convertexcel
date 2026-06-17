@@ -12,7 +12,7 @@ interface SplitResizeOptions {
 export function useSplitResize({
   min = 35,
   max = 75,
-  initial = 56,
+  initial = 50,
   step = 2,
 }: SplitResizeOptions = {}) {
   const [width, setWidth] = useState(initial)

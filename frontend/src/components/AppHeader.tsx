@@ -53,18 +53,6 @@ export function AppHeader() {
             >
               {t.nav.addin}
             </NavLink>
-            <NavLink
-              to={pathFor("/privacy")}
-              viewTransition
-              className={({ isActive }) =>
-                cn(
-                  "text-sm underline-offset-4 hover:underline",
-                  isActive ? "font-medium" : "text-muted-foreground"
-                )
-              }
-            >
-              {t.nav.privacy}
-            </NavLink>
             <div className="inline-flex rounded-md border bg-muted p-0.5 gap-0.5" aria-label={t.nav.language}>
               {SUPPORTED_LANGUAGES.map((lang) => (
                 <button

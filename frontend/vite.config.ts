@@ -59,7 +59,34 @@ const ADDIN_SEO: Record<Language, { title: string; description: string }> = {
   },
 }
 
-type SeoPage = "convert" | "privacy" | "addin"
+const UPDATES_SEO: Record<Language, { title: string; description: string }> = {
+  ja: {
+    title: "アップデート情報 - converTeXcel",
+    description: "converTeXcel の機能更新、Excel アドイン、LaTeX 変換、ローカルデバッグ改善などの変更履歴です。",
+  },
+  en: {
+    title: "Updates - converTeXcel",
+    description: "Release notes for converTeXcel, including Excel add-in, LaTeX conversion, and local debugging updates.",
+  },
+  zh: {
+    title: "更新信息 - converTeXcel",
+    description: "converTeXcel 的更新记录，包括 Excel 加载项、LaTeX 转换和本地调试改进。",
+  },
+  "zh-Hant": {
+    title: "更新資訊 - converTeXcel",
+    description: "converTeXcel 的更新紀錄，包括 Excel 增益集、LaTeX 轉換與本機偵錯改善。",
+  },
+  es: {
+    title: "Novedades - converTeXcel",
+    description: "Historial de cambios de converTeXcel, incluido el complemento de Excel, la conversión LaTeX y la depuración local.",
+  },
+  de: {
+    title: "Updates - converTeXcel",
+    description: "Änderungshistorie für converTeXcel, einschließlich Excel-Add-In, LaTeX-Konvertierung und lokaler Debugging-Verbesserungen.",
+  },
+}
+
+type SeoPage = "convert" | "privacy" | "addin" | "updates"
 
 type StaticSeo = {
   title: string
@@ -81,6 +108,7 @@ function escapeHtml(value: string) {
 function pagePath(page: SeoPage) {
   if (page === "privacy") return "/privacy"
   if (page === "addin") return "/excel-addin"
+  if (page === "updates") return "/updates"
   return "/"
 }
 
@@ -155,6 +183,25 @@ function staticSeo(language: Language, page: SeoPage): StaticSeo {
           price: "0",
           priceCurrency: "JPY",
         },
+      },
+    }
+  }
+
+  if (page === "updates") {
+    const updates = UPDATES_SEO[language]
+    return {
+      title: updates.title,
+      description: updates.description,
+      canonical,
+      language,
+      alternates,
+      schema: {
+        "@context": "https://schema.org",
+        "@type": "CollectionPage",
+        name: updates.title,
+        url: canonical,
+        inLanguage: language,
+        description: updates.description,
       },
     }
   }
@@ -329,7 +376,7 @@ function localizedHtmlPlugin(): Plugin {
       await writeLocalizedHtml(outDir, "index.html", injectModulePreload(baseHtml, langChunk.ja))
 
       for (const language of SUPPORTED_LANGUAGES) {
-        for (const page of ["convert", "privacy", "addin"] as const) {
+        for (const page of ["convert", "privacy", "addin", "updates"] as const) {
           const fileName = outputFileName(language, page)
           if (fileName === "index.html") continue
           const html = injectModulePreload(applyStaticSeo(baseHtml, staticSeo(language, page)), langChunk[language])
@@ -375,6 +422,9 @@ export default defineConfig({
   server: {
     host: true,
     port: 5173,
+    watch: {
+      ignored: ["**/dist/**", "**/*.tsbuildinfo"],
+    },
     // /api を `wrangler dev` (Worker + ローカル D1) に転送し、フルスタックで開発できるようにする。
     proxy: {
       "/api": "http://localhost:8787",

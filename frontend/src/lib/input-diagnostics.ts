@@ -24,7 +24,6 @@ export interface InputDiagnostics {
   numericColumns: { index: number; name: string; count: number; nonPositive: number }[]
   format: {
     delimiter: "tab" | "comma" | "mixed" | "unknown"
-    delimiterLabel: string
     normalizedCellCount: number
     changedCells: number
     emptyCells: number
@@ -113,14 +112,6 @@ function parseValueWithOptionalError(cell: string): { value: number; error?: num
 function getDelimiterSummary(lines: ParsedDiagnosticLine[]): InputDiagnostics["format"] {
   const delimiters = new Set(lines.map((line) => line.delimiter).filter((delimiter) => delimiter !== "unknown"))
   const delimiter = delimiters.size > 1 ? "mixed" : delimiters.values().next().value ?? "unknown"
-  const delimiterLabel =
-    delimiter === "tab"
-      ? "タブ区切り"
-      : delimiter === "comma"
-        ? "カンマ区切り"
-        : delimiter === "mixed"
-          ? "タブ/カンマ混在"
-          : "区切り未検出"
   const normalizedCellCount = lines.reduce((sum, line) => sum + line.normalizedCells.length, 0)
   const changedCells = lines.reduce(
     (sum, line) =>
@@ -135,7 +126,6 @@ function getDelimiterSummary(lines: ParsedDiagnosticLine[]): InputDiagnostics["f
 
   return {
     delimiter,
-    delimiterLabel,
     normalizedCellCount,
     changedCells,
     emptyCells,
@@ -194,7 +184,7 @@ export function diagnoseInput(input: string, hasHeader: boolean, scaleMode: stri
   if (unevenRows.length > RAGGED_LIMIT) {
     problems.push({
       severity: "warning",
-      code: "ragged-row",
+      code: "ragged-more",
       message: `ほか ${unevenRows.length - RAGGED_LIMIT} 行で列数が一致しません。`,
     })
   }
@@ -224,15 +214,15 @@ export function diagnoseInput(input: string, hasHeader: boolean, scaleMode: stri
   if (rows.length > 0 && numericColumns.length < 2) {
     problems.push({
       severity: "warning",
-      code: "few-numeric-columns",
+      code: "too-few-numeric-columns",
       message: "数値列が 2 列未満のため、グラフ化できる系列が不足しています。",
     })
   }
   if (scaleMode !== "linear") {
     const xColumn = numericColumns.find((col) => col.index === 0)
     const yColumns = numericColumns.filter((col) => col.index > 0)
-    if (scaleMode === "loglog" && xColumn?.nonPositive) {
-      problems.push({ severity: "error", code: "log-nonpositive-x", message: "両対数では x 列に 0 以下の値を使えません。" })
+    if ((scaleMode === "xlog" || scaleMode === "loglog") && xColumn?.nonPositive) {
+      problems.push({ severity: "error", code: "log-nonpositive-x", message: "対数 x 軸では x 列に 0 以下の値を使えません。" })
     }
     if ((scaleMode === "semilog" || scaleMode === "loglog") && yColumns.some((col) => col.nonPositive > 0)) {
       problems.push({ severity: "error", code: "log-nonpositive-y", message: "対数 y 軸では y 系列に 0 以下の値を使えません。" })

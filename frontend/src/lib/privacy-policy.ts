@@ -66,6 +66,14 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
         ],
       },
       {
+        title: "Cookie・広告・アクセス解析",
+        paragraphs: [
+          "Google を含む第三者配信事業者は、Cookie 等を使用して、利用者が本サイトや他のサイトへ過去にアクセスした情報に基づいて広告を配信する場合があります。",
+          "Google の広告 Cookie により、Google とそのパートナーは本サイトや他サイトへのアクセス情報に基づいて広告を表示できます。パーソナライズ広告は Google の広告設定（https://www.google.com/settings/ads）から無効にできます。",
+          "Google Analytics は、ページURL、参照元、ブラウザや端末の情報、おおまかな地域、イベント情報などを処理する場合があります。表の入力内容や生成コードを分析イベントとして送信しない設計です。",
+        ],
+      },
+      {
         title: "データの扱いと権利",
         paragraphs: [
           "入力内容は基本的にブラウザ内にとどまります。localStorage に保存された入力や設定は、ブラウザの設定からいつでも削除できます。",
@@ -106,6 +114,12 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           legalBasis: "正当な利益または法的義務",
           retention: "ホスティング/CDN 提供者のログ保持設定に従います。",
         },
+        {
+          category: "ページ閲覧、参照元、ブラウザ/端末情報、広告 Cookie 等",
+          purpose: "アクセス解析、サービス改善、広告配信、広告効果測定、不正利用防止",
+          legalBasis: "利用者の同意が必要な地域では同意、その他の地域では正当な利益",
+          retention: "Google Analytics / Google AdSense の設定および Google のポリシーに従います。",
+        },
       ],
     },
     thirdParties: {
@@ -129,6 +143,18 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           purpose: "サイト配信、TLS、セキュリティ、ログ",
           data: "IPアドレス、User-Agent、リクエストメタデータ等",
           timing: "サイトアクセス時",
+        },
+        {
+          service: "Google Analytics",
+          purpose: "アクセス解析、利用状況の把握、サービス改善",
+          data: "ページURL、参照元、ブラウザ/端末情報、おおまかな地域、イベント情報等",
+          timing: "サイトアクセス時（設定されている場合）",
+        },
+        {
+          service: "Google AdSense",
+          purpose: "広告配信、広告効果測定、不正利用防止",
+          data: "Cookie、広告識別子、IPアドレス、ブラウザ/端末情報、ページURL等",
+          timing: "広告枠が表示されるページの閲覧時（設定されている場合）",
         },
       ],
     },
@@ -161,6 +187,14 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           "You can opt out of personalized advertising in Google Ads Settings (https://www.google.com/settings/ads).",
           "You can opt out of third-party vendor cookies at https://www.aboutads.info/choices.",
           "For more about how cookies are used in advertising, see Google's policy (https://policies.google.com/technologies/ads).",
+        ],
+      },
+      {
+        title: "Cookies, ads, and analytics",
+        paragraphs: [
+          "Third-party vendors, including Google, may use cookies and similar technologies to serve ads based on your prior visits to this site or other sites.",
+          "Google's advertising cookies enable Google and its partners to serve ads based on visits to this site and/or other sites. You can opt out of personalized advertising from Google Ads Settings: https://www.google.com/settings/ads",
+          "Google Analytics may process page URL, referrer, browser and device information, approximate region, and event data. Pasted table data and generated code are not sent as analytics events by design.",
         ],
       },
       {
@@ -204,6 +238,12 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           legalBasis: "Legitimate interest or legal obligation",
           retention: "According to the hosting/CDN provider's log retention settings.",
         },
+        {
+          category: "Page views, referrer, browser/device information, advertising cookies, etc.",
+          purpose: "Analytics, service improvement, ad serving, ad measurement, and abuse prevention",
+          legalBasis: "Consent where required by local law, otherwise legitimate interest",
+          retention: "According to Google Analytics / Google AdSense settings and Google's policies.",
+        },
       ],
     },
     thirdParties: {
@@ -227,6 +267,18 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           purpose: "Site delivery, TLS, security, logs",
           data: "IP address, User-Agent, request metadata, etc.",
           timing: "When you access the site",
+        },
+        {
+          service: "Google Analytics",
+          purpose: "Analytics, usage measurement, and service improvement",
+          data: "Page URL, referrer, browser/device information, approximate region, event data, etc.",
+          timing: "When you access the site, if configured",
+        },
+        {
+          service: "Google AdSense",
+          purpose: "Ad serving, ad measurement, and abuse prevention",
+          data: "Cookies, advertising identifiers, IP address, browser/device information, page URL, etc.",
+          timing: "When viewing a page with an ad unit, if configured",
         },
       ],
     },
@@ -259,6 +311,14 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           "您可在 Google 广告设置（https://www.google.com/settings/ads）中停用个性化广告。",
           "您可在 https://www.aboutads.info/choices 停用第三方供应商的 Cookie。",
           "有关广告中 Cookie 使用的更多信息，请参阅 Google 的政策（https://policies.google.com/technologies/ads）。",
+        ],
+      },
+      {
+        title: "Cookie、广告与访问分析",
+        paragraphs: [
+          "包括 Google 在内的第三方供应商可能会使用 Cookie 等技术，根据您过去访问本网站或其他网站的情况投放广告。",
+          "Google 的广告 Cookie 使 Google 及其合作伙伴可以根据您访问本网站和/或互联网上其他网站的情况投放广告。您可以通过 Google 广告设置停用个性化广告：https://www.google.com/settings/ads",
+          "Google Analytics 可能处理页面 URL、来源、浏览器和设备信息、大致地区以及事件数据。设计上不会将粘贴的表格数据或生成代码作为分析事件发送。",
         ],
       },
       {
@@ -302,6 +362,12 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           legalBasis: "正当利益或法律义务",
           retention: "依据托管/CDN 提供商的日志保留设置。",
         },
+        {
+          category: "页面浏览、来源、浏览器/设备信息、广告 Cookie 等",
+          purpose: "访问分析、服务改进、广告投放、广告效果衡量与防止滥用",
+          legalBasis: "当地法律要求同意时基于同意，其他情况下基于正当利益",
+          retention: "依据 Google Analytics / Google AdSense 的设置及 Google 政策。",
+        },
       ],
     },
     thirdParties: {
@@ -325,6 +391,18 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           purpose: "网站分发、TLS、安全、日志",
           data: "IP 地址、User-Agent、请求元数据等",
           timing: "访问网站时",
+        },
+        {
+          service: "Google Analytics",
+          purpose: "访问分析、使用情况把握与服务改进",
+          data: "页面 URL、来源、浏览器/设备信息、大致地区、事件数据等",
+          timing: "访问网站时（如果已设置）",
+        },
+        {
+          service: "Google AdSense",
+          purpose: "广告投放、广告效果衡量与防止滥用",
+          data: "Cookie、广告标识符、IP 地址、浏览器/设备信息、页面 URL 等",
+          timing: "浏览显示广告位的页面时（如果已设置）",
         },
       ],
     },
@@ -357,6 +435,14 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           "您可在 Google 廣告設定（https://www.google.com/settings/ads）中停用個人化廣告。",
           "您可在 https://www.aboutads.info/choices 停用第三方供應商的 Cookie。",
           "有關廣告中 Cookie 使用的更多資訊，請參閱 Google 的政策（https://policies.google.com/technologies/ads）。",
+        ],
+      },
+      {
+        title: "Cookie、廣告與存取分析",
+        paragraphs: [
+          "包括 Google 在內的第三方供應商可能會使用 Cookie 等技術，根據您過去造訪本網站或其他網站的情況投放廣告。",
+          "Google 的廣告 Cookie 使 Google 及其合作夥伴可以根據您造訪本網站和/或網際網路上其他網站的情況投放廣告。您可以透過 Google 廣告設定停用個人化廣告：https://www.google.com/settings/ads",
+          "Google Analytics 可能處理頁面 URL、來源、瀏覽器和裝置資訊、大致地區以及事件資料。設計上不會將貼上的表格資料或產生的程式碼作為分析事件傳送。",
         ],
       },
       {
@@ -400,6 +486,12 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           legalBasis: "正當利益或法律義務",
           retention: "依託管/CDN 供應商的日誌保留設定。",
         },
+        {
+          category: "頁面瀏覽、來源、瀏覽器/裝置資訊、廣告 Cookie 等",
+          purpose: "存取分析、服務改善、廣告投放、廣告效果衡量與防止濫用",
+          legalBasis: "當地法律要求同意時基於同意，其他情況下基於正當利益",
+          retention: "依 Google Analytics / Google AdSense 的設定及 Google 政策。",
+        },
       ],
     },
     thirdParties: {
@@ -423,6 +515,18 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           purpose: "網站傳遞、TLS、安全、日誌",
           data: "IP 位址、User-Agent、請求中繼資料等",
           timing: "存取網站時",
+        },
+        {
+          service: "Google Analytics",
+          purpose: "存取分析、使用情況掌握與服務改善",
+          data: "頁面 URL、來源、瀏覽器/裝置資訊、大致地區、事件資料等",
+          timing: "存取網站時（如果已設定）",
+        },
+        {
+          service: "Google AdSense",
+          purpose: "廣告投放、廣告效果衡量與防止濫用",
+          data: "Cookie、廣告識別碼、IP 位址、瀏覽器/裝置資訊、頁面 URL 等",
+          timing: "瀏覽顯示廣告位的頁面時（如果已設定）",
         },
       ],
     },
@@ -455,6 +559,14 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           "Puedes desactivar la publicidad personalizada en la Configuración de anuncios de Google (https://www.google.com/settings/ads).",
           "Puedes desactivar las cookies de proveedores externos en https://www.aboutads.info/choices.",
           "Para más información sobre el uso de cookies en publicidad, consulta la política de Google (https://policies.google.com/technologies/ads).",
+        ],
+      },
+      {
+        title: "Cookies, anuncios y analítica",
+        paragraphs: [
+          "Terceros, incluido Google, pueden usar cookies y tecnologías similares para mostrar anuncios basados en visitas anteriores a este sitio u otros sitios.",
+          "Las cookies publicitarias de Google permiten que Google y sus socios muestren anuncios basados en visitas a este sitio y/o a otros sitios de Internet. Puedes inhabilitar los anuncios personalizados desde la configuración de anuncios de Google: https://www.google.com/settings/ads",
+          "Google Analytics puede procesar URL de página, referente, información del navegador y dispositivo, región aproximada y datos de eventos. Por diseño, los datos de tabla pegados y el código generado no se envían como eventos de analítica.",
         ],
       },
       {
@@ -498,6 +610,12 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           legalBasis: "Interés legítimo u obligación legal",
           retention: "Según la configuración de retención de registros del proveedor de hosting/CDN.",
         },
+        {
+          category: "Vistas de página, referente, información de navegador/dispositivo, cookies publicitarias, etc.",
+          purpose: "Analítica, mejora del servicio, publicación de anuncios, medición publicitaria y prevención de abuso",
+          legalBasis: "Consentimiento cuando lo exija la ley local; en otros casos, interés legítimo",
+          retention: "Según la configuración de Google Analytics / Google AdSense y las políticas de Google.",
+        },
       ],
     },
     thirdParties: {
@@ -521,6 +639,18 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           purpose: "Entrega del sitio, TLS, seguridad, registros",
           data: "Dirección IP, User-Agent, metadatos de solicitud, etc.",
           timing: "Al acceder al sitio",
+        },
+        {
+          service: "Google Analytics",
+          purpose: "Analítica, medición de uso y mejora del servicio",
+          data: "URL de página, referente, información de navegador/dispositivo, región aproximada, datos de eventos, etc.",
+          timing: "Al acceder al sitio, si está configurado",
+        },
+        {
+          service: "Google AdSense",
+          purpose: "Publicación de anuncios, medición publicitaria y prevención de abuso",
+          data: "Cookies, identificadores publicitarios, dirección IP, información de navegador/dispositivo, URL de página, etc.",
+          timing: "Al ver una página con un bloque de anuncios, si está configurado",
         },
       ],
     },
@@ -553,6 +683,14 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           "Personalisierte Werbung können Sie in den Google-Anzeigeneinstellungen (https://www.google.com/settings/ads) deaktivieren.",
           "Cookies von Drittanbietern können Sie unter https://www.aboutads.info/choices deaktivieren.",
           "Weitere Informationen zur Verwendung von Cookies in der Werbung finden Sie in der Richtlinie von Google (https://policies.google.com/technologies/ads).",
+        ],
+      },
+      {
+        title: "Cookies, Anzeigen und Analyse",
+        paragraphs: [
+          "Drittanbieter, einschließlich Google, können Cookies und ähnliche Technologien verwenden, um Anzeigen auf Grundlage früherer Besuche auf dieser oder anderen Websites zu schalten.",
+          "Die Werbe-Cookies von Google ermöglichen Google und seinen Partnern, Anzeigen basierend auf Besuchen dieser Website und/oder anderer Websites im Internet zu schalten. Personalisierte Werbung kann über die Google-Anzeigeneinstellungen deaktiviert werden: https://www.google.com/settings/ads",
+          "Google Analytics kann Seiten-URL, Referrer, Browser- und Geräteinformationen, ungefähre Region und Ereignisdaten verarbeiten. Eingefügte Tabellendaten und generierter Code werden bewusst nicht als Analyseereignisse gesendet.",
         ],
       },
       {
@@ -596,6 +734,12 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           legalBasis: "Berechtigtes Interesse oder gesetzliche Pflicht",
           retention: "Gemäß den Protokoll-Aufbewahrungseinstellungen des Hosting-/CDN-Anbieters.",
         },
+        {
+          category: "Seitenaufrufe, Referrer, Browser-/Geräteinformationen, Werbe-Cookies usw.",
+          purpose: "Analyse, Verbesserung des Dienstes, Anzeigenschaltung, Anzeigenmessung und Missbrauchsvermeidung",
+          legalBasis: "Einwilligung, wo lokal gesetzlich erforderlich; andernfalls berechtigtes Interesse",
+          retention: "Gemäß den Einstellungen von Google Analytics / Google AdSense und den Google-Richtlinien.",
+        },
       ],
     },
     thirdParties: {
@@ -619,6 +763,18 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           purpose: "Auslieferung der Website, TLS, Sicherheit, Protokolle",
           data: "IP-Adresse, User-Agent, Anfrage-Metadaten usw.",
           timing: "Beim Zugriff auf die Website",
+        },
+        {
+          service: "Google Analytics",
+          purpose: "Analyse, Nutzungsmetrik und Verbesserung des Dienstes",
+          data: "Seiten-URL, Referrer, Browser-/Geräteinformationen, ungefähre Region, Ereignisdaten usw.",
+          timing: "Beim Zugriff auf die Website, sofern konfiguriert",
+        },
+        {
+          service: "Google AdSense",
+          purpose: "Anzeigenschaltung, Anzeigenmessung und Missbrauchsvermeidung",
+          data: "Cookies, Werbe-IDs, IP-Adresse, Browser-/Geräteinformationen, Seiten-URL usw.",
+          timing: "Beim Anzeigen einer Seite mit Anzeigenblock, sofern konfiguriert",
         },
       ],
     },

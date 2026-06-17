@@ -48,6 +48,8 @@ convertexcel/
 
 ## Local debug quick start / ローカルデバッグ早見表
 
+### Web app + API
+
 ```powershell
 npm install
 npm --prefix frontend install
@@ -56,9 +58,27 @@ npm run dev
 
 - Frontend: <http://localhost:5173>
 - API health: <http://localhost:8787/api/health>
+- Excel add-in: <https://localhost:5174/addin.html>（証明書ファイルがある場合）
 - 初回または `frontend/src/engine/pkg/` が無い場合は、`npm run dev` が先に `docker compose run --rm engine` 相当の engine ビルドを実行します。
 - engine を作り直したい場合: `$env:FORCE_ENGINE_BUILD="1"; npm run dev`
+- アドイン dev server を起動したくない場合: `$env:SKIP_ADDIN_DEV="1"; npm run dev`
 - Optional ports: `$env:FRONTEND_PORT="5174"; $env:WORKER_PORT="8788"; npm run dev`
+
+### Excel add-in
+
+初回だけ開発用 HTTPS 証明書を作成して信頼します。信頼後は Excel を完全に再起動してください。
+
+```powershell
+npm run addin:cert:create
+npm run addin:cert:trust
+npm run dev
+```
+
+- Add-in task pane: <https://localhost:5174/addin.html>
+- Excel に sideload する manifest: `addin/manifest.xml`
+- Excel が「アドイン エラー」を出す場合は、まずブラウザで <https://localhost:5174/addin.html> を開きます。証明書エラーが出る場合は `npm run addin:cert:trust` の後に Excel を再起動してください。
+- アドイン専用ビルド: `npm run build:addin`
+- アドイン確認: `npm run check:addin`
 
 今まで通り分けて起動したい場合:
 
@@ -75,6 +95,22 @@ npm run check:local
 ```
 
 `check:local` は Worker と frontend の TypeScript チェックを実行し、`npm run dev` が起動中なら frontend と `/api/health` も軽く確認します。
+
+`check:addin` はアドイン用証明書ファイル、TypeScript、アドインビルドを確認し、`npm run dev:addin` が起動中なら `https://localhost:5174/addin.html` も軽く確認します。
+
+## Analytics and ads / アクセス解析・広告
+
+Google Analytics と Google AdSense は、以下の Vite 環境変数が設定されている場合だけ読み込まれます。未設定のローカル開発や審査前ビルドでは外部スクリプトも広告枠も出ません。
+
+```text
+VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX
+VITE_ADSENSE_CLIENT_ID=ca-pub-XXXXXXXXXXXXXXXX
+VITE_ADSENSE_OUTPUT_SLOT=1234567890
+```
+
+- `VITE_GA_MEASUREMENT_ID`: Google Analytics / Google tag ID
+- `VITE_ADSENSE_CLIENT_ID`: AdSense publisher client ID
+- `VITE_ADSENSE_OUTPUT_SLOT`: 変換結果とプレビューの下に表示する広告ユニットの slot ID
 
 ## 日本語
 

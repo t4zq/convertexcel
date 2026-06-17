@@ -9,6 +9,7 @@ import {
 } from "@/lib/convert-settings"
 import { applyTableAlignment } from "@/lib/latex-postprocess"
 import { applySeriesStyles } from "@/lib/tikz-postprocess"
+import { makeBodeGraphInput } from "@/lib/bode"
 
 export interface ConversionResult {
   latex: string
@@ -24,15 +25,17 @@ export async function convertTable(
   gnuplot: GnuplotSettings = DEFAULT_GNUPLOT_SETTINGS,
 ): Promise<ConversionResult> {
   const opts = toConvertOptions(table)
+  const graphInput = makeBodeGraphInput(input, table, tikz) ?? input
+  const graphTable = graphInput === input ? table : { ...table, hasHeader: true, cleanInput: true }
   const [latex, csv, tikzGraph, gnuplotOut] = await Promise.all([
     genLatex(input, opts).catch(() => ""),
     genCsv(input, opts).catch(() => ""),
-    genTikz(input, toTikzOptions(tikz, table)).catch(() => ""),
-    genGnuplot(input, {
+    genTikz(graphInput, toTikzOptions(tikz, graphTable)).catch(() => ""),
+    genGnuplot(graphInput, {
       // ラベル・軸スケール・近似手法は TikZ 設定を共有する。
       scaleMode: tikz.scaleMode,
-      hasHeader: table.hasHeader,
-      cleanInput: table.cleanInput,
+      hasHeader: graphTable.hasHeader,
+      cleanInput: graphTable.cleanInput,
       xLabel: tikz.xLabel,
       yLabel: tikz.yLabel,
       // TikZ と同じく系列ごとの近似手法をカンマ区切りで渡す。
