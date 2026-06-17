@@ -1,7 +1,7 @@
 export type TabularCell = string | number | boolean | null | undefined | void
 
-// DataEntryForm の従来挙動に合わせ、空行を除外し、先頭行にタブが
-// なければカンマ区切りとして扱う。返り値は常に矩形へ正規化する。
+// 空行を除外し、先頭行にタブがなければカンマ区切りとして扱う。
+// 返り値は常に矩形へ正規化する。
 export function parseTsv(value: string): string[][] {
   const lines = value
     .replace(/\r\n?/g, "\n")

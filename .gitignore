@@ -18,4 +18,5 @@ addin/certs/
 !.env.example
 
 # PDF files
-*.pdf
+*.pdf.playwright-cli/
+pgfplots.pdf

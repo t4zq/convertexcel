@@ -1,10 +1,10 @@
 import { lazy, Suspense, type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
-import { CheckCircle2, ChevronLeft, ChevronRight, ClipboardPaste, FileText, Link2, LoaderCircle, Settings2, Table2 } from "lucide-react"
+import { CheckCircle2, ChevronLeft, ChevronRight, FileText, Link2, LoaderCircle, Settings2 } from "lucide-react"
 
 import { CopyButton } from "@/components/convert/CopyButton"
 import { LandingSeoContent } from "@/components/LandingSeoContent"
-import { InputAlerts } from "@/components/convert/InputAlerts"
+import { PasteInput } from "@/components/convert/PasteInput"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -16,7 +16,6 @@ import {
 import { Progress } from "@/components/ui/progress"
 import { RippleButton } from "@/components/animate-ui/components/buttons/ripple"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/animate-ui/components/radix/tabs"
-import { Textarea } from "@/components/ui/textarea"
 import { useConvertPageStatus } from "@/hooks/useConvertPageStatus"
 import { useConversionOutputs } from "@/hooks/useConversionOutputs"
 import { useCooldown } from "@/hooks/useCooldown"
@@ -69,11 +68,6 @@ const ShareDialog = lazy(() =>
 const CsvActions = lazy(() =>
   import("@/components/convert/CsvActions").then((module) => ({
     default: module.CsvActions,
-  }))
-)
-const DataEntryForm = lazy(() =>
-  import("@/components/convert/DataEntryForm").then((module) => ({
-    default: module.DataEntryForm,
   }))
 )
 const SheetEditor = lazy(() =>
@@ -192,8 +186,6 @@ export default function ConvertPage() {
   const [table, setTable] = usePersistentState("convertexcel:table", DEFAULT_TABLE_SETTINGS)
   const [tikz, setTikz] = usePersistentState("convertexcel:tikz", getDefaultTikzSettings(language))
   const [gnuplot, setGnuplot] = usePersistentState("convertexcel:gnuplot", DEFAULT_GNUPLOT_SETTINGS)
-  const [inputMode, setInputMode] = useState<"paste" | "form">("paste")
-  const [formKey, setFormKey] = useState(0)
   const [showInputSettings, setShowInputSettings] = useState(false)
   const [showTikzSettings, setShowTikzSettings] = useState(false)
   const [showGnuplotSettings, setShowGnuplotSettings] = useState(false)
@@ -459,75 +451,26 @@ export default function ConvertPage() {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <h2 className="text-base font-semibold tracking-tight">{t.convert.inputTitle}</h2>
-                    <p className="text-muted-foreground text-sm">
-                      {inputMode === "paste"
-                        ? t.convert.pasteDescription
-                        : t.convert.formDescription}
-                    </p>
+                    <p className="text-muted-foreground text-sm">{t.convert.pasteDescription}</p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="inline-flex rounded-md border bg-muted p-0.5 gap-0.5">
-                      <button
-                        type="button"
-                        onClick={() => setInputMode("paste")}
-                        title={t.convert.pasteTitle}
-                        className={`inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors ${
-                          inputMode === "paste"
-                            ? "bg-background text-foreground shadow-sm"
-                            : "text-muted-foreground hover:text-foreground"
-                        }`}
-                      >
-                        <ClipboardPaste className="h-3 w-3" />
-                        {t.convert.paste}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFormKey((k) => k + 1)
-                          setInputMode("form")
-                        }}
-                        title={t.convert.formTitle}
-                        className={`inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors ${
-                          inputMode === "form"
-                            ? "bg-background text-foreground shadow-sm"
-                            : "text-muted-foreground hover:text-foreground"
-                        }`}
-                      >
-                        <Table2 className="h-3 w-3" />
-                        {t.convert.form}
-                      </button>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShareDialogOpen(true)}
-                      title={t.convert.shareTitle}
-                      className="gap-1.5 text-xs"
-                    >
-                      <Link2 className="h-3.5 w-3.5" /> {t.convert.share}
-                    </Button>
-                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShareDialogOpen(true)}
+                    title={t.convert.shareTitle}
+                    className="gap-1.5 text-xs"
+                  >
+                    <Link2 className="h-3.5 w-3.5" /> {t.convert.share}
+                  </Button>
                 </div>
 
-                {inputMode === "paste" ? (
-                  <Textarea
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    placeholder={SAMPLE}
-                    rows={8}
-                    spellCheck={false}
-                    className="min-h-[160px] font-mono text-xs"
-                  />
-                ) : (
-                  <Suspense fallback={<PanelFallback minHeight={160} />}>
-                    <DataEntryForm
-                      key={formKey}
-                      initialValue={isExample ? SAMPLE : input}
-                      onChange={setInput}
-                    />
-                  </Suspense>
-                )}
+                <PasteInput
+                  value={input}
+                  onChange={setInput}
+                  diagnostics={diagnostics}
+                  placeholder={SAMPLE}
+                />
 
                 <div className="flex justify-end">
                   <Button
@@ -546,8 +489,6 @@ export default function ConvertPage() {
                     <InputSettingsPanel value={table} onChange={updateTable} />
                   </Suspense>
                 )}
-
-                <InputAlerts diagnostics={diagnostics} />
               </motion.div>
 
               {language === "ja" && <LandingSeoContent />}
