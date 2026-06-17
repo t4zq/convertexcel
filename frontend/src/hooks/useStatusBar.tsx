@@ -7,7 +7,8 @@ export interface StatusData {
   cols: number
   chars: number
   activeOutput: string
-  engineReady: boolean | null
+  // null = 読込中, "idle" = 未起動（入力ステップ）, true/false = 準備完了/利用不可
+  engineReady: boolean | null | "idle"
 }
 
 const DEFAULT: StatusData = {
@@ -17,7 +18,7 @@ const DEFAULT: StatusData = {
   cols: 0,
   chars: 0,
   activeOutput: "",
-  engineReady: null,
+  engineReady: "idle",
 }
 
 // データ用とセッター用を分ける。ConvertPage はセッター（安定参照）だけを

@@ -2,6 +2,7 @@ import { useCallback, useId, useState } from "react"
 import { Plus, X } from "lucide-react"
 
 import { useI18n } from "@/hooks/useI18n"
+import { parseTsv, serializeTsv } from "@/lib/tsv"
 
 interface DataEntryFormProps {
   initialValue: string
@@ -22,44 +23,28 @@ const DEFAULT_GRID: GridState = {
   ],
 }
 
-function parseTsv(tsv: string): GridState {
-  const lines = tsv
-    .replace(/\r\n?/g, "\n")
-    .split("\n")
-    .filter((l) => l.trim() !== "")
-  if (lines.length === 0) return DEFAULT_GRID
+function parseGrid(tsv: string): GridState {
+  const rows = parseTsv(tsv)
+  if (rows.length === 0) return DEFAULT_GRID
 
-  const delimiter = lines[0].includes("\t") ? "\t" : ","
-  const allRows = lines.map((l) => l.split(delimiter).map((c) => c.trim()))
-  const colCount = Math.max(...allRows.map((r) => r.length))
-  const normalized = allRows.map((r) => {
-    const padded = [...r]
-    while (padded.length < colCount) padded.push("")
-    return padded
-  })
-
-  if (normalized.length === 1) {
+  if (rows.length === 1) {
     return {
-      headers: normalized[0],
-      rows: Array.from({ length: 3 }, () => Array<string>(colCount).fill("")),
+      headers: rows[0],
+      rows: Array.from({ length: 3 }, () => Array<string>(rows[0].length).fill("")),
     }
   }
-  return { headers: normalized[0], rows: normalized.slice(1) }
-}
-
-function serialize(grid: GridState): string {
-  return [grid.headers, ...grid.rows].map((row) => row.join("\t")).join("\n")
+  return { headers: rows[0], rows: rows.slice(1) }
 }
 
 export function DataEntryForm({ initialValue, onChange }: DataEntryFormProps) {
   const uid = useId()
   const { t } = useI18n()
-  const [grid, setGrid] = useState<GridState>(() => parseTsv(initialValue))
+  const [grid, setGrid] = useState<GridState>(() => parseGrid(initialValue))
 
   const update = useCallback(
     (next: GridState) => {
       setGrid(next)
-      onChange(serialize(next))
+      onChange(serializeTsv([next.headers, ...next.rows]))
     },
     [onChange],
   )

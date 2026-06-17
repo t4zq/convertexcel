@@ -1,9 +1,10 @@
 import { lazy, Suspense, type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { CheckCircle2, ClipboardPaste, FileText, Link2, LoaderCircle, Settings2, Table2 } from "lucide-react"
+import { AnimatePresence, motion, useReducedMotion } from "motion/react"
+import { CheckCircle2, ChevronLeft, ChevronRight, ClipboardPaste, FileText, Link2, LoaderCircle, Settings2, Table2 } from "lucide-react"
 
-import { AdSenseUnit } from "@/components/ads/AdSenseUnit"
 import { CopyButton } from "@/components/convert/CopyButton"
-import { InputDiagnosticsPanel } from "@/components/convert/InputDiagnosticsPanel"
+import { LandingSeoContent } from "@/components/LandingSeoContent"
+import { InputAlerts } from "@/components/convert/InputAlerts"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -13,9 +14,9 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { RippleButton } from "@/components/animate-ui/components/buttons/ripple"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/animate-ui/components/radix/tabs"
 import { Textarea } from "@/components/ui/textarea"
-import { useCollapsibleHeight } from "@/hooks/useCollapsibleHeight"
 import { useConvertPageStatus } from "@/hooks/useConvertPageStatus"
 import { useConversionOutputs } from "@/hooks/useConversionOutputs"
 import { useCooldown } from "@/hooks/useCooldown"
@@ -30,16 +31,20 @@ import { useSplitResize } from "@/hooks/useSplitResize"
 import {
   DEFAULT_TABLE_SETTINGS,
   DEFAULT_GNUPLOT_SETTINGS,
-  DEFAULT_BODE_SETTINGS,
   getDefaultTikzSettings,
   localizeDefaultTikzText,
   type GnuplotSettings,
   type TableSettings,
   type TikzSettings,
 } from "@/lib/convert-settings"
-import { ASYMPTOTE_FIT, getAutoBodeSettings, getBodeColumnOptions, makeBodeGraphInput } from "@/lib/bode"
 import { localizedSiteUrls } from "@/lib/i18n"
 import { diagnoseInput } from "@/lib/input-diagnostics"
+import { stepItemVariants, stepPageVariants } from "@/lib/motion"
+import type { SheetEditorHandle } from "@/components/convert/SheetEditor"
+
+type Step = "input" | "convert" | "sheet"
+
+const STEPS: Step[] = ["input", "convert", "sheet"]
 
 const SAMPLE = `x\ty1\ty2
 1\t2.3\t4.5
@@ -51,7 +56,6 @@ const SAMPLE = `x\ty1\ty2
 const OUTPUT_MIN_HEIGHT = 273
 const SITE_URL = "https://convertexcel.net/"
 const convertUrls = localizedSiteUrls(SITE_URL, "/")
-const outputAdSlot = import.meta.env.VITE_ADSENSE_OUTPUT_SLOT?.trim()
 const CodeAssistEditor = lazy(() =>
   import("@/components/CodeAssistEditor").then((module) => ({
     default: module.CodeAssistEditor,
@@ -72,6 +76,11 @@ const DataEntryForm = lazy(() =>
     default: module.DataEntryForm,
   }))
 )
+const SheetEditor = lazy(() =>
+  import("@/components/convert/SheetEditor").then((module) => ({
+    default: module.SheetEditor,
+  }))
+)
 const GnuplotPreviewPane = lazy(() =>
   import("@/components/convert/GnuplotPreviewPane").then((module) => ({
     default: module.GnuplotPreviewPane,
@@ -85,11 +94,6 @@ const GnuplotSettingsPanel = lazy(() =>
 const InputSettingsPanel = lazy(() =>
   import("@/components/convert/InputSettingsPanel").then((module) => ({
     default: module.InputSettingsPanel,
-  }))
-)
-const TableOutputSettingsPanel = lazy(() =>
-  import("@/components/convert/TableOutputSettingsPanel").then((module) => ({
-    default: module.TableOutputSettingsPanel,
   }))
 )
 const PreviewConsentDialog = lazy(() =>
@@ -184,18 +188,17 @@ export default function ConvertPage() {
   })
 
   const [input, setInput] = usePersistentState("convertexcel:input", "")
+  const sheetEditorRef = useRef<SheetEditorHandle>(null)
   const [table, setTable] = usePersistentState("convertexcel:table", DEFAULT_TABLE_SETTINGS)
   const [tikz, setTikz] = usePersistentState("convertexcel:tikz", getDefaultTikzSettings(language))
   const [gnuplot, setGnuplot] = usePersistentState("convertexcel:gnuplot", DEFAULT_GNUPLOT_SETTINGS)
   const [inputMode, setInputMode] = useState<"paste" | "form">("paste")
   const [formKey, setFormKey] = useState(0)
   const [showInputSettings, setShowInputSettings] = useState(false)
-  const [showTableSettings, setShowTableSettings] = useState(false)
   const [showTikzSettings, setShowTikzSettings] = useState(false)
   const [showGnuplotSettings, setShowGnuplotSettings] = useState(false)
   const [activeTab, setActiveTab] = useState<OutputTab>("latex")
   const [sharedStateRestored, setSharedStateRestored] = useState(false)
-  const lastAutoBodeHeaderRef = useRef<string | null>(null)
 
   const updateTable = (patch: Partial<TableSettings>) => setTable((s) => ({ ...s, ...patch }))
   const updateTikz = (patch: Partial<TikzSettings>) => setTikz((s) => ({ ...s, ...patch }))
@@ -209,27 +212,50 @@ export default function ConvertPage() {
   // 出力・診断・PDF はこの実効ソースから生成し、ユーザーが入力すると実データに切り替わる。
   const isExample = input.trim() === ""
   const source = isExample ? SAMPLE : input
-  const inputArea = useCollapsibleHeight()
-  const outputArea = useCollapsibleHeight({
-    initial: 760,
-    initialVisible: false,
-    min: 180,
-    max: 1100,
-    collapseBelow: 200,
-    reopenHeight: 760,
-  })
 
-  const bodeGraphInput = useMemo(() => makeBodeGraphInput(source, table, tikz), [source, table, tikz])
-  const graphSource = bodeGraphInput ?? source
-  const graphTable = bodeGraphInput ? { ...table, hasHeader: true, cleanInput: true } : table
-  const bodeColumnOptions = useMemo(() => getBodeColumnOptions(source, table), [source, table])
+  // 入力 → 変換 → シート → 入力のリングを横スライドで切り替える。
+  // direction: 1 = 順方向（右から）, -1 = 逆方向（左から）。
+  const [step, setStep] = useState<Step>("input")
+  const [direction, setDirection] = useState(1)
+  const reducedMotion = useReducedMotion()
+  const pageVariants = useMemo(() => stepPageVariants(reducedMotion), [reducedMotion])
+  const itemVariants = useMemo(() => stepItemVariants(reducedMotion), [reducedMotion])
+  const goToStep = useCallback((next: Step) => {
+    if (next === step) return
+
+    if (step === "sheet") {
+      const editor = sheetEditorRef.current
+      if (editor) {
+        setInput(editor.exportActiveSheet())
+        editor.flushSnapshot()
+      }
+    }
+
+    const currentIndex = STEPS.indexOf(step)
+    const nextIndex = STEPS.indexOf(next)
+    setDirection((nextIndex - currentIndex + STEPS.length) % STEPS.length === 1 ? 1 : -1)
+    setStep(next)
+  }, [setInput, step])
+  const moveStep = useCallback((offset: -1 | 1) => {
+    const currentIndex = STEPS.indexOf(step)
+    goToStep(STEPS[(currentIndex + offset + STEPS.length) % STEPS.length])
+  }, [goToStep, step])
+  const stepTitle = useCallback((value: Step) => {
+    if (value === "input") return t.convert.inputTitle
+    if (value === "convert") return t.convert.outputTitle
+    return t.sheet.title
+  }, [t.convert.inputTitle, t.convert.outputTitle, t.sheet.title])
+  const previousStep = STEPS[(STEPS.indexOf(step) - 1 + STEPS.length) % STEPS.length]
+  const nextStep = STEPS[(STEPS.indexOf(step) + 1) % STEPS.length]
+  // 変換出力・診断ステータスは変換ステップを開いたときだけ計算する。
+  const outputActive = step === "convert"
 
   const { latexOut, csvOut, tikzOut, gnuplotOut, setLatexOut, setTikzOut, setGnuplotOut } = useConversionOutputs(
     source,
     table,
     tikz,
     gnuplot,
-    outputArea.visible,
+    outputActive,
   )
   const { cooldown, startCooldown } = useCooldown()
   // gnuplot プレビューはクライアント内 SVG 描画（外部送信・同意・クールダウン不要）。
@@ -239,19 +265,18 @@ export default function ConvertPage() {
     error: gnuplotErr,
     renderPreview: renderGnuplotPreview,
     markImageActionFailed,
-  } = useGnuplotPreview(gnuplotOut, t.convert.gnuplotError, outputArea.visible && gnuplot.autoPreview)
+  } = useGnuplotPreview(gnuplotOut, t.convert.gnuplotError, outputActive && gnuplot.autoPreview)
   const preview = usePreviewSubmission({
     activeTab,
     cooldown,
     latexOut,
     tikzOut,
     gnuplotOut,
-    source: graphSource,
-    table: graphTable,
+    source,
+    table,
     renderGnuplotPreview,
     startCooldown,
   })
-  const inputSplit = useSplitResize()
   const split = useSplitResize()
   const [shareDialogOpen, setShareDialogOpen] = useState(false)
   const defaultTikzForLanguage = useMemo(() => getDefaultTikzSettings(language), [language])
@@ -294,50 +319,6 @@ export default function ConvertPage() {
     void navigator.clipboard.writeText(output)
   }, [activeTab, gnuplotOut, latexOut, tikzOut])
 
-  const applyBodeGraphSettings = useCallback((bodePatch: Partial<TikzSettings["bode"]> = {}) => {
-    setTable((current) => ({ ...current, hasHeader: true, cleanInput: true }))
-    setTikz((current) => ({
-      ...current,
-      filename: "bode",
-      legendPos: "south west",
-      scaleMode: "xlog",
-      // 既定で gain・phase 列を折れ線（漸近線）近似にする。
-      fitMethods: [ASYMPTOTE_FIT, ASYMPTOTE_FIT],
-      xLabel: "frequency [Hz]",
-      yLabel: "gain [dB] / phase [deg]",
-      caption: "Bode plot",
-      label: "fig:bode",
-      seriesColors: ["blue", "red"],
-      seriesMarks: ["*", "square*"],
-      bode: { ...DEFAULT_BODE_SETTINGS, ...(current.bode ?? {}), enabled: true, ...bodePatch },
-    }))
-    setGnuplot((current) => ({
-      ...current,
-      keyPos: "left bottom",
-      grid: true,
-      pointType: 0,
-      pointSize: 0,
-      title: "Bode plot",
-    }))
-    setActiveTab("gnuplot")
-  }, [setGnuplot, setTable, setTikz])
-
-  const autoBodeSettings = useMemo(
-    () => getAutoBodeSettings(source, table),
-    [source, table],
-  )
-
-  useEffect(() => {
-    if (!autoBodeSettings) {
-      lastAutoBodeHeaderRef.current = null
-      return
-    }
-    const key = JSON.stringify(autoBodeSettings)
-    if (lastAutoBodeHeaderRef.current === key) return
-    lastAutoBodeHeaderRef.current = key
-    applyBodeGraphSettings(autoBodeSettings)
-  }, [applyBodeGraphSettings, autoBodeSettings])
-
   const toggleActiveGraphSettings = useCallback(() => {
     if (activeTab === "gnuplot") {
       setShowGnuplotSettings((value) => !value)
@@ -347,11 +328,23 @@ export default function ConvertPage() {
   }, [activeTab])
 
   useKeyboardShortcuts({
-    onPreview: preview.requestPreview,
+    onPreview: () => {
+      if (step !== "convert") {
+        goToStep("convert")
+        return
+      }
+      preview.requestPreview()
+    },
     onCopyActive: copyActiveOutput,
     onToggleInputSettings: () => setShowInputSettings((value) => !value),
-    onToggleGraphSettings: toggleActiveGraphSettings,
-    onSwitchTab: setActiveTab,
+    onToggleGraphSettings: () => {
+      goToStep("convert")
+      toggleActiveGraphSettings()
+    },
+    onSwitchTab: (tab) => {
+      setActiveTab(tab)
+      goToStep("convert")
+    },
   })
 
   const diagnostics = useMemo(
@@ -373,19 +366,10 @@ export default function ConvertPage() {
   // 透過表示中のコードは閲覧用の例なので、編集や選択を無効化する。
   const ghost = isExample ? "pointer-events-none opacity-60 select-none" : undefined
 
-  useConvertPageStatus(diagnostics, input.length, activeTab, outputArea.visible)
+  useConvertPageStatus(diagnostics, input.length, activeTab, outputActive)
 
   return (
-    <div className="w-full space-y-4 p-4 sm:p-6">
-      <header className="space-y-1">
-        <p className="text-muted-foreground text-sm font-medium tracking-wide uppercase">
-          {t.convert.eyebrow}
-        </p>
-        <h1 className="text-2xl font-semibold tracking-tight">{t.convert.title}</h1>
-        <p className="text-muted-foreground text-sm">
-          {t.convert.intro}
-        </p>
-      </header>
+    <div className="w-full space-y-4 px-12 py-4 sm:px-16 sm:py-6">
       {sharedStateRestored && (
         <div className="flex items-center gap-2 rounded-md border border-success/40 bg-success/10 px-3 py-2 text-sm text-foreground">
           <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
@@ -394,86 +378,149 @@ export default function ConvertPage() {
       )}
 
       <div className="space-y-4">
-        <div
-          ref={inputSplit.containerRef}
-          className="grid gap-4 xl:[grid-template-columns:minmax(460px,var(--input-width))_0.75rem_minmax(360px,var(--diagnostics-width))]"
-          style={{
-            "--input-width": `${inputSplit.width}%`,
-            "--diagnostics-width": `${100 - inputSplit.width}%`,
-          } as CSSProperties}
+        {/* 画面左右端のクリックゾーン（上下フルハイト）でステップを前後に切り替える */}
+        <button
+          type="button"
+          aria-label={t.sheet.previousStep(stepTitle(previousStep))}
+          onClick={() => moveStep(-1)}
+          className={`group fixed inset-y-0 left-0 z-20 flex w-10 items-center justify-start gap-2 pl-0.5 transition-colors sm:w-14 ${
+            !isExample && step === "input"
+              ? "hover:bg-gradient-to-r hover:from-primary/[0.08] hover:to-transparent"
+              : "hover:bg-gradient-to-r hover:from-foreground/[0.05] hover:to-transparent"
+          }`}
         >
-          <Card>
-            <CardHeader>
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <CardTitle>{t.convert.inputTitle}</CardTitle>
-                  <CardDescription>
-                    {inputMode === "paste"
-                      ? t.convert.pasteDescription
-                      : t.convert.formDescription}
-                  </CardDescription>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="inline-flex rounded-md border bg-muted p-0.5 gap-0.5">
-                    <button
-                      type="button"
-                      onClick={() => setInputMode("paste")}
-                      title={t.convert.pasteTitle}
-                      className={`inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors ${
-                        inputMode === "paste"
-                          ? "bg-background text-foreground shadow-sm"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      <ClipboardPaste className="h-3 w-3" />
-                      {t.convert.paste}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFormKey((k) => k + 1)
-                        setInputMode("form")
-                      }}
-                      title={t.convert.formTitle}
-                      className={`inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors ${
-                        inputMode === "form"
-                          ? "bg-background text-foreground shadow-sm"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      <Table2 className="h-3 w-3" />
-                      {t.convert.form}
-                    </button>
+          <span
+            className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border shadow-sm backdrop-blur transition-all group-hover:scale-105 ${
+              !isExample && step === "input"
+                ? "border-primary bg-primary text-primary-foreground opacity-100"
+                : "bg-background/80 text-muted-foreground opacity-60 group-hover:text-foreground group-hover:opacity-100"
+            }`}
+          >
+            {!isExample && step === "input" && (
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/40" aria-hidden="true" />
+            )}
+            <ChevronLeft className="relative h-5 w-5" />
+          </span>
+          {!isExample && step === "input" && (
+            <span className="hidden shrink-0 rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground shadow-sm lg:inline">
+              {t.sheet.title}
+            </span>
+          )}
+        </button>
+        <button
+          type="button"
+          aria-label={t.sheet.nextStep(stepTitle(nextStep))}
+          onClick={() => moveStep(1)}
+          className={`group fixed inset-y-0 right-0 z-20 flex w-10 items-center justify-end gap-2 pr-0.5 transition-colors sm:w-14 ${
+            !isExample && step === "input"
+              ? "hover:bg-gradient-to-l hover:from-primary/[0.08] hover:to-transparent"
+              : "hover:bg-gradient-to-l hover:from-foreground/[0.05] hover:to-transparent"
+          }`}
+        >
+          {!isExample && step === "input" && (
+            <span className="hidden rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground shadow-sm lg:inline">
+              {t.convert.outputTitle}
+            </span>
+          )}
+          <span
+            className={`relative flex h-10 w-10 items-center justify-center rounded-full border shadow-sm backdrop-blur transition-all group-hover:scale-105 ${
+              !isExample && step === "input"
+                ? "border-primary bg-primary text-primary-foreground opacity-100"
+                : "bg-background/80 text-muted-foreground opacity-60 group-hover:text-foreground group-hover:opacity-100"
+            }`}
+          >
+            {!isExample && step === "input" && (
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/40" aria-hidden="true" />
+            )}
+            <ChevronRight className="relative h-5 w-5" />
+          </span>
+        </button>
+
+        <div className="relative">
+          <AnimatePresence mode="wait" custom={direction} initial={false}>
+          {step === "input" ? (
+            <motion.div
+              key="input"
+              custom={direction}
+              variants={pageVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              className="space-y-4"
+            >
+              <motion.header variants={itemVariants} className="space-y-1">
+                <p className="text-muted-foreground text-sm font-medium tracking-wide uppercase">
+                  {t.convert.eyebrow}
+                </p>
+                <h1 className="text-2xl font-semibold tracking-tight">{t.convert.title}</h1>
+                <p className="text-muted-foreground text-sm">{t.convert.intro}</p>
+              </motion.header>
+              <motion.div variants={itemVariants} className="space-y-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-base font-semibold tracking-tight">{t.convert.inputTitle}</h2>
+                    <p className="text-muted-foreground text-sm">
+                      {inputMode === "paste"
+                        ? t.convert.pasteDescription
+                        : t.convert.formDescription}
+                    </p>
                   </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShareDialogOpen(true)}
-                    title={t.convert.shareTitle}
-                    className="gap-1.5 text-xs"
-                  >
-                    <Link2 className="h-3.5 w-3.5" /> {t.convert.share}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <div className="inline-flex rounded-md border bg-muted p-0.5 gap-0.5">
+                      <button
+                        type="button"
+                        onClick={() => setInputMode("paste")}
+                        title={t.convert.pasteTitle}
+                        className={`inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors ${
+                          inputMode === "paste"
+                            ? "bg-background text-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        <ClipboardPaste className="h-3 w-3" />
+                        {t.convert.paste}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormKey((k) => k + 1)
+                          setInputMode("form")
+                        }}
+                        title={t.convert.formTitle}
+                        className={`inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors ${
+                          inputMode === "form"
+                            ? "bg-background text-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        <Table2 className="h-3 w-3" />
+                        {t.convert.form}
+                      </button>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShareDialogOpen(true)}
+                      title={t.convert.shareTitle}
+                      className="gap-1.5 text-xs"
+                    >
+                      <Link2 className="h-3.5 w-3.5" /> {t.convert.share}
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            </CardHeader>
-            {inputArea.visible && (
-              <CardContent
-                className="space-y-4 overflow-auto"
-                style={{ maxHeight: `${inputArea.height}px` }}
-              >
+
                 {inputMode === "paste" ? (
                   <Textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     placeholder={SAMPLE}
-                    rows={6}
+                    rows={8}
                     spellCheck={false}
-                    className="min-h-[120px] font-mono text-xs xl:min-h-[150px]"
+                    className="min-h-[160px] font-mono text-xs"
                   />
                 ) : (
-                  <Suspense fallback={<PanelFallback minHeight={120} />}>
+                  <Suspense fallback={<PanelFallback minHeight={160} />}>
                     <DataEntryForm
                       key={formKey}
                       initialValue={isExample ? SAMPLE : input}
@@ -481,6 +528,7 @@ export default function ConvertPage() {
                     />
                   </Suspense>
                 )}
+
                 <div className="flex justify-end">
                   <Button
                     type="button"
@@ -498,77 +546,42 @@ export default function ConvertPage() {
                     <InputSettingsPanel value={table} onChange={updateTable} />
                   </Suspense>
                 )}
-              </CardContent>
-            )}
-          </Card>
 
-          <div
-            role="separator"
-            aria-label={`${t.convert.inputTitle} / ${t.diagnostics.title}`}
-            aria-orientation="vertical"
-            aria-valuemin={inputSplit.min}
-            aria-valuemax={inputSplit.max}
-            aria-valuenow={inputSplit.width}
-            tabIndex={0}
-            {...inputSplit.separatorProps}
-            className={`group hidden cursor-col-resize touch-none items-stretch justify-center rounded-md transition-[background-color,box-shadow] duration-200 ease-out xl:flex ${
-              inputSplit.isResizing ? "bg-primary/15 shadow-inner" : "hover:bg-accent/80"
-            }`}
-            title={`${t.convert.inputTitle} / ${t.diagnostics.title}`}
-          >
-            <span className={`my-4 w-1 rounded-full bg-border transition-all duration-200 ease-out ${
-              inputSplit.isResizing ? "bg-primary/50" : "group-hover:bg-border/80"
-            }`} />
-          </div>
+                <InputAlerts diagnostics={diagnostics} />
+              </motion.div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="font-mono tracking-widest uppercase">{t.diagnostics.title}</CardTitle>
-            </CardHeader>
-            {inputArea.visible && (
-              <CardContent
-                className="overflow-auto"
-                style={{ maxHeight: `${inputArea.height}px` }}
-              >
-                <InputDiagnosticsPanel diagnostics={diagnostics} showHeader={false} />
-              </CardContent>
-            )}
-          </Card>
-        </div>
-
-        <div
-          role="separator"
-          aria-label={t.convert.inputResizeLabel}
-          aria-orientation="horizontal"
-          aria-valuemin={inputArea.min}
-          aria-valuemax={inputArea.max}
-          aria-valuenow={inputArea.visible ? inputArea.height : 0}
-          tabIndex={0}
-          {...inputArea.separatorProps}
-          className={`flex h-5 cursor-row-resize touch-none items-center justify-center rounded-md transition-[background-color,box-shadow] duration-200 ease-out ${
-            inputArea.isResizing ? "bg-primary/15 shadow-inner" : "hover:bg-accent/80"
-          }`}
-          title={t.convert.inputResizeTitle}
-        >
-          <span className={`h-1 w-full max-w-5xl rounded-full bg-border transition-colors duration-200 ease-out ${
-            inputArea.isResizing ? "bg-primary/50" : ""
-          }`} />
-        </div>
-
-        {outputArea.visible && (
-          <div
-            className="overflow-auto"
-            style={{ maxHeight: `${outputArea.height}px` }}
-          >
-          <div
-            ref={split.containerRef}
-            className="grid gap-4 xl:[grid-template-columns:minmax(460px,var(--result-width))_0.75rem_minmax(360px,var(--pdf-width))]"
-            style={{
-              "--result-width": `${split.width}%`,
-              "--pdf-width": `${100 - split.width}%`,
-            } as CSSProperties}
-          >
-        <Card>
+              {language === "ja" && <LandingSeoContent />}
+            </motion.div>
+          ) : step === "sheet" ? (
+            <motion.div
+              key="sheet"
+              custom={direction}
+              variants={pageVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+            >
+              <Suspense fallback={<PanelFallback minHeight={420} />}>
+                <SheetEditor ref={sheetEditorRef} input={input} sample={SAMPLE} />
+              </Suspense>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="convert"
+              custom={direction}
+              variants={pageVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              ref={split.containerRef}
+              className="grid gap-4 xl:[grid-template-columns:minmax(460px,var(--result-width))_0.75rem_minmax(360px,var(--pdf-width))]"
+              style={{
+                "--result-width": `${split.width}%`,
+                "--pdf-width": `${100 - split.width}%`,
+              } as CSSProperties}
+            >
+              <motion.div variants={itemVariants} className="h-full">
+        <Card className="h-full">
           <CardHeader>
             <CardTitle>{t.convert.outputTitle}</CardTitle>
             <CardDescription>{t.convert.outputDescription}</CardDescription>
@@ -585,28 +598,13 @@ export default function ConvertPage() {
               </TabsList>
               <TabsContent value="latex" className="space-y-2">
                 <div className="flex flex-wrap justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setShowTableSettings((v) => !v)}
-                    title={showTableSettings ? t.convert.hideTableSettings : t.convert.showTableSettings}
-                  >
-                    <Settings2 className="h-4 w-4" />
-                    <span>{showTableSettings ? t.convert.hideTableSettings : t.convert.showTableSettings}</span>
-                  </Button>
-                  <Button size="sm" onClick={preview.requestPreview} disabled={!preview.canPreviewLatex} title={`${t.convert.previewTable} (Ctrl+Enter)`}>
+                  <RippleButton size="sm" onClick={preview.requestPreview} disabled={!preview.canPreviewLatex} title={`${t.convert.previewTable} (Ctrl+Enter)`}>
                     <FileText className="h-4 w-4" />
                     <span>{t.convert.previewTable}</span>
-                  </Button>
+                  </RippleButton>
                   <CopyButton value={latexOut} label={t.convert.copyTable} />
                   {cooldown > 0 && <span className="text-muted-foreground self-center text-sm">{t.convert.cooldown(cooldown)}</span>}
                 </div>
-                {showTableSettings && (
-                  <Suspense fallback={<PanelFallback />}>
-                    <TableOutputSettingsPanel value={table} onChange={updateTable} />
-                  </Suspense>
-                )}
                 <div className={ghost}>
                   <OutputCodeEditor
                     kind="latex"
@@ -628,10 +626,10 @@ export default function ConvertPage() {
                     <Settings2 className="h-4 w-4" />
                     <span>{showTikzSettings ? t.convert.hideTikzSettings : t.convert.showTikzSettings}</span>
                   </Button>
-                  <Button size="sm" onClick={preview.requestPreview} disabled={!preview.canPreviewTikz} title={`${t.convert.previewGraph} (Ctrl+Enter)`}>
+                  <RippleButton size="sm" onClick={preview.requestPreview} disabled={!preview.canPreviewTikz} title={`${t.convert.previewGraph} (Ctrl+Enter)`}>
                     <FileText className="h-4 w-4" />
                     <span>{t.convert.previewGraph}</span>
-                  </Button>
+                  </RippleButton>
                   <CopyButton value={tikzOut} label={t.convert.copyPlot} />
                   {cooldown > 0 && <span className="text-muted-foreground self-center text-sm">{t.convert.cooldown(cooldown)}</span>}
                 </div>
@@ -642,7 +640,6 @@ export default function ConvertPage() {
                       onChange={updateTikz}
                       seriesCount={seriesCount}
                       seriesNames={seriesNames}
-                      bodeColumnOptions={bodeColumnOptions}
                     />
                   </Suspense>
                 )}
@@ -667,21 +664,15 @@ export default function ConvertPage() {
                     <Settings2 className="h-4 w-4" />
                     <span>{showGnuplotSettings ? t.convert.hideTikzSettings : t.convert.showTikzSettings}</span>
                   </Button>
-                  <Button size="sm" onClick={preview.requestPreview} disabled={gnuplotRendering || !preview.canPreviewGnuplot} title={`${t.convert.previewGnuplot} (Ctrl+Enter)`}>
+                  <RippleButton size="sm" onClick={preview.requestPreview} disabled={gnuplotRendering || !preview.canPreviewGnuplot} title={`${t.convert.previewGnuplot} (Ctrl+Enter)`}>
                     {gnuplotRendering ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
                     <span>{t.convert.previewGnuplot}</span>
-                  </Button>
+                  </RippleButton>
                   <CopyButton value={gnuplotOut} label={t.convert.copyPlotGnuplot} />
                 </div>
                 {showGnuplotSettings && (
                   <Suspense fallback={<PanelFallback />}>
-                    <GnuplotSettingsPanel
-                      value={gnuplot}
-                      onChange={updateGnuplot}
-                      tikzValue={tikz}
-                      onTikzChange={updateTikz}
-                      bodeColumnOptions={bodeColumnOptions}
-                    />
+                    <GnuplotSettingsPanel value={gnuplot} onChange={updateGnuplot} />
                   </Suspense>
                 )}
                 <div className={ghost}>
@@ -696,27 +687,27 @@ export default function ConvertPage() {
             </Tabs>
           </CardContent>
         </Card>
+              </motion.div>
 
-        <div
-          role="separator"
-          aria-label={t.convert.splitResizeLabel}
-          aria-orientation="vertical"
-          aria-valuemin={split.min}
-          aria-valuemax={split.max}
-          aria-valuenow={split.width}
-          tabIndex={0}
-          {...split.separatorProps}
-            className={`hidden cursor-col-resize touch-none items-stretch justify-center rounded-md transition-[background-color,box-shadow] duration-200 ease-out xl:flex ${
-              split.isResizing ? "bg-primary/15 shadow-inner" : "hover:bg-accent/80"
-            }`}
-          title={t.convert.splitResizeTitle}
-        >
-          <span className={`my-4 w-1 rounded-full bg-border transition-colors duration-200 ease-out ${
-            split.isResizing ? "bg-primary/50" : ""
-          }`} />
-        </div>
+              <div
+                role="separator"
+                aria-label={t.convert.splitResizeLabel}
+                aria-orientation="vertical"
+                aria-valuemin={split.min}
+                aria-valuemax={split.max}
+                aria-valuenow={split.width}
+                tabIndex={0}
+                {...split.separatorProps}
+                className={`hidden cursor-col-resize touch-none items-stretch justify-center rounded-md transition-colors xl:flex ${
+                  split.isResizing ? "bg-primary/15" : "hover:bg-accent"
+                }`}
+                title={t.convert.splitResizeTitle}
+              >
+                <span className="my-4 w-1 rounded-full bg-border" />
+              </div>
 
-        <Card>
+              <motion.div variants={itemVariants} className="h-full">
+        <Card className="h-full">
           <CardHeader>
             <CardTitle>{t.convert.pdfTitle}</CardTitle>
             <CardDescription>
@@ -783,73 +774,10 @@ export default function ConvertPage() {
             )}
           </CardContent>
         </Card>
-          </div>
-          <AdSenseUnit
-            slot={outputAdSlot}
-            label={t.convert.advertisement}
-            className="mt-4"
-          />
-          </div>
-        )}
-        {!outputArea.visible && (
-          <div
-            ref={split.containerRef}
-            className="grid gap-4 xl:[grid-template-columns:minmax(460px,var(--result-width))_0.75rem_minmax(360px,var(--pdf-width))]"
-            style={{
-              "--result-width": `${split.width}%`,
-              "--pdf-width": `${100 - split.width}%`,
-            } as CSSProperties}
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle>{t.convert.outputTitle}</CardTitle>
-              </CardHeader>
-            </Card>
-
-            <div
-              role="separator"
-              aria-label={t.convert.splitResizeLabel}
-              aria-orientation="vertical"
-              aria-valuemin={split.min}
-              aria-valuemax={split.max}
-              aria-valuenow={split.width}
-              tabIndex={0}
-              {...split.separatorProps}
-              className={`hidden cursor-col-resize touch-none items-stretch justify-center rounded-md transition-[background-color,box-shadow] duration-200 ease-out xl:flex ${
-                split.isResizing ? "bg-primary/15 shadow-inner" : "hover:bg-accent/80"
-              }`}
-              title={t.convert.splitResizeTitle}
-            >
-              <span className={`my-4 w-1 rounded-full bg-border transition-colors duration-200 ease-out ${
-                split.isResizing ? "bg-primary/50" : ""
-              }`} />
-            </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>{t.convert.pdfTitle}</CardTitle>
-              </CardHeader>
-            </Card>
-          </div>
-        )}
-
-        <div
-          role="separator"
-          aria-label={`${t.convert.outputTitle} / ${t.convert.pdfTitle}`}
-          aria-orientation="horizontal"
-          aria-valuemin={outputArea.min}
-          aria-valuemax={outputArea.max}
-          aria-valuenow={outputArea.visible ? outputArea.height : 0}
-          tabIndex={0}
-          {...outputArea.separatorProps}
-          className={`flex h-5 cursor-row-resize touch-none items-center justify-center rounded-md transition-[background-color,box-shadow] duration-200 ease-out ${
-            outputArea.isResizing ? "bg-primary/15 shadow-inner" : "hover:bg-accent/80"
-          }`}
-          title={`${t.convert.outputTitle} / ${t.convert.pdfTitle}`}
-        >
-          <span className={`h-1 w-full max-w-5xl rounded-full bg-border transition-colors duration-200 ease-out ${
-            outputArea.isResizing ? "bg-primary/50" : ""
-          }`} />
+              </motion.div>
+            </motion.div>
+          )}
+          </AnimatePresence>
         </div>
       </div>
 

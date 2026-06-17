@@ -1,23 +1,22 @@
 import { lazy, Suspense } from "react"
 import { BrowserRouter, Route, Routes } from "react-router-dom"
 
-import { AppFooter } from "@/components/AppFooter"
 import { AppHeader } from "@/components/AppHeader"
-import { GoogleTag } from "@/components/GoogleTag"
+import { SiteFooter } from "@/components/SiteFooter"
 import { StatusBar } from "@/components/StatusBar"
 import { I18nProvider } from "@/hooks/useI18n"
 import { StatusBarProvider } from "@/hooks/useStatusBar"
 import { LANGUAGE_PATH_SEGMENTS, SUPPORTED_LANGUAGES } from "@/lib/i18n"
 
-const AboutPage = lazy(() => import("@/pages/AboutPage"))
 const AddinPage = lazy(() => import("@/pages/AddinPage"))
-const ContactPage = lazy(() => import("@/pages/ContactPage"))
 const ConvertPage = lazy(() => import("@/pages/ConvertPage"))
-const DocsPage = lazy(() => import("@/pages/DocsPage"))
-const GuidePage = lazy(() => import("@/pages/GuidePage"))
 const NotFoundPage = lazy(() => import("@/pages/NotFoundPage"))
 const PrivacyPage = lazy(() => import("@/pages/PrivacyPage"))
-const UpdatesPage = lazy(() => import("@/pages/UpdatesPage"))
+const GuidePage = lazy(() => import("@/pages/GuidePage"))
+const FaqPage = lazy(() => import("@/pages/FaqPage"))
+const AboutPage = lazy(() => import("@/pages/AboutPage"))
+const ContactPage = lazy(() => import("@/pages/ContactPage"))
+const TermsPage = lazy(() => import("@/pages/TermsPage"))
 
 const localizedRoutes = SUPPORTED_LANGUAGES
   .filter((language) => language !== "ja")
@@ -28,11 +27,6 @@ const localizedRoutes = SUPPORTED_LANGUAGES
       <Route key={`${prefix}/convert`} path={`${prefix}/convert`} element={<ConvertPage />} />,
       <Route key={`${prefix}/privacy`} path={`${prefix}/privacy`} element={<PrivacyPage />} />,
       <Route key={`${prefix}/excel-addin`} path={`${prefix}/excel-addin`} element={<AddinPage />} />,
-      <Route key={`${prefix}/docs`} path={`${prefix}/docs`} element={<DocsPage />} />,
-      <Route key={`${prefix}/guides/:slug`} path={`${prefix}/guides/:slug`} element={<GuidePage />} />,
-      <Route key={`${prefix}/about`} path={`${prefix}/about`} element={<AboutPage />} />,
-      <Route key={`${prefix}/contact`} path={`${prefix}/contact`} element={<ContactPage />} />,
-      <Route key={`${prefix}/updates`} path={`${prefix}/updates`} element={<UpdatesPage />} />,
     ]
   })
 
@@ -41,7 +35,6 @@ export default function App() {
     <StatusBarProvider>
       <BrowserRouter>
         <I18nProvider>
-          <GoogleTag />
           <AppHeader />
           <main className="pb-8">
             <Suspense fallback={<div className="p-4 sm:p-6" />}>
@@ -50,17 +43,17 @@ export default function App() {
                 <Route path="/convert" element={<ConvertPage />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
                 <Route path="/excel-addin" element={<AddinPage />} />
-                <Route path="/docs" element={<DocsPage />} />
-                <Route path="/guides/:slug" element={<GuidePage />} />
+                <Route path="/guide" element={<GuidePage />} />
+                <Route path="/faq" element={<FaqPage />} />
                 <Route path="/about" element={<AboutPage />} />
                 <Route path="/contact" element={<ContactPage />} />
-                <Route path="/updates" element={<UpdatesPage />} />
+                <Route path="/terms" element={<TermsPage />} />
                 {localizedRoutes}
                 <Route path="*" element={<NotFoundPage />} />
               </Routes>
             </Suspense>
           </main>
-          <AppFooter />
+          <SiteFooter />
           <StatusBar />
         </I18nProvider>
       </BrowserRouter>

@@ -17,14 +17,16 @@ export function useConvertPageStatus(
   outputEnabled = true,
 ) {
   const setStatus = useStatusSetter()
-  const [engineReady, setEngineReady] = useState<boolean | null>(null)
+  const [engineReady, setEngineReady] = useState<boolean | null | "idle">("idle")
 
   useEffect(() => {
     if (!outputEnabled) {
-      setEngineReady(null)
+      // 変換ステップを開くまではエンジンを起動しない（未起動 = idle）。
+      setEngineReady("idle")
       return
     }
     let alive = true
+    setEngineReady(null) // 起動した瞬間だけ「読込中」
     import("@/engine/loader")
       .then(({ isWasmAvailable }) => isWasmAvailable())
       .then((ok) => alive && setEngineReady(ok))

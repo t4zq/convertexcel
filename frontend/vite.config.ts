@@ -11,6 +11,14 @@ import {
   seo,
   type Language,
 } from "./src/lib/i18n"
+import {
+  aboutPage,
+  contactPage,
+  faqPage,
+  guidePage,
+  termsPage,
+  type SitePage,
+} from "./src/lib/site-content"
 
 const SITE_URL = "https://convertexcel.net"
 const DEFAULT_IMAGE = `${SITE_URL}/og-image.svg`
@@ -225,6 +233,37 @@ function staticSeo(language: Language, page: SeoPage): StaticSeo {
   }
 }
 
+// 日本語のみ用意した読み物ページ（/guide, /faq など）の静的 SEO 生成対象。
+const JA_CONTENT_PAGES: Array<{ path: string; page: SitePage; schemaType: string }> = [
+  { path: "/guide", page: guidePage, schemaType: "Article" },
+  { path: "/faq", page: faqPage, schemaType: "FAQPage" },
+  { path: "/about", page: aboutPage, schemaType: "AboutPage" },
+  { path: "/contact", page: contactPage, schemaType: "ContactPage" },
+  { path: "/terms", page: termsPage, schemaType: "WebPage" },
+]
+
+function staticSeoForContent(pathname: string, page: SitePage, schemaType: string): StaticSeo {
+  const canonical = absoluteUrl(pathname)
+  return {
+    title: page.seoTitle,
+    description: page.seoDescription,
+    canonical,
+    language: "ja",
+    // 単一言語ページのため hreflang は付けない。
+    alternates: {},
+    schema: {
+      "@context": "https://schema.org",
+      "@type": schemaType,
+      name: page.title,
+      ...(schemaType === "Article" ? { headline: page.title } : {}),
+      url: canonical,
+      inLanguage: "ja",
+      description: page.seoDescription,
+      isPartOf: { "@type": "WebSite", name: "converTeXcel", url: `${SITE_URL}/` },
+    },
+  }
+}
+
 function metaTag(name: string, content: string) {
   return `<meta name="${name}" content="${escapeHtml(content)}" />`
 }
@@ -288,6 +327,24 @@ function translationChunks(bundle: Record<string, { type: string; facadeModuleId
   return map
 }
 
+// Google Analytics (gtag.js)。ビルド時のみ注入するため dev / preview では読み込まれない。
+const GA_MEASUREMENT_ID = "G-2Z44NE8Y06"
+
+function injectAnalytics(html: string) {
+  const snippet = [
+    `    <!-- Google tag (gtag.js) -->`,
+    `    <script async src="https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}"></script>`,
+    `    <script>`,
+    `      window.dataLayer = window.dataLayer || [];`,
+    `      function gtag(){dataLayer.push(arguments);}`,
+    `      gtag('js', new Date());`,
+    `      gtag('config', '${GA_MEASUREMENT_ID}');`,
+    `    </script>`,
+    ``,
+  ].join("\n")
+  return html.replace("</head>", `${snippet}  </head>`)
+}
+
 // アクティブ言語の翻訳チャンクを modulepreload で並列取得させ、entry→翻訳の直列待ちを防ぐ。
 function injectModulePreload(html: string, fileName: string | undefined) {
   if (!fileName) return html
@@ -306,7 +363,7 @@ function localizedHtmlPlugin(): Plugin {
     name: "localized-html",
     apply: "build",
     transformIndexHtml(html) {
-      return applyStaticSeo(html, staticSeo("ja", "convert"))
+      return injectAnalytics(applyStaticSeo(html, staticSeo("ja", "convert")))
     },
     async writeBundle(options, bundle) {
       const index = bundle["index.html"]
@@ -330,6 +387,16 @@ function localizedHtmlPlugin(): Plugin {
       for (const language of SUPPORTED_LANGUAGES) {
         const fileName = outputFileNameForPath(localizePath("/convert", language))
         const html = injectModulePreload(applyStaticSeo(baseHtml, staticSeo(language, "convert")), langChunk[language])
+        await writeLocalizedHtml(outDir, fileName, html)
+      }
+
+      // 日本語のみの読み物ページ（root のみ）を静的生成する。
+      for (const { path: pagePathname, page, schemaType } of JA_CONTENT_PAGES) {
+        const fileName = outputFileNameForPath(pagePathname)
+        const html = injectModulePreload(
+          applyStaticSeo(baseHtml, staticSeoForContent(pagePathname, page, schemaType)),
+          langChunk.ja,
+        )
         await writeLocalizedHtml(outDir, fileName, html)
       }
     },
