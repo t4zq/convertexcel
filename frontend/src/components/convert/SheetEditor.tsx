@@ -5,7 +5,8 @@ import {
   useRef,
   useState,
 } from "react"
-import { FileInput } from "lucide-react"
+import { FileInput, Maximize2, Minimize2 } from "lucide-react"
+import { motion } from "motion/react"
 import {
   createUniver,
   defaultTheme,
@@ -22,6 +23,7 @@ import { Button } from "@/components/ui/button"
 import { useI18n } from "@/hooks/useI18n"
 import type { Language } from "@/lib/i18n"
 import { parseTsv, serializeTsv } from "@/lib/tsv"
+import { cn } from "@/lib/utils"
 
 export interface PendingSheetImport {
   name: string
@@ -117,6 +119,22 @@ export const SheetEditor = forwardRef<SheetEditorHandle, SheetEditorProps>(
     const saveTimerRef = useRef<number | null>(null)
     const inputRef = useRef(input)
     const [ready, setReady] = useState(false)
+    const [fullscreen, setFullscreen] = useState(false)
+
+    // 全画面の切り替え中はサイズが変わるので、Univer に再レイアウトを促す。
+    // Esc でも全画面を抜けられるようにする。
+    useEffect(() => {
+      const timer = window.setTimeout(() => window.dispatchEvent(new Event("resize")), 320)
+      if (!fullscreen) return () => window.clearTimeout(timer)
+      const onKey = (e: KeyboardEvent) => {
+        if (e.key === "Escape") setFullscreen(false)
+      }
+      window.addEventListener("keydown", onKey)
+      return () => {
+        window.clearTimeout(timer)
+        window.removeEventListener("keydown", onKey)
+      }
+    }, [fullscreen])
 
     inputRef.current = input
 
@@ -146,7 +164,11 @@ export const SheetEditor = forwardRef<SheetEditorHandle, SheetEditorProps>(
         exportActiveSheet: () => {
           const sheet = univerApiRef.current?.getActiveWorkbook()?.getActiveSheet()
           if (!sheet) return inputRef.current
-          return serializeTsv(sheet.getDataRange().getValues())
+          // 範囲を複数セル選択しているときはその選択範囲を、そうでなければシート全体を変換対象にする。
+          const active = sheet.getActiveRange()
+          const useSelection = !!active && (active.getWidth() > 1 || active.getHeight() > 1)
+          const range = useSelection && active ? active : sheet.getDataRange()
+          return serializeTsv(range.getValues())
         },
         flushSnapshot,
       }),
@@ -290,7 +312,16 @@ export const SheetEditor = forwardRef<SheetEditorHandle, SheetEditorProps>(
             <span>{t.sheet.importInput}</span>
           </Button>
         </div>
-        <div className="relative h-[70vh] min-h-[420px] overflow-hidden rounded-md border bg-background">
+        <motion.div
+          layout
+          transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+          className={cn(
+            "overflow-hidden bg-background",
+            fullscreen
+              ? "fixed inset-0 z-50 rounded-none"
+              : "relative h-[70vh] min-h-[420px] rounded-md border",
+          )}
+        >
           {!ready && (
             <div className="absolute inset-0 z-10 grid place-items-center bg-background/80 backdrop-blur-sm">
               <div className="flex flex-col items-center gap-3 text-muted-foreground">
@@ -299,8 +330,17 @@ export const SheetEditor = forwardRef<SheetEditorHandle, SheetEditorProps>(
               </div>
             </div>
           )}
+          <button
+            type="button"
+            onClick={() => setFullscreen((v) => !v)}
+            title={fullscreen ? t.sheet.exitFullscreen : t.sheet.fullscreen}
+            aria-label={fullscreen ? t.sheet.exitFullscreen : t.sheet.fullscreen}
+            className="absolute right-2 top-2 z-20 flex h-8 w-8 items-center justify-center rounded-md border bg-background/80 text-muted-foreground shadow-sm backdrop-blur transition-colors hover:text-foreground"
+          >
+            {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </button>
           <div ref={containerRef} className="h-full w-full" />
-        </div>
+        </motion.div>
       </section>
     )
   },

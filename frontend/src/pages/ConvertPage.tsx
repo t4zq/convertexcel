@@ -188,6 +188,7 @@ export default function ConvertPage() {
   const [activeTab, setActiveTab] = useState<OutputTab>("latex")
   const [sharedStateRestored, setSharedStateRestored] = useState(false)
   const [pendingImport, setPendingImport] = useState<PendingSheetImport[] | null>(null)
+  const [isDraggingFile, setIsDraggingFile] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const updateTable = (patch: Partial<TableSettings>) => setTable((s) => ({ ...s, ...patch }))
@@ -449,8 +450,35 @@ export default function ConvertPage() {
               initial="enter"
               animate="center"
               exit="exit"
-              className="space-y-4"
+              className="relative space-y-4"
+              onDragOver={(e) => {
+                if (e.dataTransfer.types.includes("Files")) {
+                  e.preventDefault()
+                  setIsDraggingFile(true)
+                }
+              }}
+              onDragLeave={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+                  setIsDraggingFile(false)
+                }
+              }}
+              onDrop={(e) => {
+                if (e.dataTransfer.types.includes("Files")) {
+                  e.preventDefault()
+                  setIsDraggingFile(false)
+                  const file = e.dataTransfer.files?.[0]
+                  if (file) void handleExcelUpload(file)
+                }
+              }}
             >
+              {isDraggingFile && (
+                <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center rounded-lg border-2 border-dashed border-primary bg-primary/10 backdrop-blur-sm">
+                  <div className="flex items-center gap-2 rounded-md bg-background/90 px-4 py-2 text-sm font-medium shadow-sm">
+                    <Upload className="h-4 w-4 text-primary" />
+                    {t.convert.dropExcel}
+                  </div>
+                </div>
+              )}
               <motion.header variants={itemVariants} className="space-y-1">
                 <p className="text-muted-foreground text-sm font-medium tracking-wide uppercase">
                   {t.convert.eyebrow}
