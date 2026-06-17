@@ -44,6 +44,8 @@ const de: Translations = {
     form: "Formular",
     shareTitle: "Freigabelink und QR-Code anzeigen",
     share: "Teilen",
+    uploadExcel: "Excel hochladen",
+    uploadExcelTitle: "Excel-Datei (.xlsx) laden und im Tabelleneditor öffnen",
     showInputSettings: "Eingabeeinstellungen anzeigen",
     hideInputSettings: "Eingabeeinstellungen ausblenden",
     showTableSettings: "Tabelleneinstellungen anzeigen",

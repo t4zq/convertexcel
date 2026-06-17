@@ -44,6 +44,8 @@ const es: Translations = {
     form: "Formulario",
     shareTitle: "Mostrar enlace compartido y código QR",
     share: "Compartir",
+    uploadExcel: "Subir Excel",
+    uploadExcelTitle: "Carga un archivo Excel (.xlsx) y ábrelo en la hoja de cálculo",
     showInputSettings: "Mostrar ajustes de entrada",
     hideInputSettings: "Ocultar ajustes de entrada",
     showTableSettings: "Mostrar ajustes de tabla",

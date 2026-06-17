@@ -44,6 +44,8 @@ const zhHant: Translations = {
     form: "表單輸入",
     shareTitle: "顯示分享連結和 QR Code",
     share: "分享",
+    uploadExcel: "上傳 Excel",
+    uploadExcelTitle: "載入 Excel 檔案(.xlsx)並在試算表編輯器中開啟",
     showInputSettings: "顯示輸入設定",
     hideInputSettings: "隱藏輸入設定",
     showTableSettings: "顯示表格設定",

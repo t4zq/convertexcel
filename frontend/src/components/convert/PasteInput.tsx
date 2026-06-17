@@ -79,7 +79,7 @@ export function PasteInput({ value, onChange, diagnostics, placeholder }: PasteI
             }}
             placeholder={placeholder}
             spellCheck={false}
-            className="field-sizing-fixed h-40 max-h-72 resize-y overflow-auto font-mono text-xs"
+            className="field-sizing-fixed h-32 max-h-64 resize-y overflow-auto font-mono text-xs leading-relaxed"
           />
           {!isEmpty && (
             <div className="flex justify-end">

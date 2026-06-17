@@ -42,6 +42,8 @@ const ja = {
     form: "フォーム入力",
     shareTitle: "共有リンク・QRコードを表示",
     share: "共有",
+    uploadExcel: "Excel をアップロード",
+    uploadExcelTitle: "Excel ファイル(.xlsx)を読み込んでスプレッドシート入力へ移動します",
     showInputSettings: "入力設定",
     hideInputSettings: "設定を隠す",
     showTableSettings: "表設定",

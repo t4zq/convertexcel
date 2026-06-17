@@ -17,10 +17,16 @@ import {
 import { UniverSheetsCorePreset } from "@univerjs/presets/preset-sheets-core"
 import "@univerjs/preset-sheets-core/lib/index.css"
 
+import { Loader } from "@/components/animate-ui/components/loader"
 import { Button } from "@/components/ui/button"
 import { useI18n } from "@/hooks/useI18n"
 import type { Language } from "@/lib/i18n"
 import { parseTsv, serializeTsv } from "@/lib/tsv"
+
+export interface PendingSheetImport {
+  name: string
+  values: string[][]
+}
 
 const WORKBOOK_STORAGE_KEY = "convertexcel:workbook"
 const AUTOSAVE_DELAY = 750
@@ -67,6 +73,9 @@ export interface SheetEditorHandle {
 interface SheetEditorProps {
   input: string
   sample: string
+  // アップロード等で外部から取り込みたいシート群。ready 後に新しいシートとして取り込む。
+  pendingImport?: PendingSheetImport[] | null
+  onImported?: () => void
 }
 
 function readWorkbookSnapshot(): IWorkbookData | null {
@@ -92,15 +101,16 @@ function createEmptyWorkbookData(locale: LocaleType): Partial<IWorkbookData> {
   }
 }
 
-function nextImportedSheetName(existingNames: Set<string>): string {
-  if (!existingNames.has("Imported")) return "Imported"
+function uniqueSheetName(base: string, existingNames: Set<string>): string {
+  const safe = base.trim() || "Imported"
+  if (!existingNames.has(safe)) return safe
   let suffix = 2
-  while (existingNames.has(`Imported ${suffix}`)) suffix += 1
-  return `Imported ${suffix}`
+  while (existingNames.has(`${safe} ${suffix}`)) suffix += 1
+  return `${safe} ${suffix}`
 }
 
 export const SheetEditor = forwardRef<SheetEditorHandle, SheetEditorProps>(
-  function SheetEditor({ input, sample }, ref) {
+  function SheetEditor({ input, sample, pendingImport, onImported }, ref) {
     const { language, t } = useI18n()
     const containerRef = useRef<HTMLDivElement>(null)
     const univerApiRef = useRef<FUniver | null>(null)
@@ -234,14 +244,13 @@ export const SheetEditor = forwardRef<SheetEditorHandle, SheetEditorProps>(
       }
     }, [language])
 
-    const importInput = () => {
-      const values = parseTsv(input)
+    const importValues = (name: string, values: string[][]) => {
       const workbook = univerApiRef.current?.getActiveWorkbook()
       if (!workbook || values.length === 0) return
 
       const existingNames = new Set(workbook.getSheets().map((sheet) => sheet.getSheetName()))
       const sheet = workbook.create(
-        nextImportedSheetName(existingNames),
+        uniqueSheetName(name, existingNames),
         Math.max(DEFAULT_ROWS, values.length),
         Math.max(DEFAULT_COLUMNS, values[0].length),
       )
@@ -251,6 +260,19 @@ export const SheetEditor = forwardRef<SheetEditorHandle, SheetEditorProps>(
       sheet.activate()
       scheduleSnapshot()
     }
+
+    const importInput = () => importValues("Imported", parseTsv(input))
+
+    // ready 後に保留中の取り込み（アップロードされた Excel 等）を新しいシートへ反映する。
+    // 末尾→先頭の順に取り込むことで、先頭シートが最後に作られてアクティブになる。
+    useEffect(() => {
+      if (!ready || !pendingImport || pendingImport.length === 0) return
+      for (let i = pendingImport.length - 1; i >= 0; i--) {
+        importValues(pendingImport[i].name, pendingImport[i].values)
+      }
+      onImported?.()
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [ready, pendingImport])
 
     return (
       <section className="space-y-3">
@@ -273,8 +295,11 @@ export const SheetEditor = forwardRef<SheetEditorHandle, SheetEditorProps>(
         </div>
         <div className="relative h-[70vh] min-h-[420px] overflow-hidden rounded-md border bg-background">
           {!ready && (
-            <div className="absolute inset-0 z-10 grid place-items-center bg-background/80 text-sm text-muted-foreground">
-              {t.sheet.loading}
+            <div className="absolute inset-0 z-10 grid place-items-center bg-background/80 backdrop-blur-sm">
+              <div className="flex flex-col items-center gap-3 text-muted-foreground">
+                <Loader size={9} className="text-primary" />
+                <span className="text-sm">{t.sheet.loading}</span>
+              </div>
             </div>
           )}
           <div ref={containerRef} className="h-full w-full" />

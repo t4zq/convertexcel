@@ -1,10 +1,13 @@
 import { lazy, Suspense, type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
-import { CheckCircle2, ChevronLeft, ChevronRight, FileText, Link2, LoaderCircle, Settings2 } from "lucide-react"
+import { CheckCircle2, ChevronLeft, ChevronRight, FileText, Link2, LoaderCircle, Settings2, Upload } from "lucide-react"
+import readXlsxFile from "read-excel-file/browser"
 
 import { CopyButton } from "@/components/convert/CopyButton"
 import { LandingSeoContent } from "@/components/LandingSeoContent"
 import { PasteInput } from "@/components/convert/PasteInput"
+import type { PendingSheetImport } from "@/components/convert/SheetEditor"
+import { Loader } from "@/components/animate-ui/components/loader"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -191,6 +194,8 @@ export default function ConvertPage() {
   const [showGnuplotSettings, setShowGnuplotSettings] = useState(false)
   const [activeTab, setActiveTab] = useState<OutputTab>("latex")
   const [sharedStateRestored, setSharedStateRestored] = useState(false)
+  const [pendingImport, setPendingImport] = useState<PendingSheetImport[] | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const updateTable = (patch: Partial<TableSettings>) => setTable((s) => ({ ...s, ...patch }))
   const updateTikz = (patch: Partial<TikzSettings>) => setTikz((s) => ({ ...s, ...patch }))
@@ -232,6 +237,23 @@ export default function ConvertPage() {
     const currentIndex = STEPS.indexOf(step)
     goToStep(STEPS[(currentIndex + offset + STEPS.length) % STEPS.length])
   }, [goToStep, step])
+  // Excel をアップロードしたら、新しいシートとして取り込み、左スライドでシート入力へ移行する。
+  const handleExcelUpload = useCallback(async (file: File) => {
+    try {
+      const sheets = await readXlsxFile(file)
+      const imports = sheets
+        .map((sheet) => ({
+          name: sheet.sheet,
+          values: sheet.data.map((row) => row.map((cell) => (cell == null ? "" : String(cell)))),
+        }))
+        .filter((sheet) => sheet.values.length > 0)
+      if (imports.length === 0) return
+      setPendingImport(imports)
+      goToStep("sheet")
+    } catch {
+      // 読み取れないファイルは無視する（xlsx 以外など）。
+    }
+  }, [goToStep])
   const stepTitle = useCallback((value: Step) => {
     if (value === "input") return t.convert.inputTitle
     if (value === "convert") return t.convert.outputTitle
@@ -453,16 +475,39 @@ export default function ConvertPage() {
                     <h2 className="text-base font-semibold tracking-tight">{t.convert.inputTitle}</h2>
                     <p className="text-muted-foreground text-sm">{t.convert.pasteDescription}</p>
                   </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShareDialogOpen(true)}
-                    title={t.convert.shareTitle}
-                    className="gap-1.5 text-xs"
-                  >
-                    <Link2 className="h-3.5 w-3.5" /> {t.convert.share}
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) void handleExcelUpload(file)
+                        e.target.value = ""
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                      title={t.convert.uploadExcelTitle}
+                      className="gap-1.5 text-xs"
+                    >
+                      <Upload className="h-3.5 w-3.5" /> {t.convert.uploadExcel}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShareDialogOpen(true)}
+                      title={t.convert.shareTitle}
+                      className="gap-1.5 text-xs"
+                    >
+                      <Link2 className="h-3.5 w-3.5" /> {t.convert.share}
+                    </Button>
+                  </div>
                 </div>
 
                 <PasteInput
@@ -503,7 +548,13 @@ export default function ConvertPage() {
               exit="exit"
             >
               <Suspense fallback={<PanelFallback minHeight={420} />}>
-                <SheetEditor ref={sheetEditorRef} input={input} sample={SAMPLE} />
+                <SheetEditor
+                  ref={sheetEditorRef}
+                  input={input}
+                  sample={SAMPLE}
+                  pendingImport={pendingImport}
+                  onImported={() => setPendingImport(null)}
+                />
               </Suspense>
             </motion.div>
           ) : (
@@ -678,7 +729,7 @@ export default function ConvertPage() {
                     {preview.previewStatus.phase === "complete" ? (
                       <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
                     ) : (
-                      <LoaderCircle className="h-4 w-4 shrink-0 animate-spin text-info" />
+                      <Loader size={5} className="shrink-0 text-info" />
                     )}
                     <span className="truncate">
                       {preview.previewStatus.phase === "complete"

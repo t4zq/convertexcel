@@ -44,6 +44,8 @@ const en: Translations = {
     form: "Form input",
     shareTitle: "Show share link and QR code",
     share: "Share",
+    uploadExcel: "Upload Excel",
+    uploadExcelTitle: "Load an Excel file (.xlsx) and open it in the spreadsheet editor",
     showInputSettings: "Show input settings",
     hideInputSettings: "Hide input settings",
     showTableSettings: "Show table settings",

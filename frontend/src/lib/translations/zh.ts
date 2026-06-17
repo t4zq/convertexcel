@@ -44,6 +44,8 @@ const zh: Translations = {
     form: "表单输入",
     shareTitle: "显示共享链接和二维码",
     share: "共享",
+    uploadExcel: "上传 Excel",
+    uploadExcelTitle: "加载 Excel 文件(.xlsx)并在表格编辑器中打开",
     showInputSettings: "显示输入设置",
     hideInputSettings: "隐藏输入设置",
     showTableSettings: "显示表格设置",
