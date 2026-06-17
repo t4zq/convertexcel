@@ -1,0 +1,285 @@
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react"
+import { FileInput } from "lucide-react"
+import {
+  createUniver,
+  defaultTheme,
+  LocaleType,
+  type FUniver,
+  type ILanguagePack,
+  type IWorkbookData,
+} from "@univerjs/presets"
+import { UniverSheetsCorePreset } from "@univerjs/presets/preset-sheets-core"
+import "@univerjs/preset-sheets-core/lib/index.css"
+
+import { Button } from "@/components/ui/button"
+import { useI18n } from "@/hooks/useI18n"
+import type { Language } from "@/lib/i18n"
+import { parseTsv, serializeTsv } from "@/lib/tsv"
+
+const WORKBOOK_STORAGE_KEY = "convertexcel:workbook"
+const AUTOSAVE_DELAY = 750
+const DEFAULT_ROWS = 100
+const DEFAULT_COLUMNS = 26
+
+type LocaleModule = { default: ILanguagePack }
+
+const UNIVER_LOCALES: Record<
+  Language,
+  { locale: LocaleType; load: () => Promise<LocaleModule> }
+> = {
+  ja: {
+    locale: LocaleType.JA_JP,
+    load: () => import("@univerjs/presets/preset-sheets-core/locales/ja-JP"),
+  },
+  en: {
+    locale: LocaleType.EN_US,
+    load: () => import("@univerjs/presets/preset-sheets-core/locales/en-US"),
+  },
+  zh: {
+    locale: LocaleType.ZH_CN,
+    load: () => import("@univerjs/presets/preset-sheets-core/locales/zh-CN"),
+  },
+  "zh-Hant": {
+    locale: LocaleType.ZH_TW,
+    load: () => import("@univerjs/presets/preset-sheets-core/locales/zh-TW"),
+  },
+  es: {
+    locale: LocaleType.ES_ES,
+    load: () => import("@univerjs/presets/preset-sheets-core/locales/es-ES"),
+  },
+  de: {
+    locale: LocaleType.DE_DE,
+    load: () => import("@univerjs/presets/preset-sheets-core/locales/de-DE"),
+  },
+}
+
+export interface SheetEditorHandle {
+  exportActiveSheet: () => string
+  flushSnapshot: () => void
+}
+
+interface SheetEditorProps {
+  input: string
+  sample: string
+}
+
+function readWorkbookSnapshot(): IWorkbookData | null {
+  try {
+    const raw = localStorage.getItem(WORKBOOK_STORAGE_KEY)
+    if (!raw) return null
+    const parsed: unknown = JSON.parse(raw)
+    return parsed && typeof parsed === "object" ? (parsed as IWorkbookData) : null
+  } catch {
+    return null
+  }
+}
+
+function createEmptyWorkbookData(locale: LocaleType): Partial<IWorkbookData> {
+  return {
+    id: crypto.randomUUID(),
+    name: "converTeXcel",
+    locale,
+    sheetOrder: [],
+    sheets: {},
+    styles: {},
+    resources: [],
+  }
+}
+
+function nextImportedSheetName(existingNames: Set<string>): string {
+  if (!existingNames.has("Imported")) return "Imported"
+  let suffix = 2
+  while (existingNames.has(`Imported ${suffix}`)) suffix += 1
+  return `Imported ${suffix}`
+}
+
+export const SheetEditor = forwardRef<SheetEditorHandle, SheetEditorProps>(
+  function SheetEditor({ input, sample }, ref) {
+    const { language, t } = useI18n()
+    const containerRef = useRef<HTMLDivElement>(null)
+    const univerApiRef = useRef<FUniver | null>(null)
+    const univerRef = useRef<ReturnType<typeof createUniver>["univer"] | null>(null)
+    const saveTimerRef = useRef<number | null>(null)
+    const inputRef = useRef(input)
+    const sampleRef = useRef(sample)
+    const [ready, setReady] = useState(false)
+
+    inputRef.current = input
+    sampleRef.current = sample
+
+    const flushSnapshot = () => {
+      if (saveTimerRef.current !== null) {
+        window.clearTimeout(saveTimerRef.current)
+        saveTimerRef.current = null
+      }
+      try {
+        const workbook = univerApiRef.current?.getActiveWorkbook()
+        if (workbook) {
+          localStorage.setItem(WORKBOOK_STORAGE_KEY, JSON.stringify(workbook.save()))
+        }
+      } catch {
+        // 容量超過 / localStorage 不可の環境では黙って無視する。
+      }
+    }
+
+    const scheduleSnapshot = () => {
+      if (saveTimerRef.current !== null) window.clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = window.setTimeout(flushSnapshot, AUTOSAVE_DELAY)
+    }
+
+    useImperativeHandle(
+      ref,
+      () => ({
+        exportActiveSheet: () => {
+          const sheet = univerApiRef.current?.getActiveWorkbook()?.getActiveSheet()
+          if (!sheet) return inputRef.current
+          return serializeTsv(sheet.getDataRange().getValues())
+        },
+        flushSnapshot,
+      }),
+      [],
+    )
+
+    useEffect(() => {
+      const container = containerRef.current
+      if (!container) return
+
+      let cancelled = false
+      let commandDisposable: { dispose: () => void } | null = null
+      let themeObserver: MutationObserver | null = null
+
+      setReady(false)
+      const config = UNIVER_LOCALES[language]
+
+      void config.load().then(({ default: localeMessages }) => {
+        if (cancelled) return
+
+        const { univer, univerAPI } = createUniver({
+          locale: config.locale,
+          locales: { [config.locale]: localeMessages },
+          theme: defaultTheme,
+          presets: [UniverSheetsCorePreset({ container })],
+        })
+        univerRef.current = univer
+        univerApiRef.current = univerAPI
+
+        const storedSnapshot = readWorkbookSnapshot()
+        let restoredSnapshot = false
+        let workbook
+        if (storedSnapshot) {
+          try {
+            workbook = univerAPI.createWorkbook(storedSnapshot)
+            restoredSnapshot = true
+          } catch {
+            workbook = univerAPI.createWorkbook(createEmptyWorkbookData(config.locale))
+          }
+        } else {
+          workbook = univerAPI.createWorkbook(createEmptyWorkbookData(config.locale))
+        }
+
+        if (!restoredSnapshot) {
+          const sheet = workbook.getSheets()[0]
+            ?? workbook.create("Sheet1", DEFAULT_ROWS, DEFAULT_COLUMNS)
+          const rows = parseTsv(inputRef.current.trim() ? inputRef.current : sampleRef.current)
+          if (rows.length > 0) {
+            sheet
+              .getRange(0, 0, rows.length, rows[0].length)
+              .setValues(rows)
+          }
+          sheet.activate()
+        }
+
+        commandDisposable = univerAPI.addEvent(
+          univerAPI.Event.CommandExecuted,
+          scheduleSnapshot,
+        )
+
+        let lastDarkMode: boolean | null = null
+        const syncTheme = () => {
+          const darkMode = document.documentElement.classList.contains("dark")
+          if (darkMode === lastDarkMode) return
+          lastDarkMode = darkMode
+          univerAPI.toggleDarkMode(darkMode)
+        }
+        syncTheme()
+        themeObserver = new MutationObserver(syncTheme)
+        themeObserver.observe(document.documentElement, {
+          attributes: true,
+          attributeFilter: ["class"],
+        })
+
+        window.addEventListener("pagehide", flushSnapshot)
+        flushSnapshot()
+        setReady(true)
+      })
+
+      return () => {
+        cancelled = true
+        flushSnapshot()
+        window.removeEventListener("pagehide", flushSnapshot)
+        commandDisposable?.dispose()
+        themeObserver?.disconnect()
+        const univerToDispose = univerRef.current
+        univerRef.current = null
+        univerApiRef.current = null
+        // Univer UI も内部に React root を持つため、親Reactのunmount中に
+        // 同期disposeせず次のタスクで破棄する。
+        window.setTimeout(() => univerToDispose?.dispose(), 0)
+      }
+    }, [language])
+
+    const importInput = () => {
+      const values = parseTsv(input)
+      const workbook = univerApiRef.current?.getActiveWorkbook()
+      if (!workbook || values.length === 0) return
+
+      const existingNames = new Set(workbook.getSheets().map((sheet) => sheet.getSheetName()))
+      const sheet = workbook.create(
+        nextImportedSheetName(existingNames),
+        Math.max(DEFAULT_ROWS, values.length),
+        Math.max(DEFAULT_COLUMNS, values[0].length),
+      )
+      sheet
+        .getRange(0, 0, values.length, values[0].length)
+        .setValues(values)
+      sheet.activate()
+      scheduleSnapshot()
+    }
+
+    return (
+      <section className="space-y-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">{t.sheet.title}</h1>
+            <p className="text-muted-foreground text-sm">{t.sheet.description}</p>
+          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={importInput}
+            disabled={!ready || input.trim() === ""}
+            title={t.sheet.importTitle}
+          >
+            <FileInput className="h-4 w-4" />
+            <span>{t.sheet.importInput}</span>
+          </Button>
+        </div>
+        <div className="relative h-[70vh] min-h-[420px] overflow-hidden rounded-md border bg-background">
+          {!ready && (
+            <div className="absolute inset-0 z-10 grid place-items-center bg-background/80 text-sm text-muted-foreground">
+              {t.sheet.loading}
+            </div>
+          )}
+          <div ref={containerRef} className="h-full w-full" />
+        </div>
+      </section>
+    )
+  },
+)

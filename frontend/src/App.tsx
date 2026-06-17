@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react"
 import { BrowserRouter, Route, Routes } from "react-router-dom"
 
 import { AppHeader } from "@/components/AppHeader"
+import { SiteFooter } from "@/components/SiteFooter"
 import { StatusBar } from "@/components/StatusBar"
 import { I18nProvider } from "@/hooks/useI18n"
 import { StatusBarProvider } from "@/hooks/useStatusBar"
@@ -11,6 +12,11 @@ const AddinPage = lazy(() => import("@/pages/AddinPage"))
 const ConvertPage = lazy(() => import("@/pages/ConvertPage"))
 const NotFoundPage = lazy(() => import("@/pages/NotFoundPage"))
 const PrivacyPage = lazy(() => import("@/pages/PrivacyPage"))
+const GuidePage = lazy(() => import("@/pages/GuidePage"))
+const FaqPage = lazy(() => import("@/pages/FaqPage"))
+const AboutPage = lazy(() => import("@/pages/AboutPage"))
+const ContactPage = lazy(() => import("@/pages/ContactPage"))
+const TermsPage = lazy(() => import("@/pages/TermsPage"))
 
 const localizedRoutes = SUPPORTED_LANGUAGES
   .filter((language) => language !== "ja")
@@ -37,11 +43,17 @@ export default function App() {
                 <Route path="/convert" element={<ConvertPage />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
                 <Route path="/excel-addin" element={<AddinPage />} />
+                <Route path="/guide" element={<GuidePage />} />
+                <Route path="/faq" element={<FaqPage />} />
+                <Route path="/about" element={<AboutPage />} />
+                <Route path="/contact" element={<ContactPage />} />
+                <Route path="/terms" element={<TermsPage />} />
                 {localizedRoutes}
                 <Route path="*" element={<NotFoundPage />} />
               </Routes>
             </Suspense>
           </main>
+          <SiteFooter />
           <StatusBar />
         </I18nProvider>
       </BrowserRouter>

@@ -1,7 +1,11 @@
 import { useI18n } from "@/hooks/useI18n"
 import { useStatusData } from "@/hooks/useStatusBar"
 
-function engineLabel(ready: boolean | null, labels: { loading: string; ready: string; unavailable: string }) {
+function engineLabel(
+  ready: boolean | null | "idle",
+  labels: { loading: string; ready: string; unavailable: string; idle: string },
+) {
+  if (ready === "idle") return { text: labels.idle, color: "text-muted-foreground" }
   if (ready === null) return { text: labels.loading, color: "text-warning" }
   if (ready) return { text: labels.ready, color: "text-success" }
   return { text: labels.unavailable, color: "text-destructive" }

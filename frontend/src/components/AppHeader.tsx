@@ -14,7 +14,7 @@ export function AppHeader() {
   ]
 
   return (
-    <header className="border-b">
+    <header className="relative z-40 border-b bg-background">
       <div className="flex w-full flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3 sm:px-6">
         <NavLink to={pathFor("/")} viewTransition className="shrink-0" aria-label="converTeXcel">
           <img src={logo} alt="converTeXcel" width={209} height={36} className="h-9 w-auto dark:hidden" />
