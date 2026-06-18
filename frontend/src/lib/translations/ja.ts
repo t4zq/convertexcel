@@ -94,6 +94,13 @@ const ja = {
       line: (n: number) => `本文 ${n} 行目付近`,
       compiledLine: (n: number) => `生成された文書の ${n} 行目付近`,
       noLocation: "該当箇所を特定できませんでした",
+      ai: {
+        button: "AIに解説してもらう",
+        loading: "解説を生成中…",
+        heading: "AIによる解説",
+        disclaimer: "AIが生成した説明です。内容が正しいとは限りません。",
+        failed: (detail: string) => `解説を取得できませんでした（${detail}）。`,
+      },
       kinds: {
         undefinedControlSequence: {
           label: "未定義のコマンド",

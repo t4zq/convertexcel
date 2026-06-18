@@ -23,11 +23,26 @@
     "binding": "ASSETS",
     "not_found_handling": "single-page-application"
   },
+  // Workers AI: TeX コンパイルエラーを自然言語で解説する /api/explain-error 用。
+  "ai": {
+    "binding": "AI",
+    "remote" : true
+  },
+  // AI に回した（＝機械分類できなかった）エラーの署名を集計するための書き込み専用ログ。
+  // 頻出エラーを見つけて parseTexLog のルールへ「昇格」させるワークフローに使う。
+  "analytics_engine_datasets": [
+    { "binding": "EXPLAIN_ANALYTICS", "dataset": "explain_errors" }
+  ],
   "ratelimits": [
     {
       "name": "PDF_PREVIEW_RATE_LIMIT",
       "namespace_id": "1001",
       "simple": { "limit": 5, "period": 60 }
+    },
+    {
+      "name": "EXPLAIN_RATE_LIMIT",
+      "namespace_id": "1002",
+      "simple": { "limit": 8, "period": 60 }
     }
   ]
 }

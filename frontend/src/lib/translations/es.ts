@@ -96,6 +96,13 @@ const es: Translations = {
       line: (n: number) => `cerca de la línea ${n} de tu código`,
       compiledLine: (n: number) => `cerca de la línea ${n} del documento generado`,
       noLocation: "No se pudo determinar la ubicación",
+      ai: {
+        button: "Explicar con IA",
+        loading: "Generando explicación…",
+        heading: "Explicación de IA",
+        disclaimer: "Generado por IA. Puede contener errores.",
+        failed: (detail: string) => `No se pudo obtener la explicación (${detail}).`,
+      },
       kinds: {
         undefinedControlSequence: {
           label: "Comando no definido",

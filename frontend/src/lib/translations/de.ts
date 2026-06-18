@@ -96,6 +96,13 @@ const de: Translations = {
       line: (n: number) => `etwa in Zeile ${n} deines Codes`,
       compiledLine: (n: number) => `etwa in Zeile ${n} des erzeugten Dokuments`,
       noLocation: "Position konnte nicht bestimmt werden",
+      ai: {
+        button: "Mit KI erklären",
+        loading: "Erklärung wird erstellt…",
+        heading: "KI-Erklärung",
+        disclaimer: "Von KI erstellt. Kann Fehler enthalten.",
+        failed: (detail: string) => `Erklärung konnte nicht abgerufen werden (${detail}).`,
+      },
       kinds: {
         undefinedControlSequence: {
           label: "Undefinierter Befehl",
