@@ -1,0 +1,39 @@
+---
+title: 数式・単位・有効数字
+description: 数式の表示と、siunitxを使った数値・単位の整え方を説明します。
+---
+
+## ドキュメント内の数式
+
+インライン数式は $E = mc^2$ のように表示できます。
+
+別行立ての数式も利用できます。
+
+$$
+y = ax^2 + bx + c
+$$
+
+## 有効数字
+
+測定値 $x$ を有効数字 $n$ 桁へ丸めるとき、変換画面の有効数字設定を使用できます。元データを変更せず、出力コード側だけを整えられます。
+
+## siunitxによる桁揃え
+
+```latex
+\\begin{tabular}{S[table-format=2.2]}
+  \\toprule
+  {電圧 / \\si{\\volt}} \\\\
+  \\midrule
+  1.20 \\\\
+  12.35 \\\\
+  \\bottomrule
+\\end{tabular}
+```
+
+<PackageList>
+`\\usepackage{booktabs}`と`\\usepackage{siunitx}`をプリアンブルへ追加します。
+</PackageList>
+
+<Callout title="数式レンダリングについて">
+このDocsの数式表示にはKaTeXを使用しています。レポート用に生成されるLaTeXコードのコンパイルとは独立しています。
+</Callout>

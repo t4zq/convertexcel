@@ -17,6 +17,9 @@
     "dev:full": "node scripts/dev.mjs",
     "dev:api": "wrangler dev",
     "dev:frontend": "npm --prefix frontend run dev",
+    "docs:dev": "npm --prefix docs run dev",
+    "docs:build": "npm --prefix docs run build",
+    "docs:deploy": "npm --prefix docs run deploy",
     "addin:cert:create": "powershell -ExecutionPolicy Bypass -File addin/scripts/create-dev-cert.ps1",
     "addin:cert:trust": "powershell -ExecutionPolicy Bypass -File addin/scripts/trust-dev-cert.ps1",
     "typecheck:worker": "tsc -p worker/tsconfig.json"
