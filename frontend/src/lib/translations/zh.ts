@@ -96,6 +96,13 @@ const zh: Translations = {
       line: (n: number) => `约在代码第 ${n} 行`,
       compiledLine: (n: number) => `约在生成文档的第 ${n} 行`,
       noLocation: "无法确定具体位置",
+      ai: {
+        button: "用 AI 解释",
+        loading: "正在生成解释…",
+        heading: "AI 解释",
+        disclaimer: "由 AI 生成，内容未必准确。",
+        failed: (detail: string) => `无法获取解释（${detail}）。`,
+      },
       kinds: {
         undefinedControlSequence: {
           label: "未定义的命令",

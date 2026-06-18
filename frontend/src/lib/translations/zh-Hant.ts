@@ -96,6 +96,13 @@ const zhHant: Translations = {
       line: (n: number) => `約在程式碼第 ${n} 行`,
       compiledLine: (n: number) => `約在產生文件的第 ${n} 行`,
       noLocation: "無法確定確切位置",
+      ai: {
+        button: "用 AI 解釋",
+        loading: "正在產生解釋…",
+        heading: "AI 解釋",
+        disclaimer: "由 AI 產生，內容未必正確。",
+        failed: (detail: string) => `無法取得解釋（${detail}）。`,
+      },
       kinds: {
         undefinedControlSequence: {
           label: "未定義的指令",
