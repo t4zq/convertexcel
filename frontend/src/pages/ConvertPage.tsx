@@ -1,24 +1,14 @@
 import { lazy, Suspense, type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
-import { CheckCircle2, ChevronLeft, ChevronRight, FileText, Link2, LoaderCircle, Settings2, Upload } from "lucide-react"
+import { CheckCircle2, Upload } from "lucide-react"
 import readXlsxFile from "read-excel-file/browser"
 
-import { CopyButton } from "@/components/convert/CopyButton"
-import { LandingSeoContent } from "@/components/LandingSeoContent"
-import { PasteInput } from "@/components/convert/PasteInput"
+import { InputStep } from "@/components/convert/InputStep"
+import { OutputPanel } from "@/components/convert/OutputPanel"
+import { PreviewPanel } from "@/components/convert/PreviewPanel"
+import { StepNavButton } from "@/components/convert/StepNavButton"
+import { PanelFallback } from "@/components/convert/panels"
 import type { PendingSheetImport } from "@/components/convert/SheetEditor"
-import { Loader } from "@/components/animate-ui/components/loader"
-import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
-import { RippleButton } from "@/components/animate-ui/components/buttons/ripple"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/animate-ui/components/radix/tabs"
 import { useConvertPageStatus } from "@/hooks/useConvertPageStatus"
 import { useConversionOutputs } from "@/hooks/useConversionOutputs"
 import { useCooldown } from "@/hooks/useCooldown"
@@ -48,22 +38,11 @@ type Step = "input" | "convert" | "sheet"
 
 const STEPS: Step[] = ["input", "convert", "sheet"]
 
-const OUTPUT_MIN_HEIGHT = 273
 const SITE_URL = "https://convertexcel.net/"
 const convertUrls = localizedSiteUrls(SITE_URL, "/")
-const CodeAssistEditor = lazy(() =>
-  import("@/components/CodeAssistEditor").then((module) => ({
-    default: module.CodeAssistEditor,
-  }))
-)
 const ShareDialog = lazy(() =>
   import("@/components/ShareDialog").then((module) => ({
     default: module.ShareDialog,
-  }))
-)
-const CsvActions = lazy(() =>
-  import("@/components/convert/CsvActions").then((module) => ({
-    default: module.CsvActions,
   }))
 )
 const SheetEditor = lazy(() =>
@@ -71,75 +50,11 @@ const SheetEditor = lazy(() =>
     default: module.SheetEditor,
   }))
 )
-const GnuplotPreviewPane = lazy(() =>
-  import("@/components/convert/GnuplotPreviewPane").then((module) => ({
-    default: module.GnuplotPreviewPane,
-  }))
-)
-const GnuplotSettingsPanel = lazy(() =>
-  import("@/components/convert/GnuplotSettingsPanel").then((module) => ({
-    default: module.GnuplotSettingsPanel,
-  }))
-)
-const InputSettingsPanel = lazy(() =>
-  import("@/components/convert/InputSettingsPanel").then((module) => ({
-    default: module.InputSettingsPanel,
-  }))
-)
 const PreviewConsentDialog = lazy(() =>
   import("@/components/convert/PreviewConsentDialog").then((module) => ({
     default: module.PreviewConsentDialog,
   }))
 )
-const PreviewErrorPanel = lazy(() =>
-  import("@/components/convert/PreviewErrorPanel").then((module) => ({
-    default: module.PreviewErrorPanel,
-  }))
-)
-const TikzSettingsPanel = lazy(() =>
-  import("@/components/convert/TikzSettingsPanel").then((module) => ({
-    default: module.TikzSettingsPanel,
-  }))
-)
-type CodeAssistKind = "latex" | "tikz" | "gnuplot"
-
-function EditorFallback({ minHeight }: { minHeight: number }) {
-  return (
-    <div
-      className="rounded-md border bg-muted/30"
-      style={{ minHeight }}
-      aria-hidden="true"
-    />
-  )
-}
-
-function PanelFallback({ minHeight = 48 }: { minHeight?: number }) {
-  return (
-    <div
-      className="rounded-md border bg-muted/30"
-      style={{ minHeight }}
-      aria-hidden="true"
-    />
-  )
-}
-
-function OutputCodeEditor({
-  kind,
-  value,
-  onChange,
-  minHeight,
-}: {
-  kind: CodeAssistKind
-  value: string
-  onChange: (value: string) => void
-  minHeight: number
-}) {
-  return (
-    <Suspense fallback={<EditorFallback minHeight={minHeight} />}>
-      <CodeAssistEditor kind={kind} value={value} onChange={onChange} minHeight={minHeight} />
-    </Suspense>
-  )
-}
 
 export default function ConvertPage() {
   const { language, t, seo: seoText } = useI18n()
@@ -383,62 +298,20 @@ export default function ConvertPage() {
 
       <div className="space-y-4">
         {/* 画面左右端のクリックゾーン（上下フルハイト）でステップを前後に切り替える */}
-        <button
-          type="button"
-          aria-label={t.sheet.previousStep(stepTitle(previousStep))}
+        <StepNavButton
+          side="left"
+          label={t.sheet.previousStep(stepTitle(previousStep))}
+          pillLabel={stepTitle(previousStep)}
+          active={hasContent && step === "input"}
           onClick={() => moveStep(-1)}
-          className={`group fixed inset-y-0 left-0 z-20 flex w-10 items-center justify-start gap-2 pl-0.5 transition-colors sm:w-14 ${
-            hasContent && step === "input"
-              ? "hover:bg-gradient-to-r hover:from-primary/[0.08] hover:to-transparent"
-              : "hover:bg-gradient-to-r hover:from-foreground/[0.05] hover:to-transparent"
-          }`}
-        >
-          <span
-            className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border shadow-sm backdrop-blur transition-all group-hover:scale-105 ${
-              hasContent && step === "input"
-                ? "border-primary bg-primary text-primary-foreground opacity-100"
-                : "bg-background/80 text-muted-foreground opacity-60 group-hover:text-foreground group-hover:opacity-100"
-            }`}
-          >
-            {hasContent && step === "input" && (
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/40" aria-hidden="true" />
-            )}
-            <ChevronLeft className="relative h-5 w-5" />
-          </span>
-          {hasContent && step === "input" && (
-            <span className="hidden shrink-0 rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground shadow-sm lg:inline">
-              {t.sheet.title}
-            </span>
-          )}
-        </button>
-        <button
-          type="button"
-          aria-label={t.sheet.nextStep(stepTitle(nextStep))}
+        />
+        <StepNavButton
+          side="right"
+          label={t.sheet.nextStep(stepTitle(nextStep))}
+          pillLabel={stepTitle(nextStep)}
+          active={hasContent && step === "input"}
           onClick={() => moveStep(1)}
-          className={`group fixed inset-y-0 right-0 z-20 flex w-10 items-center justify-end gap-2 pr-0.5 transition-colors sm:w-14 ${
-            hasContent && step === "input"
-              ? "hover:bg-gradient-to-l hover:from-primary/[0.08] hover:to-transparent"
-              : "hover:bg-gradient-to-l hover:from-foreground/[0.05] hover:to-transparent"
-          }`}
-        >
-          {hasContent && step === "input" && (
-            <span className="hidden rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground shadow-sm lg:inline">
-              {t.convert.outputTitle}
-            </span>
-          )}
-          <span
-            className={`relative flex h-10 w-10 items-center justify-center rounded-full border shadow-sm backdrop-blur transition-all group-hover:scale-105 ${
-              hasContent && step === "input"
-                ? "border-primary bg-primary text-primary-foreground opacity-100"
-                : "bg-background/80 text-muted-foreground opacity-60 group-hover:text-foreground group-hover:opacity-100"
-            }`}
-          >
-            {hasContent && step === "input" && (
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/40" aria-hidden="true" />
-            )}
-            <ChevronRight className="relative h-5 w-5" />
-          </span>
-        </button>
+        />
 
         <div className="relative">
           <AnimatePresence mode="wait" custom={direction} initial={false}>
@@ -479,81 +352,18 @@ export default function ConvertPage() {
                   </div>
                 </div>
               )}
-              <motion.header variants={itemVariants} className="space-y-1">
-                <p className="text-muted-foreground text-sm font-medium tracking-wide uppercase">
-                  {t.convert.eyebrow}
-                </p>
-                <h1 className="text-2xl font-semibold tracking-tight">{t.convert.title}</h1>
-                <p className="text-muted-foreground text-sm">{t.convert.intro}</p>
-              </motion.header>
-              <motion.div variants={itemVariants} className="space-y-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <h2 className="text-base font-semibold tracking-tight">{t.convert.inputTitle}</h2>
-                    <p className="text-muted-foreground text-sm">{t.convert.pasteDescription}</p>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0]
-                        if (file) void handleExcelUpload(file)
-                        e.target.value = ""
-                      }}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => fileInputRef.current?.click()}
-                      title={t.convert.uploadExcelTitle}
-                      className="gap-1.5 text-xs"
-                    >
-                      <Upload className="h-3.5 w-3.5" /> {t.convert.uploadExcel}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShareDialogOpen(true)}
-                      title={t.convert.shareTitle}
-                      className="gap-1.5 text-xs"
-                    >
-                      <Link2 className="h-3.5 w-3.5" /> {t.convert.share}
-                    </Button>
-                  </div>
-                </div>
-
-                <PasteInput
-                  value={input}
-                  onChange={setInput}
-                  diagnostics={diagnostics}
-                  placeholder={t.convert.pasteDescription}
-                />
-
-                <div className="flex justify-end">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setShowInputSettings((v) => !v)}
-                    title={`${showInputSettings ? t.convert.hideInputSettings : t.convert.showInputSettings} (Alt+I)`}
-                  >
-                    <Settings2 className="h-4 w-4" />
-                    <span>{showInputSettings ? t.convert.hideInputSettings : t.convert.showInputSettings}</span>
-                  </Button>
-                </div>
-                {showInputSettings && (
-                  <Suspense fallback={<PanelFallback />}>
-                    <InputSettingsPanel value={table} onChange={updateTable} />
-                  </Suspense>
-                )}
-              </motion.div>
-
-              {language === "ja" && <LandingSeoContent />}
+              <InputStep
+                input={input}
+                onInputChange={setInput}
+                diagnostics={diagnostics}
+                fileInputRef={fileInputRef}
+                onExcelUpload={(file) => void handleExcelUpload(file)}
+                onShare={() => setShareDialogOpen(true)}
+                showInputSettings={showInputSettings}
+                onToggleInputSettings={() => setShowInputSettings((v) => !v)}
+                table={table}
+                onTableChange={updateTable}
+              />
             </motion.div>
           ) : step === "sheet" ? (
             <motion.div
@@ -589,112 +399,30 @@ export default function ConvertPage() {
               } as CSSProperties}
             >
               <motion.div variants={itemVariants} className="h-full">
-        <Card className="h-full">
-          <CardHeader>
-            <CardTitle>{t.convert.outputTitle}</CardTitle>
-            <CardDescription>{t.convert.outputDescription}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Suspense fallback={<PanelFallback />}>
-              <CsvActions value={csvOut} />
-            </Suspense>
-            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as OutputTab)}>
-              <TabsList className="flex w-full justify-start overflow-x-auto">
-                <TabsTrigger value="latex" title="Alt+1">table.tex</TabsTrigger>
-                <TabsTrigger value="tikz" title="Alt+2">plot.pgfplots</TabsTrigger>
-                <TabsTrigger value="gnuplot" title="Alt+3">plot.gp</TabsTrigger>
-              </TabsList>
-              <TabsContent value="latex" className="space-y-2">
-                <div className="flex flex-wrap justify-end gap-2">
-                  <RippleButton size="sm" onClick={preview.requestPreview} disabled={!preview.canPreviewLatex} title={`${t.convert.previewTable} (Ctrl+Enter)`}>
-                    <FileText className="h-4 w-4" />
-                    <span>{t.convert.previewTable}</span>
-                  </RippleButton>
-                  <CopyButton value={latexOut} label={t.convert.copyTable} />
-                  {cooldown > 0 && <span className="text-muted-foreground self-center text-sm">{t.convert.cooldown(cooldown)}</span>}
-                </div>
-                <div>
-                  <OutputCodeEditor
-                    kind="latex"
-                    value={latexOut}
-                    onChange={setLatexOut}
-                    minHeight={OUTPUT_MIN_HEIGHT}
-                  />
-                </div>
-              </TabsContent>
-              <TabsContent value="tikz" className="space-y-3">
-                <div className="flex flex-wrap justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setShowTikzSettings((v) => !v)}
-                    title={`${showTikzSettings ? t.convert.hideTikzSettings : t.convert.showTikzSettings} (Alt+G)`}
-                  >
-                    <Settings2 className="h-4 w-4" />
-                    <span>{showTikzSettings ? t.convert.hideTikzSettings : t.convert.showTikzSettings}</span>
-                  </Button>
-                  <RippleButton size="sm" onClick={preview.requestPreview} disabled={!preview.canPreviewTikz} title={`${t.convert.previewGraph} (Ctrl+Enter)`}>
-                    <FileText className="h-4 w-4" />
-                    <span>{t.convert.previewGraph}</span>
-                  </RippleButton>
-                  <CopyButton value={tikzOut} label={t.convert.copyPlot} />
-                  {cooldown > 0 && <span className="text-muted-foreground self-center text-sm">{t.convert.cooldown(cooldown)}</span>}
-                </div>
-                {showTikzSettings && (
-                  <Suspense fallback={<PanelFallback />}>
-                    <TikzSettingsPanel
-                      value={tikz}
-                      onChange={updateTikz}
-                      seriesCount={seriesCount}
-                      seriesNames={seriesNames}
-                    />
-                  </Suspense>
-                )}
-                <div>
-                  <OutputCodeEditor
-                    kind="tikz"
-                    value={tikzOut}
-                    onChange={setTikzOut}
-                    minHeight={OUTPUT_MIN_HEIGHT}
-                  />
-                </div>
-              </TabsContent>
-              <TabsContent value="gnuplot" className="space-y-2">
-                <div className="flex flex-wrap justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setShowGnuplotSettings((v) => !v)}
-                    title={`${showGnuplotSettings ? t.convert.hideTikzSettings : t.convert.showTikzSettings} (Alt+G)`}
-                  >
-                    <Settings2 className="h-4 w-4" />
-                    <span>{showGnuplotSettings ? t.convert.hideTikzSettings : t.convert.showTikzSettings}</span>
-                  </Button>
-                  <RippleButton size="sm" onClick={preview.requestPreview} disabled={gnuplotRendering || !preview.canPreviewGnuplot} title={`${t.convert.previewGnuplot} (Ctrl+Enter)`}>
-                    {gnuplotRendering ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
-                    <span>{t.convert.previewGnuplot}</span>
-                  </RippleButton>
-                  <CopyButton value={gnuplotOut} label={t.convert.copyPlotGnuplot} />
-                </div>
-                {showGnuplotSettings && (
-                  <Suspense fallback={<PanelFallback />}>
-                    <GnuplotSettingsPanel value={gnuplot} onChange={updateGnuplot} />
-                  </Suspense>
-                )}
-                <div>
-                  <OutputCodeEditor
-                    kind="gnuplot"
-                    value={gnuplotOut}
-                    onChange={setGnuplotOut}
-                    minHeight={OUTPUT_MIN_HEIGHT}
-                  />
-                </div>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
+                <OutputPanel
+                  activeTab={activeTab}
+                  onTabChange={setActiveTab}
+                  csvOut={csvOut}
+                  latexOut={latexOut}
+                  onLatexChange={setLatexOut}
+                  tikzOut={tikzOut}
+                  onTikzChange={setTikzOut}
+                  gnuplotOut={gnuplotOut}
+                  onGnuplotChange={setGnuplotOut}
+                  preview={preview}
+                  cooldown={cooldown}
+                  tikz={tikz}
+                  onTikzSettingsChange={updateTikz}
+                  gnuplot={gnuplot}
+                  onGnuplotSettingsChange={updateGnuplot}
+                  showTikzSettings={showTikzSettings}
+                  onToggleTikzSettings={() => setShowTikzSettings((v) => !v)}
+                  showGnuplotSettings={showGnuplotSettings}
+                  onToggleGnuplotSettings={() => setShowGnuplotSettings((v) => !v)}
+                  seriesCount={seriesCount}
+                  seriesNames={seriesNames}
+                  gnuplotRendering={gnuplotRendering}
+                />
               </motion.div>
 
               <div
@@ -715,73 +443,14 @@ export default function ConvertPage() {
               </div>
 
               <motion.div variants={itemVariants} className="h-full">
-        <Card className="h-full">
-          <CardHeader>
-            <CardTitle>{t.convert.pdfTitle}</CardTitle>
-            <CardDescription>
-              {activeTab === "gnuplot" ? t.convert.gnuplotPreviewDescription : t.convert.pdfDescription}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {activeTab === "gnuplot" ? (
-              <Suspense fallback={<PanelFallback minHeight={420} />}>
-                <GnuplotPreviewPane
-                  svg={gnuplotSvg}
-                  rendering={gnuplotRendering}
-                  error={gnuplotErr}
+                <PreviewPanel
+                  activeTab={activeTab}
+                  preview={preview}
+                  gnuplotSvg={gnuplotSvg}
+                  gnuplotRendering={gnuplotRendering}
+                  gnuplotError={gnuplotErr}
                   onImageActionError={markImageActionFailed}
                 />
-              </Suspense>
-            ) : (
-            <>
-            {preview.previewStatus.phase !== "idle" && (
-              <div
-                role="status"
-                aria-live="polite"
-                className="rounded-md border bg-muted/40 px-3 py-2"
-              >
-                <div className="mb-2 flex items-center justify-between gap-3 text-sm">
-                  <span className="flex min-w-0 items-center gap-2 font-medium">
-                    {preview.previewStatus.phase === "complete" ? (
-                      <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
-                    ) : (
-                      <Loader size={5} className="shrink-0 text-info" />
-                    )}
-                    <span className="truncate">
-                      {preview.previewStatus.phase === "complete"
-                        ? t.convert.previewComplete
-                        : t.convert.previewProgress(
-                            preview.previewStatus.kind === "tikz" ? t.convert.previewKindGraph : t.convert.previewKindTable,
-                          )}
-                    </span>
-                  </span>
-                  <span className="shrink-0 tabular-nums text-muted-foreground">
-                    {preview.previewStatus.progress}%
-                  </span>
-                </div>
-                <Progress
-                  value={preview.previewStatus.progress}
-                  aria-label={t.convert.previewProgressLabel}
-                  className="h-1.5 bg-background [&_[data-slot=progress-indicator]]:bg-info [&_[data-slot=progress-indicator]]:duration-500 [&_[data-slot=progress-indicator]]:ease-out"
-                />
-              </div>
-            )}
-            {preview.previewError && (
-              <Suspense fallback={null}>
-                <PreviewErrorPanel error={preview.previewError} onDismiss={preview.dismissPreviewError} />
-              </Suspense>
-            )}
-            <iframe
-              ref={preview.iframeRef}
-              name="tex-iframe"
-              title="LaTeX PDF preview"
-              className="h-[420px] w-full rounded-md border xl:h-[760px] dark:[filter:invert(1)_hue-rotate(180deg)]"
-              onLoad={preview.finishPreviewLoad}
-            />
-            </>
-            )}
-          </CardContent>
-        </Card>
               </motion.div>
             </motion.div>
           )}
