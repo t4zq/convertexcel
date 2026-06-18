@@ -1,6 +1,8 @@
 import { useState } from "react"
 import { AlertTriangle, ChevronDown, ExternalLink, WifiOff, X } from "lucide-react"
+import { motion, useReducedMotion } from "motion/react"
 
+import { AutoHeight } from "@/components/animate-ui/primitives/effects/auto-height"
 import { CopyButton } from "@/components/convert/CopyButton"
 import { Button } from "@/components/ui/button"
 import { useI18n } from "@/hooks/useI18n"
@@ -18,6 +20,7 @@ type PreviewErrorPanelProps = {
 export function PreviewErrorPanel({ error, onDismiss }: PreviewErrorPanelProps) {
   const { t } = useI18n()
   const [showLog, setShowLog] = useState(false)
+  const reducedMotion = useReducedMotion()
   const te = t.convert.texError
 
   const locationLabel = (e: TexLogError) => {
@@ -101,19 +104,25 @@ export function PreviewErrorPanel({ error, onDismiss }: PreviewErrorPanelProps) 
         className="mt-3 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
         aria-expanded={showLog}
       >
-        <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showLog ? "rotate-180" : ""}`} />
+        <motion.span animate={{ rotate: showLog ? 180 : 0 }} transition={{ duration: reducedMotion ? 0 : 0.18 }}>
+          <ChevronDown className="h-3.5 w-3.5" />
+        </motion.span>
         {showLog ? te.hideLog : te.showLog}
       </button>
-      {showLog && (
-        <>
+      <AutoHeight
+        deps={[showLog]}
+        transition={reducedMotion ? { duration: 0 } : undefined}
+        aria-hidden={!showLog}
+      >
+        {showLog ? <div>
           <div className="mt-2 flex justify-end">
             <CopyButton value={error.rawLog} label={te.copyLog} />
           </div>
           <pre className="mt-2 max-h-72 overflow-auto rounded bg-muted px-2 py-2 text-xs leading-relaxed">
             <code>{error.rawLog}</code>
           </pre>
-        </>
-      )}
+        </div> : null}
+      </AutoHeight>
     </div>
   )
 }

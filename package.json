@@ -19,9 +19,6 @@
     "dev:frontend": "npm --prefix frontend run dev",
     "addin:cert:create": "powershell -ExecutionPolicy Bypass -File addin/scripts/create-dev-cert.ps1",
     "addin:cert:trust": "powershell -ExecutionPolicy Bypass -File addin/scripts/trust-dev-cert.ps1",
-    "db:create": "wrangler d1 create convertexcel",
-    "db:migrate": "wrangler d1 migrations apply convertexcel --remote",
-    "db:migrate:local": "wrangler d1 migrations apply convertexcel --local",
     "typecheck:worker": "tsc -p worker/tsconfig.json"
   },
   "devDependencies": {

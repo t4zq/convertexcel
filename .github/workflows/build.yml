@@ -55,3 +55,13 @@ jobs:
       - name: Build frontend
         working-directory: frontend
         run: npm run build
+
+      - name: Build Excel add-in
+        working-directory: frontend
+        run: npm run build:addin
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Typecheck worker
+        run: npm run typecheck:worker

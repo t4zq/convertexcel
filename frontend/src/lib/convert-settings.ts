@@ -31,28 +31,6 @@ export interface TikzSettings {
   seriesMarks: string[]
   // 近似式に付ける不確かさの有効桁数。0 = 表示しない。
   uncSigFigs: number
-  // ボード線図モード。列指定は "auto"（自動検出）, "none"（未使用）, 0-based 列番号文字列。
-  bode: BodeSettings
-}
-
-export interface BodeSettings {
-  enabled: boolean
-  frequencyColumn: string
-  vinColumn: string
-  voutColumn: string
-  gainColumn: string
-  phaseColumn: string
-  delayColumn: string
-}
-
-export const DEFAULT_BODE_SETTINGS: BodeSettings = {
-  enabled: false,
-  frequencyColumn: "auto",
-  vinColumn: "auto",
-  voutColumn: "auto",
-  gainColumn: "auto",
-  phaseColumn: "auto",
-  delayColumn: "auto",
 }
 
 // gnuplot 固有のグラフ設定。ラベル・軸スケール・近似手法は TikZ 設定を共有する。
@@ -141,7 +119,6 @@ export function getDefaultTikzSettings(language: Language = "ja"): TikzSettings 
     seriesColors: [],
     seriesMarks: [],
     uncSigFigs: 0,
-    bode: DEFAULT_BODE_SETTINGS,
   }
 }
 

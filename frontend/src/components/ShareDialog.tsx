@@ -1,6 +1,6 @@
-import { Check, Copy } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
 
+import { CopyFeedback } from "@/components/motion/CopyFeedback"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -39,7 +39,13 @@ export function ShareDialog({ open, onClose, url, copied, onCopy }: ShareDialogP
               onClick={(e) => (e.target as HTMLInputElement).select()}
             />
             <Button size="icon" variant="ghost" onClick={onCopy} title={copied ? t.share.copied : t.share.copyUrl}>
-              {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+              <CopyFeedback
+                copied={copied}
+                idleLabel={t.share.copyUrl}
+                copiedLabel={t.share.copied}
+                showLabel={false}
+              />
+              <span className="sr-only">{copied ? t.share.copied : t.share.copyUrl}</span>
             </Button>
           </div>
           <p className="text-muted-foreground text-center text-xs">

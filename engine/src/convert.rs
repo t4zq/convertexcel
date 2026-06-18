@@ -1126,16 +1126,6 @@ fn plot_mark_style(index: usize) -> &'static str {
     STYLES[index % 8]
 }
 
-fn is_asymptote_series(headers: &[String], col: usize) -> bool {
-    headers
-        .get(col)
-        .map(|header| {
-            let header = header.to_lowercase();
-            header.contains("asymptote") || header.contains("漸近") || header.contains("折れ線")
-        })
-        .unwrap_or(false)
-}
-
 fn push_pgfplots_options(out: &mut String, indent: &str, options: &str) {
     let parts: Vec<&str> = options.split(", ").collect();
     for (index, part) in parts.iter().enumerate() {
@@ -1373,11 +1363,7 @@ fn to_tikz_graph(
     for col in 1..num_cols {
         let err_idx = error_index_for(&unc, total_cols, col);
         out.push_str("            \\addplot [\n");
-        let mut opts = if is_asymptote_series(headers, col) {
-            "color=black, no markers, thick".to_string()
-        } else {
-            plot_mark_style(col - 1).to_string()
-        };
+        let mut opts = plot_mark_style(col - 1).to_string();
         if err_idx.is_some() {
             opts.push_str(", error bars/.cd, y dir=both, y explicit");
         }
@@ -1402,11 +1388,7 @@ fn to_tikz_graph(
         out.push_str(&format!("            \\addlegendentry{{{}}}\n", legend_label));
 
         let fit_method = fit_method_for_series(fit_methods, col - 1);
-        let fit = if is_asymptote_series(headers, col) {
-            FitResult::empty()
-        } else {
-            select_fit(&points_for_column(t, col), &fit_method)
-        };
+        let fit = select_fit(&points_for_column(t, col), &fit_method);
         if fit.ok {
             out.push_str("            \\addplot [\n");
             push_pgfplots_options(
@@ -1681,14 +1663,7 @@ fn to_gnuplot(
         // gnuplot の列番号は 1 始まり。値列 = col+1、誤差列 = error_index_for+1。
         let y_idx = col + 1;
         // データ点と近似線を同じ線色 (lc) で揃える。
-        let is_asymptote = is_asymptote_series(headers, col);
-        let data_entry = if is_asymptote {
-            format!(
-                "$data using 1:{} with lines lc {} title '{}'",
-                y_idx, col, gnuplot_single_quote(&title)
-            )
-        } else {
-            match error_index_for(&unc, total_cols, col) {
+        let data_entry = match error_index_for(&unc, total_cols, col) {
             Some(ei) => format!(
                 "$data using 1:{}:{} with yerrorbars lc {}{} title '{}'",
                 y_idx, ei + 1, col, point_style, gnuplot_single_quote(&title)
@@ -1697,16 +1672,11 @@ fn to_gnuplot(
                 "$data using 1:{} with points lc {}{} title '{}'",
                 y_idx, col, point_style, gnuplot_single_quote(&title)
             ),
-            }
         };
         plot_entries.push(data_entry);
 
         let method = fit_method_for_series(fit_methods, col - 1);
-        let fit = if is_asymptote {
-            FitResult::empty()
-        } else {
-            select_fit(&points_for_column(t, col), &method)
-        };
+        let fit = select_fit(&points_for_column(t, col), &method);
         if fit.ok {
             if let Some((setup, expr)) = gnuplot_fit_block(&fit, col, y_idx) {
                 fit_setups.push(setup);
@@ -2085,19 +2055,6 @@ mod tests {
     }
 
     #[test]
-    fn tikz_asymptote_series_uses_solid_lines() {
-        let out = gen_tikz_graph_config(
-            "f,gain,gain asymptote [dB]\n10,0,0\n100,-3,0\n1000,-20,-20",
-            "bode", 3, "south west", "xlog", "none", 1, 1, 0,
-            "frequency [Hz]", "gain [dB]", "", "", 0, 0,
-        );
-        assert!(out.contains("gain asymptote [dB]"));
-        assert!(out.contains("no markers"));
-        // 折れ線近似は破線ではなく実線で描く。
-        assert!(!out.contains("dashed"));
-    }
-
-    #[test]
     fn gnuplot_basic_points() {
         let out = gen_gnuplot_config("x,y\n1,2\n2,4\n3,6", "linear", 1, 1, "Voltage", "Current", "none", "left top", 0, 0, 0.0, "");
         assert!(out.contains("set datafile separator ','"));
@@ -2140,19 +2097,6 @@ mod tests {
         assert!(xlog.contains("set logscale x"));
         assert!(!xlog.contains("set logscale y"));
         assert!(!xlog.contains("set logscale xy"));
-    }
-
-    #[test]
-    fn gnuplot_asymptote_series_uses_lines() {
-        let out = gen_gnuplot_config(
-            "f,gain,gain asymptote [dB]\n10,0,0\n100,-3,0\n1000,-20,-20",
-            "xlog", 1, 1, "", "", "none", "left top", 0, 0, 0.0, "",
-        );
-        assert!(out.contains("$data using 1:2 with points"));
-        assert!(out.contains("$data using 1:3 with lines"));
-        // 折れ線近似は実線（dt 2 を付けない）。
-        assert!(!out.contains("dt 2"));
-        assert!(out.contains("with lines lc 2 title 'gain asymptote [dB]'"));
     }
 
     #[test]

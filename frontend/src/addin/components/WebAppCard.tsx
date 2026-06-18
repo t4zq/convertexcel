@@ -1,6 +1,7 @@
-import { Check, Copy, ExternalLink } from "lucide-react"
+import { ExternalLink } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
 
+import { CopyFeedback } from "@/components/motion/CopyFeedback"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
@@ -28,8 +29,11 @@ export function WebAppCard({ shareUrl, hasContent, copied, onOpen, onCopy }: Web
           Web 版で開く
         </Button>
         <Button type="button" variant="secondary" className="w-full" onClick={onCopy} disabled={!hasContent}>
-          {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-          {copied ? "リンクをコピーしました" : "Web 版リンクをコピー"}
+          <CopyFeedback
+            copied={copied}
+            idleLabel="Web 版リンクをコピー"
+            copiedLabel="リンクをコピーしました"
+          />
         </Button>
         <div className="rounded-md border bg-muted/30 p-3">
           {hasContent ? (

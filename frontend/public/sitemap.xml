@@ -71,16 +71,6 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://convertexcel.net/about</loc>
-    <lastmod>2026-06-17</lastmod>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://convertexcel.net/contact</loc>
-    <lastmod>2026-06-17</lastmod>
-    <priority>0.4</priority>
-  </url>
-  <url>
     <loc>https://convertexcel.net/terms</loc>
     <lastmod>2026-06-17</lastmod>
     <priority>0.3</priority>

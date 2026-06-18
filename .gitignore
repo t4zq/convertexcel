@@ -19,3 +19,6 @@ addin/certs/
 
 # PDF files
 *.pdf
+
+# Playwright CLI debug artifacts
+.playwright-cli/

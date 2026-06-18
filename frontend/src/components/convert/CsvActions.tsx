@@ -1,6 +1,7 @@
 import { useState } from "react"
-import { Copy, Download } from "lucide-react"
+import { Download } from "lucide-react"
 
+import { CopyFeedback } from "@/components/motion/CopyFeedback"
 import { Button } from "@/components/ui/button"
 import { useI18n } from "@/hooks/useI18n"
 
@@ -29,8 +30,12 @@ export function CsvActions({ value }: { value: string }) {
       <span className="mr-1 font-medium">CSV</span>
       <div className="flex flex-wrap gap-2">
         <Button size="sm" variant="ghost" onClick={copy} disabled={!value} title={copied ? t.csv.copied : t.csv.copy}>
-          <Copy className="h-3.5 w-3.5" />
-          <span>{copied ? t.csv.copied : t.csv.copy}</span>
+          <CopyFeedback
+            copied={copied}
+            idleLabel={t.csv.copy}
+            copiedLabel={t.csv.copied}
+            iconClassName="h-3.5 w-3.5"
+          />
         </Button>
         <Button size="sm" variant="ghost" onClick={download} disabled={!value} title={t.csv.download}>
           <Download className="h-3.5 w-3.5" />

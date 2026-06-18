@@ -81,64 +81,6 @@ export const updatesCopy: Record<
 
 export const updateNotes: UpdateNote[] = [
   {
-    version: "v0.10.0",
-    date: "2026-06-17",
-    title: {
-      ja: "ボード線図の折れ線近似を改善",
-      en: "Improved Bode plot asymptote approximation",
-      zh: "改进波特图折线近似",
-      "zh-Hant": "改進波德圖折線近似",
-      es: "Mejora de la aproximación asintótica del diagrama de Bode",
-      de: "Verbesserte Asymptoten-Näherung im Bode-Diagramm",
-    },
-    summary: {
-      ja: "ボード線図モードの折れ線近似を列ごとの近似設定から選べるようにし、ローパス・ハイパスのどちらも実線の折れ線で表示できるようにしました。",
-      en: "The Bode plot asymptote approximation can now be chosen from the per-column fit settings and is drawn as solid piecewise lines for both low-pass and high-pass responses.",
-      zh: "波特图的折线近似现在可以从每列的拟合设置中选择，并对低通和高通响应都以实线折线显示。",
-      "zh-Hant": "波德圖的折線近似現在可以從每欄的近似設定中選擇，並對低通與高通響應都以實線折線顯示。",
-      es: "La aproximación asintótica del diagrama de Bode ahora se elige desde los ajustes de ajuste por columna y se dibuja con líneas rectas continuas para respuestas de paso bajo y de paso alto.",
-      de: "Die Asymptoten-Näherung des Bode-Diagramms lässt sich nun in den spaltenweisen Fit-Einstellungen wählen und wird für Tief- und Hochpass als durchgezogene Streckenzüge dargestellt.",
-    },
-    changes: {
-      ja: [
-        "折れ線近似を常時表示のオン/オフではなく、ボード線図モード時の列ごとの近似設定から選べるようにし、ゲイン・位相列で既定オンにしました。",
-        "ハイパスフィルタにも対応し、低周波側は1次の傾き、遮断周波数から一定値となる折れ線を描くようにしました。",
-        "折れ線近似を破線ではなく実線で表示するようにしました。",
-        "Excel アドイン開発サーバーで Web 版を開いたとき、PDF プレビューが 404 になる問題を修正しました。",
-      ],
-      en: [
-        "The asymptote approximation is now selected from the per-column fit settings in Bode mode instead of an always-on toggle, and is enabled by default for the gain and phase columns.",
-        "Added high-pass filter support: the asymptote rises with a first-order slope at low frequencies and stays flat above the cutoff.",
-        "The asymptote is now drawn with solid lines instead of dashed lines.",
-        "Fixed a 404 in the PDF preview when opening the web app from the Excel add-in dev server.",
-      ],
-      zh: [
-        "折线近似现在从波特图模式下的每列拟合设置中选择，而不是常驻的开关，并在增益和相位列默认开启。",
-        "新增高通滤波器支持：低频段以一阶斜率上升，超过截止频率后保持恒定。",
-        "折线近似现在以实线而非虚线显示。",
-        "修复了从 Excel 加载项开发服务器打开 Web 版时 PDF 预览出现 404 的问题。",
-      ],
-      "zh-Hant": [
-        "折線近似現在從波德圖模式下的每欄近似設定中選擇，而非常駐的開關，並在增益與相位欄預設開啟。",
-        "新增高通濾波器支援：低頻段以一階斜率上升，超過截止頻率後保持恆定。",
-        "折線近似現在以實線而非虛線顯示。",
-        "修正了從 Excel 增益集開發伺服器開啟 Web 版時 PDF 預覽出現 404 的問題。",
-      ],
-      es: [
-        "La aproximación asintótica ahora se selecciona desde los ajustes de ajuste por columna en el modo Bode en lugar de un interruptor siempre visible, y está activada por defecto en las columnas de ganancia y fase.",
-        "Se añadió compatibilidad con filtros de paso alto: la asíntota sube con una pendiente de primer orden en bajas frecuencias y se mantiene constante por encima de la frecuencia de corte.",
-        "La asíntota ahora se dibuja con líneas continuas en lugar de discontinuas.",
-        "Se corrigió un error 404 en la vista previa de PDF al abrir la versión web desde el servidor de desarrollo del complemento de Excel.",
-      ],
-      de: [
-        "Die Asymptoten-Näherung wird im Bode-Modus nun in den spaltenweisen Fit-Einstellungen statt über einen dauerhaften Schalter gewählt und ist für Verstärkungs- und Phasenspalten standardmäßig aktiviert.",
-        "Hochpassfilter werden nun unterstützt: Die Asymptote steigt bei niedrigen Frequenzen mit Steigung erster Ordnung und bleibt oberhalb der Grenzfrequenz konstant.",
-        "Die Asymptote wird nun mit durchgezogenen statt gestrichelten Linien gezeichnet.",
-        "Einen 404-Fehler in der PDF-Vorschau behoben, wenn die Web-App vom Excel-Add-In-Entwicklungsserver geöffnet wird.",
-      ],
-    },
-  },
-  {
     version: "v0.9.0",
     date: "2026-06-16",
     title: {
