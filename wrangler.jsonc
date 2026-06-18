@@ -4,21 +4,30 @@
   "main": "worker/index.ts",
   "compatibility_date": "2026-05-24",
   "observability": {
-    "enabled": true
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "persist": true,
+      "invocation_logs": true
+    },
+    "traces": {
+      "enabled": true,
+      "persist": true,
+      "head_sampling_rate": 1
+    }
   },
   "assets": {
     "directory": "frontend/dist",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application"
   },
-  "d1_databases": [
+  "ratelimits": [
     {
-      "binding": "DB",
-      "database_name": "convertexcel",
-      // `wrangler d1 create convertexcel` 実行後に出力される ID を貼る。
-      
-      "database_id": "e5d7ef9d-d8a3-4105-bec6-37ab1e623693",
-      "migrations_dir": "worker/migrations"
+      "name": "PDF_PREVIEW_RATE_LIMIT",
+      "namespace_id": "1001",
+      "simple": { "limit": 5, "period": 60 }
     }
   ]
 }
