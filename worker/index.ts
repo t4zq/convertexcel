@@ -9,6 +9,7 @@ const MAX_FILES = 4
 const MAX_FILE_CHARS = 64_000
 const MAX_TOTAL_FILE_CHARS = 128_000
 const MAX_LOG_BYTES = 128 * 1024
+const DOCS_SITE_URL = "https://docs.convertexcel.net/docs"
 
 const SECURITY_HEADERS: Record<string, string> = {
   "Content-Security-Policy": "base-uri 'self'; object-src 'none'; frame-ancestors 'none'",
@@ -32,7 +33,6 @@ const LOCALIZED_PATHS = new Set([
   "/convert",
   "/privacy",
   "/excel-addin",
-  "/docs",
   "/about",
   "/contact",
   "/updates",
@@ -427,6 +427,15 @@ function parseExplainResponse(raw: string): { userFixable: boolean; explanation:
 async function handleRequest(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url)
   const { pathname } = url
+
+  if (pathname === "/docs" || /^\/(en|zh|zh-hant|es|de)\/docs\/?$/.test(pathname)) {
+    const location = new URL(DOCS_SITE_URL)
+    location.search = url.search
+    return withSecurityHeaders(new Response(null, {
+      status: 308,
+      headers: { Location: location.toString(), "Cache-Control": "public, max-age=86400" },
+    }))
+  }
 
   if (pathname === "/api/health") {
     if (request.method !== "GET") return json({ error: "Method Not Allowed" }, 405, { Allow: "GET" })

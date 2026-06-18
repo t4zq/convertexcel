@@ -22,6 +22,9 @@ export function SiteFooter() {
         <Link to={pathFor("/")} className="transition-colors hover:text-foreground hover:underline">
           {t.nav.tool}
         </Link>
+        <a href="https://docs.convertexcel.net/docs" className="transition-colors hover:text-foreground hover:underline">
+          {t.nav.docs}
+        </a>
         {language === "ja" &&
           JA_ONLY_LINKS.map((link) => (
             <Link

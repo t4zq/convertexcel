@@ -16,7 +16,6 @@ const GuidePage = lazy(() => import("@/pages/GuidePage"))
 const FaqPage = lazy(() => import("@/pages/FaqPage"))
 const AboutPage = lazy(() => import("@/pages/AboutPage"))
 const ContactPage = lazy(() => import("@/pages/ContactPage"))
-const DocsPage = lazy(() => import("@/pages/DocsPage"))
 const GuideDetailPage = lazy(() => import("@/pages/GuideDetailPage"))
 const TermsPage = lazy(() => import("@/pages/TermsPage"))
 const UpdatesPage = lazy(() => import("@/pages/UpdatesPage"))
@@ -30,7 +29,6 @@ const localizedRoutes = SUPPORTED_LANGUAGES
       <Route key={`${prefix}/convert`} path={`${prefix}/convert`} element={<ConvertPage />} />,
       <Route key={`${prefix}/privacy`} path={`${prefix}/privacy`} element={<PrivacyPage />} />,
       <Route key={`${prefix}/excel-addin`} path={`${prefix}/excel-addin`} element={<AddinPage />} />,
-      <Route key={`${prefix}/docs`} path={`${prefix}/docs`} element={<DocsPage />} />,
       <Route key={`${prefix}/guides`} path={`${prefix}/guides/:slug`} element={<GuideDetailPage />} />,
       <Route key={`${prefix}/about`} path={`${prefix}/about`} element={<AboutPage />} />,
       <Route key={`${prefix}/contact`} path={`${prefix}/contact`} element={<ContactPage />} />,
@@ -51,7 +49,6 @@ export default function App() {
                 <Route path="/convert" element={<ConvertPage />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
                 <Route path="/excel-addin" element={<AddinPage />} />
-                <Route path="/docs" element={<DocsPage />} />
                 <Route path="/guides/:slug" element={<GuideDetailPage />} />
                 <Route path="/guide" element={<GuidePage />} />
                 <Route path="/faq" element={<FaqPage />} />

@@ -2,6 +2,8 @@
 
 Next.js + Fumadocsで構築したconverTeXcelの公開ドキュメントです。
 
+AdSenseはメインサイトと同じpublisher ID（`ca-pub-8873009775575279`）を使用します。広告配信はAdSense側のAuto ads設定または追加する広告ユニットに従います。
+
 It is a Next.js app with [Static Export](https://nextjs.org/docs/app/guides/static-exports) configured.
 
 ## 開発
