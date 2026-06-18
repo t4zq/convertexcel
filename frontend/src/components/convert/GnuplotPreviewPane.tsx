@@ -1,6 +1,7 @@
 import { useState } from "react"
-import { Copy, Download, LoaderCircle } from "lucide-react"
+import { Download, LoaderCircle } from "lucide-react"
 
+import { CopyFeedback } from "@/components/motion/CopyFeedback"
 import { Button } from "@/components/ui/button"
 import { useI18n } from "@/hooks/useI18n"
 import { copyPngToClipboard, downloadBlob, svgToPngBlob } from "@/lib/svg-to-png"
@@ -48,8 +49,11 @@ export function GnuplotPreviewPane({
       {svg && !rendering && (
         <div className="flex flex-wrap justify-end gap-2">
           <Button size="sm" variant="secondary" onClick={copyImage} title={imageCopied ? t.convert.imageCopied : t.convert.copyImage}>
-            <Copy className="h-4 w-4" />
-            <span>{imageCopied ? t.convert.imageCopied : t.convert.copyImage}</span>
+            <CopyFeedback
+              copied={imageCopied}
+              idleLabel={t.convert.copyImage}
+              copiedLabel={t.convert.imageCopied}
+            />
           </Button>
           <Button size="sm" variant="secondary" onClick={saveImage} title={t.convert.saveImage}>
             <Download className="h-4 w-4" />

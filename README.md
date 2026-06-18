@@ -36,13 +36,12 @@ convertexcel/
 │  └─ scripts/               # Dev certificate scripts
 ├─ engine/                   # Rust -> WebAssembly calculation engine
 │  └─ src/
-├─ worker/                   # Cloudflare Worker (datasets API) + D1 migrations
-│  ├─ index.ts               # /api/* handler, falls back to static assets
-│  └─ migrations/            # D1 schema (SQL)
+├─ worker/                   # Cloudflare Worker (PDF preview proxy + static assets)
+│  └─ index.ts               # /api/* handler, falls back to static assets
 ├─ scripts/                  # Build/deploy scripts (cloudflare-build.mjs)
 ├─ memory/                   # Project notes
 ├─ docker-compose.yml        # Local run for engine / frontend
-├─ wrangler.jsonc            # Cloudflare Workers config (Worker + frontend/dist + D1)
+├─ wrangler.jsonc            # Cloudflare Workers config (Worker + frontend/dist)
 └─ package.json              # Root: build / deploy scripts
 ```
 
@@ -122,7 +121,7 @@ converTeXcel は、Excel やスプレッドシートの表を LaTeX 表、CSV、
 | --- | --- | --- |
 | 画面 (UI) | React 19 + Vite + TypeScript + Tailwind v4 + shadcn/ui + react-router | `frontend/` |
 | 計算エンジン | Rust -> WebAssembly (`wasm-pack`) | `engine/` |
-| API | Cloudflare Workers + D1 | `worker/` |
+| API | Cloudflare Workers | `worker/` |
 
 ### 画面
 
@@ -171,7 +170,7 @@ converTeXcel is a web app that converts Excel or spreadsheet tables into LaTeX t
 | --- | --- | --- |
 | UI | React 19 + Vite + TypeScript + Tailwind v4 + shadcn/ui + react-router | `frontend/` |
 | Engine | Rust -> WebAssembly (`wasm-pack`) | `engine/` |
-| API | Cloudflare Workers + D1 | `worker/` |
+| API | Cloudflare Workers | `worker/` |
 
 ### Pages
 
@@ -220,7 +219,7 @@ converTeXcel 是一个 Web 应用，可将 Excel 或电子表格数据转换为 
 | --- | --- | --- |
 | 界面 | React 19 + Vite + TypeScript + Tailwind v4 + shadcn/ui + react-router | `frontend/` |
 | 引擎 | Rust -> WebAssembly (`wasm-pack`) | `engine/` |
-| API | Cloudflare Workers + D1 | `worker/` |
+| API | Cloudflare Workers | `worker/` |
 
 ### 页面
 
@@ -269,7 +268,7 @@ converTeXcel 是一個 Web 應用程式，可將 Excel 或試算表資料轉換�
 | --- | --- | --- |
 | 介面 | React 19 + Vite + TypeScript + Tailwind v4 + shadcn/ui + react-router | `frontend/` |
 | 引擎 | Rust -> WebAssembly (`wasm-pack`) | `engine/` |
-| API | Cloudflare Workers + D1 | `worker/` |
+| API | Cloudflare Workers | `worker/` |
 
 ### 頁面
 
@@ -318,7 +317,7 @@ converTeXcel es una aplicación web que convierte tablas de Excel u hojas de cá
 | --- | --- | --- |
 | UI | React 19 + Vite + TypeScript + Tailwind v4 + shadcn/ui + react-router | `frontend/` |
 | Motor | Rust -> WebAssembly (`wasm-pack`) | `engine/` |
-| API | Cloudflare Workers + D1 | `worker/` |
+| API | Cloudflare Workers | `worker/` |
 
 ### Páginas
 
@@ -367,7 +366,7 @@ converTeXcel ist eine Web-App, die Excel- oder Tabellenkalkulations-Tabellen in 
 | --- | --- | --- |
 | UI | React 19 + Vite + TypeScript + Tailwind v4 + shadcn/ui + react-router | `frontend/` |
 | Engine | Rust -> WebAssembly (`wasm-pack`) | `engine/` |
-| API | Cloudflare Workers + D1 | `worker/` |
+| API | Cloudflare Workers | `worker/` |
 
 ### Seiten
 
