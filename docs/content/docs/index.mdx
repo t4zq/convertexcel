@@ -1,0 +1,26 @@
+---
+title: converTeXcelをはじめる
+description: Excelの表をLaTeX、TikZ/PGFPlots、gnuplot、CSVへ変換する基本的な流れを説明します。
+---
+
+converTeXcelは、Excelやスプレッドシートの表をレポートで使えるコードへ変換するWebアプリです。変換処理はRust/WebAssemblyにより、基本的にブラウザ内で行われます。
+
+<Cards>
+  <Card title="クイックスタート" description="コピーからLaTeX表の生成まで" href="/docs/quick-start" />
+  <Card title="数式と数値" description="数式、単位、有効数字の扱い" href="/docs/math-and-numbers" />
+  <Card title="グラフを作る" description="TikZ/PGFPlotsとgnuplot" href="/docs/graphs" />
+  <Card title="トラブルシューティング" description="よくあるエラーと解決方法" href="/docs/troubleshooting" />
+</Cards>
+
+## 対応する出力
+
+- LaTeX表（`booktabs`、`siunitx`対応）
+- TikZ / PGFPlotsコード
+- gnuplotスクリプトとブラウザ内プレビュー
+- CSV
+
+<Callout title="データの扱い">
+入力データの変換とコード生成は基本的にブラウザ内で実行されます。PDFプレビューを使用した場合のみ、生成したTeXコードがコンパイルサービスへ送信されます。
+</Callout>
+
+<TryInConverter />

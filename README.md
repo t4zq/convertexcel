@@ -39,6 +39,7 @@ convertexcel/
 ├─ worker/                   # Cloudflare Worker (PDF preview proxy + static assets)
 │  └─ index.ts               # /api/* handler, falls back to static assets
 ├─ scripts/                  # Build/deploy scripts (cloudflare-build.mjs)
+├─ docs/                     # Next.js + Fumadocs documentation site
 ├─ memory/                   # Project notes
 ├─ docker-compose.yml        # Local run for engine / frontend
 ├─ wrangler.jsonc            # Cloudflare Workers config (Worker + frontend/dist)
@@ -159,6 +160,18 @@ npm run build
 - Workers deploy command: `npm run deploy`
 
 `npm run build` は Rust/WASM エンジンを生成してから Vite build を実行します。
+
+### Fumadocs
+
+公開ドキュメントは `docs/` のNext.js + Fumadocsアプリです。KaTeX数式、コードブロック、Callout、Tabs、全文検索に対応します。
+
+```powershell
+npm --prefix docs install
+npm run docs:dev
+npm run docs:build
+```
+
+記事は既存アプリの `/admin/docs` で作成できます。MDXのダウンロードに加え、Worker Secretを設定するとGitHubへ直接保存できます。詳細は `docs/README.md` を参照してください。
 
 ## English
 

@@ -1,0 +1,31 @@
+---
+title: クイックスタート
+description: Excelの表をコピーしてLaTeX表を生成するまでの基本操作です。
+---
+
+## 1. 表をコピーする
+
+Excelまたはスプレッドシートで必要な範囲を選択し、コピーします。見出しを含めてコピーすると、そのまま表のヘッダーとして利用できます。
+
+## 2. converTeXcelへ貼り付ける
+
+[変換画面](https://convertexcel.net/convert)の入力欄へ貼り付けます。タブ区切りのデータとして読み込まれ、表形式で確認できます。
+
+## 3. 出力形式を選択する
+
+用途に応じてLaTeX表、CSV、TikZ/PGFPlots、gnuplotを選択します。
+
+<BeforeAfter
+  before={<pre>{`時間 [s]\t電圧 [V]\n0\t1.20\n1\t1.84`}</pre>}
+  after={<pre>{`\\begin{tabular}{SS}\n  \\toprule\n  {時間 [s]} & {電圧 [V]} \\\\\n  \\midrule\n  0 & 1.20 \\\\\n  1 & 1.84 \\\\\n  \\bottomrule\n\\end{tabular}`}</pre>}
+/>
+
+## 4. プレビューしてコピーする
+
+有効数字、列の配置、単位などを調整し、PDFプレビューで確認します。完成したコードはコピーボタンからレポートへ貼り付けられます。
+
+<PackageList>
+`booktabs`と、数値列を揃える場合は`siunitx`を使用します。
+</PackageList>
+
+<TryInConverter />
