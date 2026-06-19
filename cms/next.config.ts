@@ -11,7 +11,9 @@ const nextConfig = {
   },
   // Packages with Cloudflare Workers (workerd) specific code
   // Read more: https://opennext.js.org/cloudflare/howtos/workerd
-  serverExternalPackages: ['jose', 'pg-cloudflare'],
+  // pino/* are kept external: pino-abstract-transport require()s the `worker_threads`
+  // builtin, which webpack cannot bundle. workerd (nodejs_compat) provides it at runtime.
+  serverExternalPackages: ['jose', 'pg-cloudflare', 'pino', 'pino-pretty', 'pino-abstract-transport', 'thread-stream'],
 
   // Your Next.js config here
   webpack: (webpackConfig: any) => {

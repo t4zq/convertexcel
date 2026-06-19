@@ -18,6 +18,10 @@ const realpath = (value: string) => (fs.existsSync(value) ? fs.realpathSync(valu
 
 const isCLI = process.argv.some((value) => realpath(value).endsWith(path.join('payload', 'bin.js')))
 const isProduction = process.env.NODE_ENV === 'production'
+// Standalone scripts (e.g. seed) run outside the Worker runtime, so they cannot use
+// getCloudflareContext and must go through the wrangler proxy (which needs NODE_ENV !== production).
+// PAYLOAD_REMOTE_BINDINGS lets such a script still target the remote D1/R2 instead of local state.
+const useRemoteBindings = isProduction || process.env.PAYLOAD_REMOTE_BINDINGS === 'true'
 
 const createLog =
   (level: string, fn: typeof console.log) => (objOrMsg: object | string, msg?: string) => {
@@ -78,7 +82,7 @@ function getCloudflareContextFromWrangler(): Promise<CloudflareContext> {
     ({ getPlatformProxy }) =>
       getPlatformProxy({
         environment: process.env.CLOUDFLARE_ENV,
-        remoteBindings: isProduction,
+        remoteBindings: useRemoteBindings,
       } satisfies GetPlatformProxyOptions),
   )
 }
