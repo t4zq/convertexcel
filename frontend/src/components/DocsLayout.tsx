@@ -2,7 +2,6 @@ import type { ReactNode } from "react"
 import { NavLink } from "react-router-dom"
 
 import { useI18n } from "@/hooks/useI18n"
-import { docsCopy } from "@/lib/docs"
 import { guides, guidesCopy } from "@/lib/guides"
 import { cn } from "@/lib/utils"
 
@@ -23,12 +22,12 @@ export function DocsLayout({ toc, children }: { toc?: DocsTocItem[]; children: R
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8 p-6 lg:flex-row">
       <aside className="lg:sticky lg:top-4 lg:h-fit lg:w-56 lg:shrink-0">
-        <nav className="space-y-4" aria-label={docsCopy[language].title}>
+        <nav className="space-y-4" aria-label={guidesText.heading}>
           <div className="space-y-1">
             <p className={groupLabelClass}>{guidesText.overview}</p>
-            <NavLink to={pathFor("/docs")} end className={linkClass}>
-              {docsCopy[language].title}
-            </NavLink>
+            <a href="https://docs.convertexcel.net/docs" className="text-muted-foreground hover:text-foreground block rounded px-2 py-1 text-sm transition-colors">
+              converTeXcel Docs
+            </a>
           </div>
           <div className="space-y-1">
             <p className={groupLabelClass}>{guidesText.heading}</p>

@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react"
 import { BrowserRouter, Route, Routes } from "react-router-dom"
 
 import { AppHeader } from "@/components/AppHeader"
+import { CommandMenu } from "@/components/CommandMenu"
 import { SiteFooter } from "@/components/SiteFooter"
 import { StatusBar } from "@/components/StatusBar"
 import { I18nProvider } from "@/hooks/useI18n"
@@ -16,10 +17,10 @@ const GuidePage = lazy(() => import("@/pages/GuidePage"))
 const FaqPage = lazy(() => import("@/pages/FaqPage"))
 const AboutPage = lazy(() => import("@/pages/AboutPage"))
 const ContactPage = lazy(() => import("@/pages/ContactPage"))
-const DocsPage = lazy(() => import("@/pages/DocsPage"))
 const GuideDetailPage = lazy(() => import("@/pages/GuideDetailPage"))
 const TermsPage = lazy(() => import("@/pages/TermsPage"))
 const UpdatesPage = lazy(() => import("@/pages/UpdatesPage"))
+const DocsAdminPage = lazy(() => import("@/pages/DocsAdminPage"))
 
 const localizedRoutes = SUPPORTED_LANGUAGES
   .filter((language) => language !== "ja")
@@ -30,7 +31,6 @@ const localizedRoutes = SUPPORTED_LANGUAGES
       <Route key={`${prefix}/convert`} path={`${prefix}/convert`} element={<ConvertPage />} />,
       <Route key={`${prefix}/privacy`} path={`${prefix}/privacy`} element={<PrivacyPage />} />,
       <Route key={`${prefix}/excel-addin`} path={`${prefix}/excel-addin`} element={<AddinPage />} />,
-      <Route key={`${prefix}/docs`} path={`${prefix}/docs`} element={<DocsPage />} />,
       <Route key={`${prefix}/guides`} path={`${prefix}/guides/:slug`} element={<GuideDetailPage />} />,
       <Route key={`${prefix}/about`} path={`${prefix}/about`} element={<AboutPage />} />,
       <Route key={`${prefix}/contact`} path={`${prefix}/contact`} element={<ContactPage />} />,
@@ -43,6 +43,7 @@ export default function App() {
     <StatusBarProvider>
       <BrowserRouter>
         <I18nProvider>
+          <CommandMenu />
           <AppHeader />
           <main className="pb-8">
             <Suspense fallback={<div className="p-4 sm:p-6" />}>
@@ -51,7 +52,6 @@ export default function App() {
                 <Route path="/convert" element={<ConvertPage />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
                 <Route path="/excel-addin" element={<AddinPage />} />
-                <Route path="/docs" element={<DocsPage />} />
                 <Route path="/guides/:slug" element={<GuideDetailPage />} />
                 <Route path="/guide" element={<GuidePage />} />
                 <Route path="/faq" element={<FaqPage />} />
@@ -59,6 +59,7 @@ export default function App() {
                 <Route path="/contact" element={<ContactPage />} />
                 <Route path="/terms" element={<TermsPage />} />
                 <Route path="/updates" element={<UpdatesPage />} />
+                <Route path="/admin/docs" element={<DocsAdminPage />} />
                 {localizedRoutes}
                 <Route path="*" element={<NotFoundPage />} />
               </Routes>

@@ -19,17 +19,21 @@ export function useConversionOutputs(
   useEffect(() => {
     if (!enabled) return
     let alive = true
-    import("@/lib/conversion-service")
-      .then(({ convertTable }) => convertTable(input, table, tikz, gnuplot))
-      .then((result) => {
-        if (!alive) return
-        setLatexOut(result.latex)
-        setCsvOut(result.csv)
-        setTikzOut(result.tikz)
-        setGnuplotOut(result.gnuplot)
-      })
+    // 入力中の各キー操作をWorkerの待ち行列へ積まないよう、短時間まとめてから変換する。
+    const timer = window.setTimeout(() => {
+      import("@/lib/conversion-service")
+        .then(({ convertTable }) => convertTable(input, table, tikz, gnuplot))
+        .then((result) => {
+          if (!alive) return
+          setLatexOut(result.latex)
+          setCsvOut(result.csv)
+          setTikzOut(result.tikz)
+          setGnuplotOut(result.gnuplot)
+        })
+    }, 120)
     return () => {
       alive = false
+      window.clearTimeout(timer)
     }
   }, [enabled, input, table, tikz, gnuplot])
 

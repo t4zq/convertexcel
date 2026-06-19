@@ -1,97 +1,6 @@
-// Rust→WASM エンジンの読み込み。
-// `docker compose run --rm engine` が wasm-pack(--target web) の出力を
-// `frontend/src/engine/pkg/` に生成する。Vite に処理させるため通常の
-// 動的 import で読み込む (glue 内の `new URL(..._bg.wasm, import.meta.url)`
-// を Vite がアセットとして解決する)。
-// ※ そのため frontend ビルド前に必ず engine ビルドを実行すること。
+import type { EngineOperation, EngineRequest, EngineResponse } from "./protocol"
 
-// wasm-bindgen が公開する関数群。
-export interface EngineModule {
-  default: (input?: unknown) => Promise<unknown>
-  gen_latex: (input: string) => string
-  gen_csv: (input: string) => string
-  gen_latex_config: (
-    input: string,
-    mode: number,
-    decimals: number,
-    sig_figs: number,
-    has_header: number,
-    clean_input: number,
-    booktabs: number,
-    siunitx: number
-  ) => string
-  gen_csv_config: (
-    input: string,
-    mode: number,
-    decimals: number,
-    sig_figs: number,
-    has_header: number,
-    clean_input: number
-  ) => string
-  gen_tikz_graph_config: (
-    input: string,
-    filename: string,
-    sig_figs: number,
-    legend_pos: string,
-    scale_mode: string,
-    fit_method: string,
-    has_header: number,
-    clean_input: number,
-    figure_number: number,
-    x_label: string,
-    y_label: string,
-    caption: string,
-    label: string,
-    siunitx: number,
-    unc_sig_figs: number
-  ) => string
-  gen_csv_attachment: (input: string, has_header: number, clean_input: number) => string
-  gen_gnuplot_config: (
-    input: string,
-    scale_mode: string,
-    has_header: number,
-    clean_input: number,
-    x_label: string,
-    y_label: string,
-    fit_method: string,
-    key_pos: string,
-    grid: number,
-    point_type: number,
-    point_size: number,
-    title: string
-  ) => string
-}
-
-let enginePromise: Promise<EngineModule | null> | null = null
-
-export async function loadEngine(): Promise<EngineModule | null> {
-  if (enginePromise) return enginePromise
-  enginePromise = (async () => {
-    try {
-      const mod = (await import("./pkg/convertexcel_engine.js")) as unknown as EngineModule
-      await mod.default()
-      return mod
-    } catch (err) {
-      console.warn("[engine] WASM の読み込みに失敗しました。", err)
-      return null
-    }
-  })()
-  return enginePromise
-}
-
-export async function isWasmAvailable(): Promise<boolean> {
-  return (await loadEngine()) !== null
-}
-
-async function require_engine(): Promise<EngineModule> {
-  const e = await loadEngine()
-  if (!e) throw new Error("WASM エンジンが利用できません (docker compose run --rm engine を実行してください)")
-  return e
-}
-
-// ─── 変換 (convert) ────────────────────────────────────────
-
-export type RoundMode = 0 | 1 | 2 // none / decimal / sig-figs
+export type RoundMode = 0 | 1 | 2
 
 export interface ConvertOptions {
   mode: RoundMode
@@ -120,66 +29,13 @@ export interface TikzOptions {
   uncSigFigs: number
 }
 
-const bool = (b: boolean) => (b ? 1 : 0)
-
-export async function genLatex(input: string, o: ConvertOptions): Promise<string> {
-  const e = await require_engine()
-  return e.gen_latex_config(
-    input,
-    o.mode,
-    o.decimals,
-    o.sigFigs,
-    bool(o.hasHeader),
-    bool(o.cleanInput),
-    bool(o.booktabs),
-    bool(o.siunitx)
-  )
-}
-
-export async function genCsv(input: string, o: ConvertOptions): Promise<string> {
-  const e = await require_engine()
-  return e.gen_csv_config(input, o.mode, o.decimals, o.sigFigs, bool(o.hasHeader), bool(o.cleanInput))
-}
-
-export async function genTikz(input: string, o: TikzOptions): Promise<string> {
-  const e = await require_engine()
-  return e.gen_tikz_graph_config(
-    input,
-    o.filename,
-    o.sigFigs,
-    o.legendPos,
-    o.scaleMode,
-    o.fitMethod,
-    bool(o.hasHeader),
-    bool(o.cleanInput),
-    o.figureNumber,
-    o.xLabel,
-    o.yLabel,
-    o.caption,
-    o.label,
-    bool(o.siunitx),
-    o.uncSigFigs
-  )
-}
-
-export async function genCsvAttachment(
-  input: string,
-  hasHeader: boolean,
-  cleanInput: boolean
-): Promise<string> {
-  const e = await require_engine()
-  return e.gen_csv_attachment(input, bool(hasHeader), bool(cleanInput))
-}
-
 export interface GnuplotOptions {
   scaleMode: string
   hasHeader: boolean
   cleanInput: boolean
   xLabel: string
   yLabel: string
-  // 系列ごとの近似手法をカンマ区切りで（エンジンが split_line で解釈）。
   fitMethod: string
-  // gnuplot 固有設定。
   keyPos: string
   grid: boolean
   pointType: number
@@ -187,20 +43,140 @@ export interface GnuplotOptions {
   title: string
 }
 
-export async function genGnuplot(input: string, o: GnuplotOptions): Promise<string> {
-  const e = await require_engine()
-  return e.gen_gnuplot_config(
-    input,
-    o.scaleMode,
-    bool(o.hasHeader),
-    bool(o.cleanInput),
-    o.xLabel,
-    o.yLabel,
-    o.fitMethod,
-    o.keyPos,
-    bool(o.grid),
-    o.pointType,
-    o.pointSize,
-    o.title
-  )
+export interface EngineConversionResult {
+  latex: string
+  csv: string
+  tikz: string
+  gnuplot: string
+}
+
+interface PendingRequest {
+  resolve: (value: unknown) => void
+  reject: (reason: Error) => void
+}
+
+let worker: Worker | null = null
+let requestId = 0
+const pending = new Map<number, PendingRequest>()
+
+function rejectPending(error: Error) {
+  for (const request of pending.values()) request.reject(error)
+  pending.clear()
+}
+
+function getWorker() {
+  if (worker) return worker
+  const instance = new Worker(new URL("./engine.worker.ts", import.meta.url), { type: "module" })
+  instance.addEventListener("message", (event: MessageEvent<EngineResponse>) => {
+    const response = event.data
+    const request = pending.get(response.id)
+    if (!request) return
+    pending.delete(response.id)
+    if (response.ok) request.resolve(response.result)
+    else request.reject(new Error(response.error))
+  })
+  instance.addEventListener("error", (event) => {
+    const error = new Error(event.message || "WASM Workerでエラーが発生しました")
+    rejectPending(error)
+    instance.terminate()
+    if (worker === instance) worker = null
+  })
+  worker = instance
+  return instance
+}
+
+function request<T>(operation: EngineOperation, args: unknown[] = []): Promise<T> {
+  const id = ++requestId
+  return new Promise<T>((resolve, reject) => {
+    pending.set(id, {
+      resolve: (value) => resolve(value as T),
+      reject,
+    })
+    try {
+      getWorker().postMessage({ id, operation, args } satisfies EngineRequest)
+    } catch (error) {
+      pending.delete(id)
+      reject(error instanceof Error ? error : new Error(String(error)))
+    }
+  })
+}
+
+export async function loadEngine(): Promise<boolean> {
+  return request<boolean>("init")
+}
+
+export async function isWasmAvailable(): Promise<boolean> {
+  try {
+    return await loadEngine()
+  } catch (error) {
+    console.warn("[engine] WASM Workerの読み込みに失敗しました。", error)
+    return false
+  }
+}
+
+const bool = (value: boolean) => (value ? 1 : 0)
+
+function latexArgs(input: string, options: ConvertOptions): unknown[] {
+  return [
+    input, options.mode, options.decimals, options.sigFigs, bool(options.hasHeader),
+    bool(options.cleanInput), bool(options.booktabs), bool(options.siunitx),
+  ]
+}
+
+function csvArgs(input: string, options: ConvertOptions): unknown[] {
+  return [
+    input, options.mode, options.decimals, options.sigFigs,
+    bool(options.hasHeader), bool(options.cleanInput),
+  ]
+}
+
+function tikzArgs(input: string, options: TikzOptions): unknown[] {
+  return [
+    input, options.filename, options.sigFigs, options.legendPos, options.scaleMode,
+    options.fitMethod, bool(options.hasHeader), bool(options.cleanInput), options.figureNumber,
+    options.xLabel, options.yLabel, options.caption, options.label, bool(options.siunitx),
+    options.uncSigFigs,
+  ]
+}
+
+function gnuplotArgs(input: string, options: GnuplotOptions): unknown[] {
+  return [
+    input, options.scaleMode, bool(options.hasHeader), bool(options.cleanInput), options.xLabel,
+    options.yLabel, options.fitMethod, options.keyPos, bool(options.grid), options.pointType,
+    options.pointSize, options.title,
+  ]
+}
+
+export function genLatex(input: string, options: ConvertOptions) {
+  return request<string>("genLatex", latexArgs(input, options))
+}
+
+export function genCsv(input: string, options: ConvertOptions) {
+  return request<string>("genCsv", csvArgs(input, options))
+}
+
+export function genTikz(input: string, options: TikzOptions) {
+  return request<string>("genTikz", tikzArgs(input, options))
+}
+
+export function genCsvAttachment(input: string, hasHeader: boolean, cleanInput: boolean) {
+  return request<string>("genCsvAttachment", [input, bool(hasHeader), bool(cleanInput)])
+}
+
+export function genGnuplot(input: string, options: GnuplotOptions) {
+  return request<string>("genGnuplot", gnuplotArgs(input, options))
+}
+
+export function convertAll(
+  input: string,
+  table: ConvertOptions,
+  tikz: TikzOptions,
+  gnuplot: GnuplotOptions,
+) {
+  return request<EngineConversionResult>("convertAll", [
+    latexArgs(input, table),
+    csvArgs(input, table),
+    tikzArgs(input, tikz),
+    gnuplotArgs(input, gnuplot),
+  ])
 }

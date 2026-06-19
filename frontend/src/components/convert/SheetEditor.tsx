@@ -5,8 +5,8 @@ import {
   useRef,
   useState,
 } from "react"
-import { FileInput, Maximize2, Minimize2 } from "lucide-react"
-import { motion } from "motion/react"
+import { Download, FileInput, Maximize2, Minimize2 } from "lucide-react"
+import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import {
   createUniver,
   defaultTheme,
@@ -24,14 +24,13 @@ import { useI18n } from "@/hooks/useI18n"
 import type { Language } from "@/lib/i18n"
 import { parseTsv, serializeTsv } from "@/lib/tsv"
 import { cn } from "@/lib/utils"
+import { createXlsx, downloadBlob } from "@/lib/xlsx-export"
 
 export interface PendingSheetImport {
   name: string
   values: string[][]
 }
 
-const WORKBOOK_STORAGE_KEY = "convertexcel:workbook"
-const AUTOSAVE_DELAY = 750
 const DEFAULT_ROWS = 100
 const DEFAULT_COLUMNS = 26
 
@@ -69,7 +68,6 @@ const UNIVER_LOCALES: Record<
 
 export interface SheetEditorHandle {
   exportActiveSheet: () => string
-  flushSnapshot: () => void
 }
 
 interface SheetEditorProps {
@@ -77,17 +75,6 @@ interface SheetEditorProps {
   // アップロード等で外部から取り込みたいシート群。ready 後に新しいシートとして取り込む。
   pendingImport?: PendingSheetImport[] | null
   onImported?: () => void
-}
-
-function readWorkbookSnapshot(): IWorkbookData | null {
-  try {
-    const raw = localStorage.getItem(WORKBOOK_STORAGE_KEY)
-    if (!raw) return null
-    const parsed: unknown = JSON.parse(raw)
-    return parsed && typeof parsed === "object" ? (parsed as IWorkbookData) : null
-  } catch {
-    return null
-  }
 }
 
 function createEmptyWorkbookData(locale: LocaleType): Partial<IWorkbookData> {
@@ -113,10 +100,10 @@ function uniqueSheetName(base: string, existingNames: Set<string>): string {
 export const SheetEditor = forwardRef<SheetEditorHandle, SheetEditorProps>(
   function SheetEditor({ input, pendingImport, onImported }, ref) {
     const { language, t } = useI18n()
+    const reducedMotion = useReducedMotion()
     const containerRef = useRef<HTMLDivElement>(null)
     const univerApiRef = useRef<FUniver | null>(null)
     const univerRef = useRef<ReturnType<typeof createUniver>["univer"] | null>(null)
-    const saveTimerRef = useRef<number | null>(null)
     const inputRef = useRef(input)
     const [ready, setReady] = useState(false)
     const [fullscreen, setFullscreen] = useState(false)
@@ -138,26 +125,6 @@ export const SheetEditor = forwardRef<SheetEditorHandle, SheetEditorProps>(
 
     inputRef.current = input
 
-    const flushSnapshot = () => {
-      if (saveTimerRef.current !== null) {
-        window.clearTimeout(saveTimerRef.current)
-        saveTimerRef.current = null
-      }
-      try {
-        const workbook = univerApiRef.current?.getActiveWorkbook()
-        if (workbook) {
-          localStorage.setItem(WORKBOOK_STORAGE_KEY, JSON.stringify(workbook.save()))
-        }
-      } catch {
-        // 容量超過 / localStorage 不可の環境では黙って無視する。
-      }
-    }
-
-    const scheduleSnapshot = () => {
-      if (saveTimerRef.current !== null) window.clearTimeout(saveTimerRef.current)
-      saveTimerRef.current = window.setTimeout(flushSnapshot, AUTOSAVE_DELAY)
-    }
-
     useImperativeHandle(
       ref,
       () => ({
@@ -170,7 +137,6 @@ export const SheetEditor = forwardRef<SheetEditorHandle, SheetEditorProps>(
           const range = useSelection && active ? active : sheet.getDataRange()
           return serializeTsv(range.getValues())
         },
-        flushSnapshot,
       }),
       [],
     )
@@ -180,7 +146,6 @@ export const SheetEditor = forwardRef<SheetEditorHandle, SheetEditorProps>(
       if (!container) return
 
       let cancelled = false
-      let commandDisposable: { dispose: () => void } | null = null
       let themeObserver: MutationObserver | null = null
 
       setReady(false)
@@ -198,36 +163,16 @@ export const SheetEditor = forwardRef<SheetEditorHandle, SheetEditorProps>(
         univerRef.current = univer
         univerApiRef.current = univerAPI
 
-        const storedSnapshot = readWorkbookSnapshot()
-        let restoredSnapshot = false
-        let workbook
-        if (storedSnapshot) {
-          try {
-            workbook = univerAPI.createWorkbook(storedSnapshot)
-            restoredSnapshot = true
-          } catch {
-            workbook = univerAPI.createWorkbook(createEmptyWorkbookData(config.locale))
-          }
-        } else {
-          workbook = univerAPI.createWorkbook(createEmptyWorkbookData(config.locale))
+        const workbook = univerAPI.createWorkbook(createEmptyWorkbookData(config.locale))
+        const sheet = workbook.getSheets()[0]
+          ?? workbook.create("Sheet1", DEFAULT_ROWS, DEFAULT_COLUMNS)
+        const rows = parseTsv(inputRef.current)
+        if (rows.length > 0) {
+          sheet
+            .getRange(0, 0, rows.length, rows[0].length)
+            .setValues(rows)
         }
-
-        if (!restoredSnapshot) {
-          const sheet = workbook.getSheets()[0]
-            ?? workbook.create("Sheet1", DEFAULT_ROWS, DEFAULT_COLUMNS)
-          const rows = parseTsv(inputRef.current)
-          if (rows.length > 0) {
-            sheet
-              .getRange(0, 0, rows.length, rows[0].length)
-              .setValues(rows)
-          }
-          sheet.activate()
-        }
-
-        commandDisposable = univerAPI.addEvent(
-          univerAPI.Event.CommandExecuted,
-          scheduleSnapshot,
-        )
+        sheet.activate()
 
         let lastDarkMode: boolean | null = null
         const syncTheme = () => {
@@ -243,16 +188,11 @@ export const SheetEditor = forwardRef<SheetEditorHandle, SheetEditorProps>(
           attributeFilter: ["class"],
         })
 
-        window.addEventListener("pagehide", flushSnapshot)
-        flushSnapshot()
         setReady(true)
       })
 
       return () => {
         cancelled = true
-        flushSnapshot()
-        window.removeEventListener("pagehide", flushSnapshot)
-        commandDisposable?.dispose()
         themeObserver?.disconnect()
         const univerToDispose = univerRef.current
         univerRef.current = null
@@ -277,10 +217,23 @@ export const SheetEditor = forwardRef<SheetEditorHandle, SheetEditorProps>(
         .getRange(0, 0, values.length, values[0].length)
         .setValues(values)
       sheet.activate()
-      scheduleSnapshot()
     }
 
     const importInput = () => importValues("Imported", parseTsv(input))
+
+    const exportXlsx = () => {
+      const workbook = univerApiRef.current?.getActiveWorkbook()
+      if (!workbook) return
+      const sheets = workbook.getSheets().map((sheet) => {
+        const range = sheet.getDataRange()
+        return {
+          name: sheet.getSheetName(),
+          values: range.getValues(),
+          formulas: range.getFormulas(),
+        }
+      })
+      downloadBlob(createXlsx(sheets), "converTeXcel.xlsx")
+    }
 
     // ready 後に保留中の取り込み（アップロードされた Excel 等）を新しいシートへ反映する。
     // 末尾→先頭の順に取り込むことで、先頭シートが最後に作られてアクティブになる。
@@ -300,36 +253,50 @@ export const SheetEditor = forwardRef<SheetEditorHandle, SheetEditorProps>(
             <h1 className="text-2xl font-semibold tracking-tight">{t.sheet.title}</h1>
             <p className="text-muted-foreground text-sm">{t.sheet.description}</p>
           </div>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={importInput}
-            disabled={!ready || input.trim() === ""}
-            title={t.sheet.importTitle}
-          >
-            <FileInput className="h-4 w-4" />
-            <span>{t.sheet.importInput}</span>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="secondary" size="sm" onClick={exportXlsx} disabled={!ready}>
+              <Download className="h-4 w-4" />
+              <span>{t.sheet.exportXlsx}</span>
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={importInput}
+              disabled={!ready || input.trim() === ""}
+              title={t.sheet.importTitle}
+            >
+              <FileInput className="h-4 w-4" />
+              <span>{t.sheet.importInput}</span>
+            </Button>
+          </div>
         </div>
         <motion.div
-          layout
-          transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+          layout={!reducedMotion}
+          transition={{ duration: reducedMotion ? 0 : 0.3, ease: [0.4, 0, 0.2, 1] }}
           className={cn(
             "overflow-hidden bg-background",
             fullscreen
-              ? "fixed inset-0 z-50 rounded-none"
+              ? "fixed inset-x-0 top-0 bottom-6 z-50 rounded-none"
               : "relative h-[70vh] min-h-[420px] rounded-md border",
           )}
         >
+          <AnimatePresence initial={false}>
           {!ready && (
-            <div className="absolute inset-0 z-10 grid place-items-center bg-background/80 backdrop-blur-sm">
+            <motion.div
+              className="absolute inset-0 z-10 grid place-items-center bg-background/80 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: reducedMotion ? 0 : 0.2 }}
+            >
               <div className="flex flex-col items-center gap-3 text-muted-foreground">
                 <Loader size={9} className="text-primary" />
                 <span className="text-sm">{t.sheet.loading}</span>
               </div>
-            </div>
+            </motion.div>
           )}
+          </AnimatePresence>
           <button
             type="button"
             onClick={() => setFullscreen((v) => !v)}
@@ -337,7 +304,17 @@ export const SheetEditor = forwardRef<SheetEditorHandle, SheetEditorProps>(
             aria-label={fullscreen ? t.sheet.exitFullscreen : t.sheet.fullscreen}
             className="absolute right-2 top-2 z-20 flex h-8 w-8 items-center justify-center rounded-md border bg-background/80 text-muted-foreground shadow-sm backdrop-blur transition-colors hover:text-foreground"
           >
-            {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            <AnimatePresence initial={false} mode="wait">
+              <motion.span
+                key={fullscreen ? "minimize" : "maximize"}
+                initial={{ opacity: 0, rotate: reducedMotion ? 0 : -90, scale: reducedMotion ? 1 : 0.75 }}
+                animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                exit={{ opacity: 0, rotate: reducedMotion ? 0 : 90, scale: reducedMotion ? 1 : 0.75 }}
+                transition={{ duration: reducedMotion ? 0 : 0.16 }}
+              >
+                {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+              </motion.span>
+            </AnimatePresence>
           </button>
           <div ref={containerRef} className="h-full w-full" />
         </motion.div>

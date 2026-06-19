@@ -65,11 +65,11 @@ export function usePreviewSubmission({
   renderGnuplotPreview,
   startCooldown,
 }: UsePreviewSubmissionOptions) {
-  const iframeRef = useRef<HTMLIFrameElement>(null)
   const previewDoneTimerRef = useRef<number | null>(null)
   const [pending, setPending] = useState<null | "latex" | "tikz">(null)
   const [previewStatus, setPreviewStatus] = useState<PreviewStatus>(INITIAL_PREVIEW_STATUS)
   const [previewError, setPreviewError] = useState<PreviewError | null>(null)
+  const [pdf, setPdf] = useState<Blob | null>(null)
 
   const resetPreviewStatus = useCallback(() => {
     setPreviewStatus(INITIAL_PREVIEW_STATUS)
@@ -102,13 +102,13 @@ export function usePreviewSubmission({
       }
 
       if (result.ok) {
-        // PDF を pdf.js ビューアで表示。読み込み完了は iframe の onLoad で検知する。
-        if (iframeRef.current) iframeRef.current.src = result.viewerUrl
+        // 同一オリジンから受け取ったPDFをアプリ内の最小PDF.jsビューアで描画する。
+        setPdf(result.pdf)
         return
       }
 
       // 失敗時は進捗 UI を畳み、解析済みエラーを表示する。古い PDF も消す。
-      if (iframeRef.current) iframeRef.current.src = "about:blank"
+      setPdf(null)
       resetPreviewStatus()
       if (result.reason === "compile") {
         const lineOffset = kind === "latex" ? LATEX_PREAMBLE_LINES : TIKZ_PREAMBLE_LINES
@@ -171,7 +171,7 @@ export function usePreviewSubmission({
   }, [])
 
   return {
-    iframeRef,
+    pdf,
     pending,
     previewStatus,
     previewError,

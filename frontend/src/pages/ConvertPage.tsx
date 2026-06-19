@@ -15,7 +15,6 @@ import { useCooldown } from "@/hooks/useCooldown"
 import { useGnuplotPreview } from "@/hooks/useGnuplotPreview"
 import { useI18n } from "@/hooks/useI18n"
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts"
-import { usePersistentState } from "@/hooks/usePersistentState"
 import { usePreviewSubmission, type OutputTab } from "@/hooks/usePreviewSubmission"
 import { useSeo } from "@/hooks/useSeo"
 import { getSharedState, useShareUrl } from "@/hooks/useShareUrl"
@@ -37,6 +36,13 @@ import type { SheetEditorHandle } from "@/components/convert/SheetEditor"
 type Step = "input" | "convert" | "sheet"
 
 const STEPS: Step[] = ["input", "convert", "sheet"]
+const LEGACY_DATA_KEYS = [
+  "convertexcel:input",
+  "convertexcel:table",
+  "convertexcel:tikz",
+  "convertexcel:gnuplot",
+  "convertexcel:workbook",
+]
 
 const SITE_URL = "https://convertexcel.net/"
 const convertUrls = localizedSiteUrls(SITE_URL, "/")
@@ -58,6 +64,14 @@ const PreviewConsentDialog = lazy(() =>
 
 export default function ConvertPage() {
   const { language, t, seo: seoText } = useI18n()
+
+  useEffect(() => {
+    try {
+      LEGACY_DATA_KEYS.forEach((key) => localStorage.removeItem(key))
+    } catch {
+      // localStorage を利用できない環境では削除処理は不要。
+    }
+  }, [])
   const canonical = convertUrls[language]
   const pageSchema = useMemo(
     () => ({
@@ -92,11 +106,11 @@ export default function ConvertPage() {
     schema: pageSchema,
   })
 
-  const [input, setInput] = usePersistentState("convertexcel:input", "")
+  const [input, setInput] = useState("")
   const sheetEditorRef = useRef<SheetEditorHandle>(null)
-  const [table, setTable] = usePersistentState("convertexcel:table", DEFAULT_TABLE_SETTINGS)
-  const [tikz, setTikz] = usePersistentState("convertexcel:tikz", getDefaultTikzSettings(language))
-  const [gnuplot, setGnuplot] = usePersistentState("convertexcel:gnuplot", DEFAULT_GNUPLOT_SETTINGS)
+  const [table, setTable] = useState(DEFAULT_TABLE_SETTINGS)
+  const [tikz, setTikz] = useState(() => getDefaultTikzSettings(language))
+  const [gnuplot, setGnuplot] = useState(DEFAULT_GNUPLOT_SETTINGS)
   const [showInputSettings, setShowInputSettings] = useState(false)
   const [showTikzSettings, setShowTikzSettings] = useState(false)
   const [showGnuplotSettings, setShowGnuplotSettings] = useState(false)
@@ -132,7 +146,6 @@ export default function ConvertPage() {
       const editor = sheetEditorRef.current
       if (editor) {
         setInput(editor.exportActiveSheet())
-        editor.flushSnapshot()
       }
     }
 
@@ -217,7 +230,7 @@ export default function ConvertPage() {
   )
   const { copied, copyShareUrl, shareUrl } = useShareUrl(shareState, hasShareContent)
 
-  // 共有URLから入力・設定を復元（localStorage より優先）。
+  // 共有URLから入力・設定を復元。
   useEffect(() => {
     const shared = getSharedState()
     if (!shared) return
@@ -344,14 +357,22 @@ export default function ConvertPage() {
                 }
               }}
             >
+              <AnimatePresence initial={false}>
               {isDraggingFile && (
-                <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center rounded-lg border-2 border-dashed border-primary bg-primary/10 backdrop-blur-sm">
+                <motion.div
+                  className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center rounded-lg border-2 border-dashed border-primary bg-primary/10 backdrop-blur-sm"
+                  initial={{ opacity: 0, scale: reducedMotion ? 1 : 0.985 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: reducedMotion ? 1 : 0.985 }}
+                  transition={{ duration: reducedMotion ? 0 : 0.16 }}
+                >
                   <div className="flex items-center gap-2 rounded-md bg-background/90 px-4 py-2 text-sm font-medium shadow-sm">
                     <Upload className="h-4 w-4 text-primary" />
                     {t.convert.dropExcel}
                   </div>
-                </div>
+                </motion.div>
               )}
+              </AnimatePresence>
               <InputStep
                 input={input}
                 onInputChange={setInput}

@@ -106,36 +106,6 @@
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://convertexcel.net/docs</loc>
-    <lastmod>2026-06-16</lastmod>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://convertexcel.net/en/docs</loc>
-    <lastmod>2026-06-16</lastmod>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://convertexcel.net/zh/docs</loc>
-    <lastmod>2026-06-16</lastmod>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://convertexcel.net/zh-hant/docs</loc>
-    <lastmod>2026-06-16</lastmod>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://convertexcel.net/es/docs</loc>
-    <lastmod>2026-06-16</lastmod>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://convertexcel.net/de/docs</loc>
-    <lastmod>2026-06-16</lastmod>
-    <priority>0.5</priority>
-  </url>
-  <url>
     <loc>https://convertexcel.net/guides/excel-to-latex-table</loc>
     <lastmod>2026-06-16</lastmod>
     <priority>0.5</priority>

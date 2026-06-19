@@ -1,4 +1,4 @@
-import { Link, useParams } from "react-router-dom"
+import { useParams } from "react-router-dom"
 
 import { DocsLayout } from "@/components/DocsLayout"
 import { useI18n } from "@/hooks/useI18n"
@@ -10,7 +10,7 @@ import NotFoundPage from "@/pages/NotFoundPage"
 const SITE_URL = "https://convertexcel.net/"
 
 function GuideArticle({ guide }: { guide: Guide }) {
-  const { language, pathFor } = useI18n()
+  const { language } = useI18n()
   const copy = guidesCopy[language]
   const urls = localizedSiteUrls(SITE_URL, `/guides/${guide.slug}`)
   const canonical = urls[language]
@@ -56,7 +56,7 @@ function GuideArticle({ guide }: { guide: Guide }) {
           })}
         </div>
 
-        <p><Link to={pathFor("/docs")} className="text-sm underline underline-offset-4">{copy.back}</Link></p>
+        <p><a href="https://docs.convertexcel.net/docs" className="text-sm underline underline-offset-4">{copy.back}</a></p>
       </article>
     </DocsLayout>
   )

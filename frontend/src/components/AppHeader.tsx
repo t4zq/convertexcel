@@ -1,14 +1,17 @@
 import { NavLink } from "react-router-dom"
+import { useReducedMotion } from "motion/react"
 
 import logo from "@/assets/logo-2x.webp"
 import logoDark from "@/assets/logo-dark-2x.webp"
 import { ThemeToggle } from "@/components/ThemeToggle"
+import { Highlight, HighlightItem } from "@/components/animate-ui/primitives/effects/highlight"
 import { useI18n } from "@/hooks/useI18n"
 import { LANGUAGE_NAMES, LANGUAGE_SHORT_LABELS, SUPPORTED_LANGUAGES } from "@/lib/i18n"
 import { cn } from "@/lib/utils"
 
 export function AppHeader() {
   const { language, setLanguage, t, pathFor } = useI18n()
+  const reducedMotion = useReducedMotion()
   const tools = [
     { to: pathFor("/"), label: t.nav.tool, sub: t.nav.toolSub, end: true },
   ]
@@ -54,22 +57,31 @@ export function AppHeader() {
               {t.nav.addin}
             </NavLink>
             <div className="inline-flex rounded-md border bg-muted p-0.5 gap-0.5" aria-label={t.nav.language}>
+              <Highlight
+                controlledItems
+                value={language}
+                click={false}
+                className="rounded bg-background shadow-sm"
+                transition={reducedMotion ? { duration: 0 } : { type: "spring", stiffness: 350, damping: 30 }}
+              >
               {SUPPORTED_LANGUAGES.map((lang) => (
+                <HighlightItem key={lang} value={lang} asChild>
                 <button
-                  key={lang}
                   type="button"
                   onClick={() => setLanguage(lang)}
                   className={cn(
                     "rounded px-2 py-1 text-xs font-medium transition-colors",
                     language === lang
-                      ? "bg-background text-foreground shadow-sm"
+                      ? "text-foreground"
                       : "text-muted-foreground hover:text-foreground",
                   )}
                   title={LANGUAGE_NAMES[lang]}
                 >
                   {LANGUAGE_SHORT_LABELS[lang]}
                 </button>
+                </HighlightItem>
               ))}
+              </Highlight>
             </div>
             <ThemeToggle />
           </div>

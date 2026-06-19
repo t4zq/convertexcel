@@ -23,6 +23,11 @@
     "binding": "ASSETS",
     "not_found_handling": "single-page-application"
   },
+  "vars": {
+    "GITHUB_DOCS_OWNER": "t4zq",
+    "GITHUB_DOCS_REPO": "convertexcel",
+    "GITHUB_DOCS_BRANCH": "main"
+  },
   // Workers AI: TeX コンパイルエラーを自然言語で解説する /api/explain-error 用。
   "ai": {
     "binding": "AI",
@@ -43,6 +48,11 @@
       "name": "EXPLAIN_RATE_LIMIT",
       "namespace_id": "1002",
       "simple": { "limit": 8, "period": 60 }
+    },
+    {
+      "name": "DOCS_PUBLISH_RATE_LIMIT",
+      "namespace_id": "1003",
+      "simple": { "limit": 10, "period": 60 }
     }
   ]
 }
