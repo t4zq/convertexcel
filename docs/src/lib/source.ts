@@ -1,11 +1,34 @@
-import { docs } from 'collections/server';
-import { loader } from 'fumadocs-core/source';
+import { loader, source as createSource } from 'fumadocs-core/source';
 import { docsContentRoute, docsImageRoute, docsRoute } from './shared';
+import snapshot from '../../content/payload-docs.json';
+import { markdownFromDoc, structuredData, tocFromDoc, type PayloadSnapshot } from './payload-content';
 
-// See https://fumadocs.dev/docs/headless/source-api for more info
+const payloadDocs = (snapshot as PayloadSnapshot).toSorted((a, b) => a.order - b.order);
+const payloadSource = createSource({
+  metas: [{
+    type: 'meta' as const,
+    path: 'meta.json',
+    data: { title: 'ドキュメント', pages: payloadDocs.map((doc) => doc.slug) },
+  }],
+  pages: payloadDocs.map((doc) => ({
+    type: 'page' as const,
+    path: `${doc.slug}.json`,
+    slugs: doc.slug === 'index' ? [] : [doc.slug],
+    data: {
+      title: doc.title,
+      description: doc.description,
+      blocks: doc.content,
+      toc: tocFromDoc(doc),
+      full: false,
+      markdown: markdownFromDoc(doc),
+      structuredData: structuredData(doc),
+    },
+  })),
+});
+
 export const source = loader({
   baseUrl: docsRoute,
-  source: docs.toFumadocsSource(),
+  source: payloadSource,
   plugins: [],
 });
 
@@ -28,9 +51,7 @@ export function getPageMarkdownUrl(page: (typeof source)['$inferPage']) {
 }
 
 export async function getLLMText(page: (typeof source)['$inferPage']) {
-  const processed = await page.data.getText('processed');
-
   return `# ${page.data.title} (${page.url})
 
-${processed}`;
+${page.data.markdown}`;
 }

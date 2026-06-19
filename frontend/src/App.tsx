@@ -13,14 +13,9 @@ const AddinPage = lazy(() => import("@/pages/AddinPage"))
 const ConvertPage = lazy(() => import("@/pages/ConvertPage"))
 const NotFoundPage = lazy(() => import("@/pages/NotFoundPage"))
 const PrivacyPage = lazy(() => import("@/pages/PrivacyPage"))
-const GuidePage = lazy(() => import("@/pages/GuidePage"))
-const FaqPage = lazy(() => import("@/pages/FaqPage"))
-const AboutPage = lazy(() => import("@/pages/AboutPage"))
 const ContactPage = lazy(() => import("@/pages/ContactPage"))
-const GuideDetailPage = lazy(() => import("@/pages/GuideDetailPage"))
 const TermsPage = lazy(() => import("@/pages/TermsPage"))
 const UpdatesPage = lazy(() => import("@/pages/UpdatesPage"))
-const DocsAdminPage = lazy(() => import("@/pages/DocsAdminPage"))
 
 const localizedRoutes = SUPPORTED_LANGUAGES
   .filter((language) => language !== "ja")
@@ -31,8 +26,6 @@ const localizedRoutes = SUPPORTED_LANGUAGES
       <Route key={`${prefix}/convert`} path={`${prefix}/convert`} element={<ConvertPage />} />,
       <Route key={`${prefix}/privacy`} path={`${prefix}/privacy`} element={<PrivacyPage />} />,
       <Route key={`${prefix}/excel-addin`} path={`${prefix}/excel-addin`} element={<AddinPage />} />,
-      <Route key={`${prefix}/guides`} path={`${prefix}/guides/:slug`} element={<GuideDetailPage />} />,
-      <Route key={`${prefix}/about`} path={`${prefix}/about`} element={<AboutPage />} />,
       <Route key={`${prefix}/contact`} path={`${prefix}/contact`} element={<ContactPage />} />,
       <Route key={`${prefix}/updates`} path={`${prefix}/updates`} element={<UpdatesPage />} />,
     ]
@@ -52,14 +45,9 @@ export default function App() {
                 <Route path="/convert" element={<ConvertPage />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
                 <Route path="/excel-addin" element={<AddinPage />} />
-                <Route path="/guides/:slug" element={<GuideDetailPage />} />
-                <Route path="/guide" element={<GuidePage />} />
-                <Route path="/faq" element={<FaqPage />} />
-                <Route path="/about" element={<AboutPage />} />
                 <Route path="/contact" element={<ContactPage />} />
                 <Route path="/terms" element={<TermsPage />} />
                 <Route path="/updates" element={<UpdatesPage />} />
-                <Route path="/admin/docs" element={<DocsAdminPage />} />
                 {localizedRoutes}
                 <Route path="*" element={<NotFoundPage />} />
               </Routes>

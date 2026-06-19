@@ -12,10 +12,7 @@ import {
   type Language,
 } from "./src/lib/i18n"
 import {
-  aboutPage,
   contactPage,
-  faqPage,
-  guidePage,
   termsPage,
   type SitePage,
 } from "./src/lib/site-content"
@@ -34,28 +31,28 @@ const OG_LOCALES: Record<Language, string> = {
 
 const ADDIN_SEO: Record<Language, { title: string; description: string }> = {
   ja: {
-    title: "Excel アドインの導入 - converTeXcel",
-    description: "converTeXcel の Excel アドイン（manifest.xml）の入手場所と、Excel への読み込み手順を説明します。",
+    title: "Excel アドイン - converTeXcel",
+    description: "Excelの選択範囲をconverTeXcelへ取り込むアドインとマニフェストを提供します。",
   },
   en: {
-    title: "Install the Excel add-in - converTeXcel",
-    description: "Where to get the converTeXcel Excel add-in (manifest.xml) and how to load it into Excel.",
+    title: "Excel add-in - converTeXcel",
+    description: "Get the add-in and manifest for importing an Excel selection into converTeXcel.",
   },
   zh: {
-    title: "安装 Excel 加载项 - converTeXcel",
-    description: "获取 converTeXcel 的 Excel 加载项（manifest.xml），以及如何将其加载到 Excel 中。",
+    title: "Excel 加载项 - converTeXcel",
+    description: "获取用于将Excel选区导入converTeXcel的加载项和清单文件。",
   },
   "zh-Hant": {
-    title: "安裝 Excel 增益集 - converTeXcel",
-    description: "取得 converTeXcel 的 Excel 增益集（manifest.xml），以及如何將其載入 Excel。",
+    title: "Excel 增益集 - converTeXcel",
+    description: "取得用於將Excel選取範圍匯入converTeXcel的增益集與資訊清單。",
   },
   es: {
-    title: "Instalar el complemento de Excel - converTeXcel",
-    description: "Dónde obtener el complemento de Excel de converTeXcel (manifest.xml) y cómo cargarlo en Excel.",
+    title: "Complemento de Excel - converTeXcel",
+    description: "Obtén el complemento y el manifiesto para importar una selección de Excel en converTeXcel.",
   },
   de: {
-    title: "Excel-Add-In installieren - converTeXcel",
-    description: "Wo Sie das converTeXcel-Excel-Add-In (manifest.xml) erhalten und wie Sie es in Excel laden.",
+    title: "Excel-Add-In - converTeXcel",
+    description: "Add-In und Manifest zum Importieren eines Excel-Bereichs in converTeXcel.",
   },
 }
 
@@ -233,11 +230,8 @@ function staticSeo(language: Language, page: SeoPage): StaticSeo {
   }
 }
 
-// 日本語のみ用意した読み物ページ（/guide, /faq など）の静的 SEO 生成対象。
+// 日本語のみ用意した読み物ページの静的 SEO 生成対象。
 const JA_CONTENT_PAGES: Array<{ path: string; page: SitePage; schemaType: string }> = [
-  { path: "/guide", page: guidePage, schemaType: "Article" },
-  { path: "/faq", page: faqPage, schemaType: "FAQPage" },
-  { path: "/about", page: aboutPage, schemaType: "AboutPage" },
   { path: "/contact", page: contactPage, schemaType: "ContactPage" },
   { path: "/terms", page: termsPage, schemaType: "WebPage" },
 ]

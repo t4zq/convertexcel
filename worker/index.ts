@@ -10,8 +10,6 @@ const MAX_FILE_CHARS = 64_000
 const MAX_TOTAL_FILE_CHARS = 128_000
 const MAX_LOG_BYTES = 128 * 1024
 const MAX_PDF_BYTES = 12 * 1024 * 1024
-const MAX_DOCS_CONTENT_CHARS = 180_000
-const GITHUB_API_VERSION = "2022-11-28"
 const DOCS_SITE_URL = "https://docs.convertexcel.net/docs"
 
 const SECURITY_HEADERS: Record<string, string> = {
@@ -23,29 +21,19 @@ const SECURITY_HEADERS: Record<string, string> = {
   "X-Frame-Options": "DENY",
 }
 
-const GUIDE_SLUGS = new Set([
-  "excel-to-latex-table",
-  "siunitx-numbers-units",
-  "graphs-from-data",
-  "pgfplots-basics",
-  "pgfplots-error-bars",
-  "pgfplots-from-csv",
-])
 const LOCALIZED_PATHS = new Set([
   "",
   "/convert",
   "/privacy",
   "/excel-addin",
-  "/about",
   "/contact",
   "/updates",
 ])
-const JA_ONLY_PATHS = new Set(["/guide", "/faq", "/terms", "/admin/docs"])
+const JA_ONLY_PATHS = new Set(["/terms"])
 const LANGUAGE_PREFIXES = new Set(["en", "zh", "zh-hant", "es", "de"])
 
 type TexFile = { name: string; contents: string }
 type TexPreviewBody = { tex?: unknown; files?: unknown }
-type DocsPublishBody = { slug?: unknown; title?: unknown; content?: unknown }
 
 function json(data: unknown, status = 200, extraHeaders?: HeadersInit): Response {
   const headers = new Headers(extraHeaders)
@@ -74,13 +62,10 @@ function withSecurityHeaders(response: Response, pathname = ""): Response {
 function isPublicPage(pathname: string): boolean {
   const normalized = pathname !== "/" && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname
   if (normalized === "/" || LOCALIZED_PATHS.has(normalized) || JA_ONLY_PATHS.has(normalized)) return true
-  if (normalized.startsWith("/guides/")) return GUIDE_SLUGS.has(normalized.slice("/guides/".length))
-
   const [, prefix = "", ...rest] = normalized.split("/")
   if (!LANGUAGE_PREFIXES.has(prefix)) return false
   const localizedPath = `/${rest.join("/")}`.replace(/\/$/, "")
-  if (LOCALIZED_PATHS.has(localizedPath)) return true
-  return localizedPath.startsWith("/guides/") && GUIDE_SLUGS.has(localizedPath.slice("/guides/".length))
+  return LOCALIZED_PATHS.has(localizedPath)
 }
 
 async function readBoundedBytes(stream: ReadableStream<Uint8Array> | null, maxBytes: number): Promise<Uint8Array> {
@@ -447,204 +432,21 @@ function parseExplainResponse(raw: string): { userFixable: boolean; explanation:
   return { userFixable: false, explanation: text }
 }
 
-async function constantTimeEquals(provided: string, expected: string): Promise<boolean> {
-  const encoder = new TextEncoder()
-  const [providedHash, expectedHash] = await Promise.all([
-    crypto.subtle.digest("SHA-256", encoder.encode(provided)),
-    crypto.subtle.digest("SHA-256", encoder.encode(expected)),
-  ])
-  const left = new Uint8Array(providedHash)
-  const right = new Uint8Array(expectedHash)
-  let difference = 0
-  for (let index = 0; index < left.length; index += 1) difference |= left[index] ^ right[index]
-  return difference === 0
-}
-
-function encodeBase64(value: string): string {
-  const bytes = new TextEncoder().encode(value)
-  const chunks: string[] = []
-  const chunkSize = 8192
-  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
-    chunks.push(String.fromCharCode(...bytes.subarray(offset, offset + chunkSize)))
-  }
-  return btoa(chunks.join(""))
-}
-
-function decodeBase64(value: string): string {
-  const binary = atob(value.replace(/\s/g, ""))
-  const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0))
-  return new TextDecoder().decode(bytes)
-}
-
-function githubHeaders(env: Env): Headers {
-  return new Headers({
-    Accept: "application/vnd.github+json",
-    Authorization: `Bearer ${env.GITHUB_DOCS_TOKEN}`,
-    "Content-Type": "application/json",
-    "User-Agent": "convertexcel-docs-publisher",
-    "X-GitHub-Api-Version": GITHUB_API_VERSION,
-  })
-}
-
-async function githubFileSha(apiUrl: string, env: Env): Promise<string | undefined> {
-  const response = await fetch(`${apiUrl}?ref=${encodeURIComponent(env.GITHUB_DOCS_BRANCH)}`, {
-    headers: githubHeaders(env),
-  })
-  if (response.status === 404) return undefined
-  if (!response.ok) throw new Error(`GitHub read failed (${response.status})`)
-  const data = await response.json<{ sha?: unknown }>()
-  return typeof data.sha === "string" ? data.sha : undefined
-}
-
-async function authorizeDocsAdmin(request: Request, env: Env): Promise<Response | null> {
-  const clientKey = request.headers.get("CF-Connecting-IP") ?? "local"
-  const rateLimit = await env.DOCS_PUBLISH_RATE_LIMIT.limit({ key: clientKey })
-  if (!rateLimit.success) return json({ ok: false, error: "試行回数が多すぎます。しばらく待ってください。" }, 429)
-  if (!env.DOCS_ADMIN_TOKEN || !env.GITHUB_DOCS_TOKEN) {
-    return json({ ok: false, error: "Docs管理用Secretが設定されていません。" }, 503)
-  }
-  const authorization = request.headers.get("Authorization") ?? ""
-  const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : ""
-  if (!token || !(await constantTimeEquals(token, env.DOCS_ADMIN_TOKEN))) {
-    return json({ ok: false, error: "公開用トークンが正しくありません。" }, 401, { "WWW-Authenticate": "Bearer" })
-  }
-  return null
-}
-
-function docsGithubUrl(env: Env, slug?: string): string {
-  const repository = `https://api.github.com/repos/${encodeURIComponent(env.GITHUB_DOCS_OWNER)}/${encodeURIComponent(env.GITHUB_DOCS_REPO)}/contents/docs/content/docs`
-  return slug ? `${repository}/${encodeURIComponent(slug)}.mdx` : repository
-}
-
-async function listDocsArticles(request: Request, env: Env): Promise<Response> {
-  const denied = await authorizeDocsAdmin(request, env)
-  if (denied) return denied
-  try {
-    const response = await fetch(`${docsGithubUrl(env)}?ref=${encodeURIComponent(env.GITHUB_DOCS_BRANCH)}`, { headers: githubHeaders(env) })
-    if (!response.ok) return json({ ok: false, error: `記事一覧の取得に失敗しました (${response.status})。` }, 502)
-    const data = await response.json<unknown>()
-    if (!Array.isArray(data)) return json({ ok: false, error: "記事一覧の形式が不正です。" }, 502)
-    const articles = data.flatMap((item) => {
-      if (!item || typeof item !== "object") return []
-      const entry = item as Record<string, unknown>
-      if (entry.type !== "file" || typeof entry.name !== "string" || !entry.name.endsWith(".mdx")) return []
-      const slug = entry.name.slice(0, -4)
-      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) return []
-      return [{
-        slug,
-        sha: typeof entry.sha === "string" ? entry.sha : undefined,
-        url: typeof entry.html_url === "string" ? entry.html_url : undefined,
-      }]
-    }).sort((left, right) => left.slug.localeCompare(right.slug))
-    return json({ ok: true, articles })
-  } catch (error) {
-    console.error(JSON.stringify({ message: "github docs list error", error: error instanceof Error ? error.message : "unknown error" }))
-    return json({ ok: false, error: "GitHubへの接続に失敗しました。" }, 502)
-  }
-}
-
-async function getDocsArticle(request: Request, env: Env, slug: string): Promise<Response> {
-  const denied = await authorizeDocsAdmin(request, env)
-  if (denied) return denied
-  try {
-    const response = await fetch(`${docsGithubUrl(env, slug)}?ref=${encodeURIComponent(env.GITHUB_DOCS_BRANCH)}`, { headers: githubHeaders(env) })
-    if (response.status === 404) return json({ ok: false, error: "記事が見つかりません。" }, 404)
-    if (!response.ok) return json({ ok: false, error: `記事の取得に失敗しました (${response.status})。` }, 502)
-    const data = await response.json<{ content?: unknown; sha?: unknown; html_url?: unknown }>()
-    if (typeof data.content !== "string") return json({ ok: false, error: "記事本文を読み取れませんでした。" }, 502)
-    return json({
-      ok: true,
-      article: {
-        slug,
-        content: decodeBase64(data.content),
-        sha: typeof data.sha === "string" ? data.sha : undefined,
-        url: typeof data.html_url === "string" ? data.html_url : undefined,
-      },
-    })
-  } catch (error) {
-    console.error(JSON.stringify({ message: "github docs read error", slug, error: error instanceof Error ? error.message : "unknown error" }))
-    return json({ ok: false, error: "GitHubへの接続に失敗しました。" }, 502)
-  }
-}
-
-async function deleteDocsArticle(request: Request, env: Env, slug: string): Promise<Response> {
-  const denied = await authorizeDocsAdmin(request, env)
-  if (denied) return denied
-  const apiUrl = docsGithubUrl(env, slug)
-  try {
-    const sha = await githubFileSha(apiUrl, env)
-    if (!sha) return json({ ok: false, error: "記事が見つかりません。" }, 404)
-    const response = await fetch(apiUrl, {
-      method: "DELETE",
-      headers: githubHeaders(env),
-      body: JSON.stringify({ message: `Delete docs: ${slug}`, sha, branch: env.GITHUB_DOCS_BRANCH }),
-    })
-    if (!response.ok) {
-      console.error(JSON.stringify({ message: "github docs delete failed", status: response.status, slug }))
-      return json({ ok: false, error: `記事の削除に失敗しました (${response.status})。` }, 502)
-    }
-    console.log(JSON.stringify({ message: "docs article deleted", slug }))
-    return json({ ok: true, slug })
-  } catch (error) {
-    console.error(JSON.stringify({ message: "github docs delete error", slug, error: error instanceof Error ? error.message : "unknown error" }))
-    return json({ ok: false, error: "GitHubへの接続に失敗しました。" }, 502)
-  }
-}
-
-async function publishDocsArticle(request: Request, env: Env): Promise<Response> {
-  const denied = await authorizeDocsAdmin(request, env)
-  if (denied) return denied
-
-  let body: DocsPublishBody
-  try {
-    body = await readJson(request) as DocsPublishBody
-  } catch (error) {
-    return json({ ok: false, error: error instanceof RangeError ? "記事が大きすぎます。" : "リクエストが不正です。" }, error instanceof RangeError ? 413 : 422)
-  }
-
-  const slug = typeof body.slug === "string" ? body.slug : ""
-  const title = typeof body.title === "string" ? body.title.trim() : ""
-  const content = typeof body.content === "string" ? body.content : ""
-  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) || !title || title.length > 160 || !content.trim()) {
-    return json({ ok: false, error: "slug、タイトル、本文を確認してください。" }, 422)
-  }
-  if (content.length > MAX_DOCS_CONTENT_CHARS) return json({ ok: false, error: "記事が大きすぎます。" }, 413)
-
-  const apiUrl = docsGithubUrl(env, slug)
-
-  try {
-    const sha = await githubFileSha(apiUrl, env)
-    const response = await fetch(apiUrl, {
-      method: "PUT",
-      headers: githubHeaders(env),
-      body: JSON.stringify({
-        message: `${sha ? "Update" : "Add"} docs: ${title}`,
-        content: encodeBase64(content),
-        branch: env.GITHUB_DOCS_BRANCH,
-        ...(sha ? { sha } : {}),
-      }),
-    })
-    if (!response.ok) {
-      console.error(JSON.stringify({ message: "github docs publish failed", status: response.status, slug }))
-      return json({ ok: false, error: `GitHubへの保存に失敗しました (${response.status})。` }, 502)
-    }
-    const data = await response.json<{ content?: { html_url?: unknown } }>()
-    const url = typeof data.content?.html_url === "string" ? data.content.html_url : undefined
-    console.log(JSON.stringify({ message: "docs article published", slug, updated: Boolean(sha) }))
-    return json({ ok: true, slug, url })
-  } catch (error) {
-    console.error(JSON.stringify({
-      message: "github docs publish error",
-      slug,
-      error: error instanceof Error ? error.message : "unknown error",
-    }))
-    return json({ ok: false, error: "GitHubへの接続に失敗しました。" }, 502)
-  }
-}
-
 async function handleRequest(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url)
   const { pathname } = url
+
+  if (/^\/(?:(?:en|zh|zh-hant|es|de)\/)?(?:guide|guides|faq)(?:\/|$)/.test(pathname)) {
+    const location = new URL(DOCS_SITE_URL)
+    location.search = url.search
+    return withSecurityHeaders(new Response(null, { status: 308, headers: { Location: location.toString() } }))
+  }
+
+  if (/^\/(?:(?:en|zh|zh-hant|es|de)\/)?about\/?$/.test(pathname)) {
+    const location = new URL("https://convertexcel.net/")
+    location.search = url.search
+    return withSecurityHeaders(new Response(null, { status: 308, headers: { Location: location.toString() } }))
+  }
 
   if (pathname === "/docs" || /^\/(en|zh|zh-hant|es|de)\/docs\/?$/.test(pathname)) {
     const location = new URL(DOCS_SITE_URL)
@@ -668,23 +470,6 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
   if (pathname === "/api/explain-error") {
     if (request.method !== "POST") return json({ error: "Method Not Allowed" }, 405, { Allow: "POST" })
     return explainError(request, env)
-  }
-
-  if (pathname === "/api/admin/docs/publish") {
-    if (request.method !== "POST") return json({ error: "Method Not Allowed" }, 405, { Allow: "POST" })
-    return publishDocsArticle(request, env)
-  }
-
-  if (pathname === "/api/admin/docs") {
-    if (request.method !== "GET") return json({ error: "Method Not Allowed" }, 405, { Allow: "GET" })
-    return listDocsArticles(request, env)
-  }
-
-  const docsArticleMatch = pathname.match(/^\/api\/admin\/docs\/([a-z0-9]+(?:-[a-z0-9]+)*)$/)
-  if (docsArticleMatch) {
-    if (request.method === "GET") return getDocsArticle(request, env, docsArticleMatch[1])
-    if (request.method === "DELETE") return deleteDocsArticle(request, env, docsArticleMatch[1])
-    return json({ error: "Method Not Allowed" }, 405, { Allow: "GET, DELETE" })
   }
 
   if (pathname.startsWith("/api/")) return json({ error: "Not Found" }, 404)

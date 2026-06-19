@@ -2,11 +2,8 @@ import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import {
   BookOpen,
-  Compass,
   FileSpreadsheet,
-  HelpCircle,
   House,
-  Info,
   Mail,
   Newspaper,
   ScrollText,
@@ -62,15 +59,12 @@ export function CommandMenu() {
     { path: "/", label: t.nav.tool, icon: House },
     { path: "/docs", label: t.nav.docs, icon: BookOpen },
     { path: "/excel-addin", label: t.nav.addin, icon: FileSpreadsheet },
-    { path: "/about", label: t.nav.about, icon: Info },
     { path: "/contact", label: t.nav.contact, icon: Mail },
     { path: "/updates", label: t.nav.updates, icon: Newspaper },
     { path: "/privacy", label: t.nav.privacy, icon: Shield },
     // ja のルートにしか存在しないページ。
     ...(language === "ja"
       ? [
-          { path: "/guide", label: "ガイド", icon: Compass },
-          { path: "/faq", label: "FAQ", icon: HelpCircle },
           { path: "/terms", label: "利用規約", icon: ScrollText },
         ]
       : []),

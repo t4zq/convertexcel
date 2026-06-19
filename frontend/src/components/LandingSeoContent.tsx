@@ -1,5 +1,3 @@
-import { Link } from "react-router-dom"
-
 import { GradientText } from "@/components/animate-ui/primitives/texts/gradient"
 
 // テーマ対応の控えめなグラデーション（neutral 基調に馴染むよう foreground/primary を往復）。
@@ -45,25 +43,11 @@ export function LandingSeoContent() {
         <p className="text-muted-foreground">
           実験レポートの測定データを表とグラフにまとめたいとき、論文用に体裁の整った表が必要なとき、
           普段はWordを使っているけどExcel のグラフではなく LaTeX 上のきれいなグラフに描き直したいとき、データはあるのに整形が面倒、という場面で役立ちます。
-          初めての方は、まず使い方ガイドから読み始めてください。
+          詳しい使い方や出力例はドキュメントにまとめています。
         </p>
-        <ul className="space-y-1">
-          <li>
-            <Link to="/guide" className="underline underline-offset-4 hover:text-foreground">
-              使い方ガイドを読む
-            </Link>
-          </li>
-          <li>
-            <Link to="/faq" className="underline underline-offset-4 hover:text-foreground">
-              よくある質問（FAQ）
-            </Link>
-          </li>
-          <li>
-            <Link to="/about" className="underline underline-offset-4 hover:text-foreground">
-              converTeXcel について
-            </Link>
-          </li>
-        </ul>
+        <a href="https://docs.convertexcel.net/docs" className="underline underline-offset-4 hover:text-foreground">
+          ドキュメントを読む
+        </a>
       </div>
     </section>
   )
