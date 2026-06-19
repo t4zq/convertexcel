@@ -1,65 +1,46 @@
-import { Download } from "lucide-react"
+import { BookOpen, Download } from "lucide-react"
 import { Link } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { useI18n } from "@/hooks/useI18n"
 import { useSeo } from "@/hooks/useSeo"
 import { addinGuide, ADDIN_MANIFEST_URL } from "@/lib/addin-guide"
 import { localizedSiteUrls } from "@/lib/i18n"
 
 const SITE_URL = "https://convertexcel.net/"
+const DOCS_URL = "https://docs.convertexcel.net/docs"
 const addinUrls = localizedSiteUrls(SITE_URL, "/excel-addin")
-
-type Line = { text: string; link?: { label: string; url: string }; textAfter?: string }
-
-const lineText = (line: Line) => `${line.text}${line.link?.label ?? ""}${line.textAfter ?? ""}`
-
-function LineContent({ line }: { line: Line }) {
-  return (
-    <>
-      {line.text}
-      {line.link && (
-        <a className="underline underline-offset-4" href={line.link.url} target="_blank" rel="noopener">
-          {line.link.label}
-        </a>
-      )}
-      {line.textAfter}
-    </>
-  )
-}
+const docsLabels = {
+  ja: "詳しい導入手順をDocsで見る",
+  en: "Read the installation guide",
+  zh: "在文档中查看详细安装步骤",
+  "zh-Hant": "在文件中查看詳細安裝步驟",
+  es: "Ver la guía de instalación",
+  de: "Installationsanleitung lesen",
+} as const
 
 export default function AddinPage() {
   const { language, pathFor } = useI18n()
   const guide = addinGuide[language]
   const canonical = addinUrls[language]
 
-  const pageSchema = {
-    "@context": "https://schema.org",
-    "@type": "HowTo",
-    name: guide.title,
-    url: canonical,
-    inLanguage: language,
-    description: guide.seoDescription,
-    step: guide.methods.flatMap((method) =>
-      method.steps.map((step, index) => ({
-        "@type": "HowToStep",
-        name: `${method.title} ${index + 1}`,
-        text: lineText(step),
-      })),
-    ),
-  }
-
   useSeo({
     title: guide.seoTitle,
     description: guide.seoDescription,
     canonical,
     language,
-    alternates: {
-      ...addinUrls,
-      "x-default": addinUrls.ja,
+    alternates: { ...addinUrls, "x-default": addinUrls.ja },
+    schema: {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: guide.title,
+      url: canonical,
+      inLanguage: language,
+      description: guide.seoDescription,
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Microsoft 365 Excel",
     },
-    schema: pageSchema,
   })
 
   return (
@@ -71,51 +52,23 @@ export default function AddinPage() {
       </header>
 
       <Card>
-        <CardHeader><CardTitle>{guide.requirementsTitle}</CardTitle></CardHeader>
-        <CardContent className="text-sm">
-          <ul className="list-disc space-y-1 pl-5">
-            {guide.requirements.map((item) => <li key={item}>{item}</li>)}
-          </ul>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader><CardTitle>{guide.downloadTitle}</CardTitle></CardHeader>
-        <CardContent className="space-y-3 text-sm">
+        <CardContent className="space-y-4 pt-6 text-sm">
+          <h2 className="text-base font-semibold">{guide.downloadTitle}</h2>
           <p className="text-muted-foreground">{guide.downloadDescription}</p>
-          <Button asChild>
-            <a href={ADDIN_MANIFEST_URL} download="converTeXcel-manifest.xml">
-              <Download className="h-4 w-4" />
-              {guide.downloadButton}
-            </a>
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader><CardTitle>{guide.methodsTitle}</CardTitle></CardHeader>
-        <CardContent className="space-y-5 text-sm">
-          {guide.methods.map((method) => (
-            <div key={method.title} className="space-y-2">
-              <p className="font-medium">{method.title}</p>
-              <ol className="list-decimal space-y-1 pl-5">
-                {method.steps.map((step) => (
-                  <li key={lineText(step)}><LineContent line={step} /></li>
-                ))}
-              </ol>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader><CardTitle>{guide.notesTitle}</CardTitle></CardHeader>
-        <CardContent className="text-sm">
-          <ul className="list-disc space-y-1 pl-5">
-            {guide.notes.map((item) => (
-              <li key={lineText(item)}><LineContent line={item} /></li>
-            ))}
-          </ul>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild>
+              <a href={ADDIN_MANIFEST_URL} download="converTeXcel-manifest.xml">
+                <Download className="h-4 w-4" />
+                {guide.downloadButton}
+              </a>
+            </Button>
+            <Button variant="outline" asChild>
+              <a href={DOCS_URL}>
+                <BookOpen className="h-4 w-4" />
+                {docsLabels[language]}
+              </a>
+            </Button>
+          </div>
         </CardContent>
       </Card>
 

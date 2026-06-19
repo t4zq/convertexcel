@@ -5,9 +5,6 @@ import { useI18n } from "@/hooks/useI18n"
 // 日本語のみ用意したコンテンツページ（root のみにルートあり）。
 // 他言語では 404 を避けるため、language === "ja" のときだけ表示する。
 const JA_ONLY_LINKS = [
-  { to: "/guide", label: "使い方ガイド" },
-  { to: "/faq", label: "よくある質問" },
-  { to: "/about", label: "converTeXcel について" },
   { to: "/contact", label: "お問い合わせ" },
   { to: "/terms", label: "利用規約" },
 ]
