@@ -13,6 +13,11 @@ const nextConfig = {
       },
     ],
   },
+  // No route uses next/og or ImageResponse. Excluding its native renderer keeps
+  // the Worker below Cloudflare Free's compressed bundle limit.
+  outputFileTracingExcludes: {
+    '*': ['node_modules/next/dist/compiled/@vercel/og/**/*'],
+  },
   // Packages with Cloudflare Workers (workerd) specific code
   // Read more: https://opennext.js.org/cloudflare/howtos/workerd
   // pino/* are kept external: pino-abstract-transport require()s the `worker_threads`
