@@ -1,3 +1,6 @@
+import { AnimatePresence, motion, useReducedMotion } from "motion/react"
+
+import { AnimatedNumber } from "@/components/motion/AnimatedNumber"
 import { useI18n } from "@/hooks/useI18n"
 import { useStatusData } from "@/hooks/useStatusBar"
 
@@ -14,6 +17,7 @@ function engineLabel(
 export function StatusBar() {
   const s = useStatusData()
   const { t } = useI18n()
+  const reducedMotion = useReducedMotion()
   const engine = engineLabel(s.engineReady, t.status)
 
   return (
@@ -24,17 +28,26 @@ export function StatusBar() {
 
       <span className="flex items-center gap-1">
         <span className={engine.color}>●</span>
-        {engine.text}
+        <AnimatePresence initial={false} mode="wait">
+          <motion.span
+            key={engine.text}
+            initial={{ opacity: 0, y: reducedMotion ? 0 : -3 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: reducedMotion ? 0 : 3 }}
+          >
+            {engine.text}
+          </motion.span>
+        </AnimatePresence>
       </span>
 
       <span className="flex items-center gap-2">
-        <span className={s.errors > 0 ? "text-destructive" : "text-muted-foreground"}>✕ {s.errors}</span>
-        <span className={s.warnings > 0 ? "text-warning" : "text-muted-foreground"}>▲ {s.warnings}</span>
+        <span className={s.errors > 0 ? "text-destructive" : "text-muted-foreground"}>✕ <AnimatedNumber value={s.errors} /></span>
+        <span className={s.warnings > 0 ? "text-warning" : "text-muted-foreground"}>▲ <AnimatedNumber value={s.warnings} /></span>
       </span>
 
       <span className="ml-auto flex items-center gap-3 pr-3 text-muted-foreground">
-        <span>{s.rows}×{s.cols}</span>
-        <span>{s.chars} {t.status.chars}</span>
+        <span><AnimatedNumber value={s.rows} />×<AnimatedNumber value={s.cols} /></span>
+        <span><AnimatedNumber value={s.chars} /> {t.status.chars}</span>
         {s.activeOutput && <span className="text-secondary-foreground">{s.activeOutput}</span>}
         <span>UTF-8</span>
         <span>LF</span>

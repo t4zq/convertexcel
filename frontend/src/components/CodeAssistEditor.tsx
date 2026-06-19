@@ -41,6 +41,7 @@ interface CodeAssistEditorProps {
   value: string
   onChange: (value: string) => void
   minHeight?: number
+  onRequestFullscreen?: () => void
 }
 
 const LATEX_COMMANDS = [
@@ -204,15 +205,18 @@ export function CodeAssistEditor({
   value,
   onChange,
   minHeight = 260,
+  onRequestFullscreen,
 }: CodeAssistEditorProps) {
   const hostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
   const onChangeRef = useRef(onChange)
   const valueRef = useRef(value)
+  const onRequestFullscreenRef = useRef(onRequestFullscreen)
   const syntaxCompartment = useRef(new Compartment())
 
   onChangeRef.current = onChange
   valueRef.current = value
+  onRequestFullscreenRef.current = onRequestFullscreen
 
   const extensions = useMemo<Extension[]>(() => [
     lineNumbers(),
@@ -236,6 +240,16 @@ export function CodeAssistEditor({
       closeOnBlur: false,
       override: [codeCompletions(kind)],
     }),
+    keymap.of([
+      {
+        key: "Alt-Enter",
+        run: () => {
+          if (!onRequestFullscreenRef.current) return false
+          onRequestFullscreenRef.current()
+          return true
+        },
+      },
+    ]),
     keymap.of([
       indentWithTab,
       ...defaultKeymap,

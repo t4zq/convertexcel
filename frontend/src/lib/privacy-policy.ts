@@ -76,7 +76,7 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
       {
         title: "データの扱いと権利",
         paragraphs: [
-          "入力内容は基本的にブラウザ内にとどまります。localStorage に保存された入力や設定は、ブラウザの設定からいつでも削除できます。",
+          "入力内容と表示設定は端末へ永続保存せず、ページを閉じると破棄されます。",
           "共有リンクは入力内容を URL 自体に含みます。共有先の管理にご注意ください。",
         ],
       },
@@ -100,13 +100,7 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           category: "貼り付けた表データ、生成された LaTeX/CSV/TikZ/gnuplot コード",
           purpose: "変換結果の生成・編集・プレビュー",
           legalBasis: "利用者の操作・要求への対応",
-          retention: "通常はブラウザ内のみ。localStorage 保存時は利用者が削除するまで。",
-        },
-        {
-          category: "localStorage の入力内容・表示設定",
-          purpose: "入力復元、設定保持",
-          legalBasis: "利用者の選択",
-          retention: "利用者がブラウザで削除するまで、またはアプリが上書きするまで。",
+          retention: "ページを閉じるまで。共有リンク作成時は URL の存続期間中。",
         },
         {
           category: "IPアドレス、User-Agent、リクエストログ等の技術データ",
@@ -200,7 +194,7 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
       {
         title: "Your data and rights",
         paragraphs: [
-          "Your input generally stays in your browser. Input and settings stored in localStorage can be deleted from your browser settings at any time.",
+          "Input and display settings are not stored persistently on your device and are discarded when you close the page.",
           "Share links include your input in the URL itself, so manage who you share them with.",
         ],
       },
@@ -224,13 +218,7 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           category: "Pasted table data and generated LaTeX/CSV/TikZ/gnuplot code",
           purpose: "Generate, edit, and preview conversion results",
           legalBasis: "Responding to your actions and requests",
-          retention: "Normally in-browser only; if saved to localStorage, until you delete it.",
-        },
-        {
-          category: "Input and display settings in localStorage",
-          purpose: "Restore input and keep settings",
-          legalBasis: "Your choice",
-          retention: "Until you delete it in your browser or the app overwrites it.",
+          retention: "Until the page is closed; for share links, while the URL exists.",
         },
         {
           category: "Technical data such as IP address, User-Agent, and request logs",
@@ -324,7 +312,7 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
       {
         title: "数据处理与您的权利",
         paragraphs: [
-          "您的输入通常仅保留在浏览器内。保存在 localStorage 中的输入和设置可随时通过浏览器设置删除。",
+          "输入内容和显示设置不会永久保存在设备上，关闭页面后即会被丢弃。",
           "分享链接会将输入内容包含在 URL 中，请注意分享对象。",
         ],
       },
@@ -348,13 +336,7 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           category: "粘贴的表格数据，生成的 LaTeX/CSV/TikZ/gnuplot 代码",
           purpose: "生成、编辑与预览转换结果",
           legalBasis: "响应您的操作与请求",
-          retention: "通常仅在浏览器内；若保存到 localStorage，则保留至您删除为止。",
-        },
-        {
-          category: "localStorage 中的输入内容与显示设置",
-          purpose: "恢复输入、保留设置",
-          legalBasis: "您的选择",
-          retention: "直至您在浏览器中删除，或被应用覆盖。",
+          retention: "关闭页面前；若创建共享链接，则在该 URL 存续期间。",
         },
         {
           category: "IP 地址、User-Agent、请求日志等技术数据",
@@ -448,7 +430,7 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
       {
         title: "資料處理與您的權利",
         paragraphs: [
-          "您的輸入內容通常僅保留在瀏覽器內。儲存在 localStorage 中的輸入與設定可隨時透過瀏覽器設定刪除。",
+          "輸入內容和顯示設定不會永久儲存在裝置上，關閉頁面後即會被捨棄。",
           "分享連結會將輸入內容包含在 URL 中，請注意分享對象。",
         ],
       },
@@ -472,13 +454,7 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           category: "貼上的表格資料，產生的 LaTeX/CSV/TikZ/gnuplot 程式碼",
           purpose: "產生、編輯與預覽轉換結果",
           legalBasis: "回應您的操作與請求",
-          retention: "通常僅在瀏覽器內；若儲存到 localStorage，則保留至您刪除為止。",
-        },
-        {
-          category: "localStorage 中的輸入內容與顯示設定",
-          purpose: "復原輸入、保留設定",
-          legalBasis: "您的選擇",
-          retention: "直到您在瀏覽器中刪除，或被應用程式覆寫。",
+          retention: "關閉頁面前；若建立分享連結，則在該 URL 存續期間。",
         },
         {
           category: "IP 位址、User-Agent、請求日誌等技術資料",
@@ -572,7 +548,7 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
       {
         title: "Tus datos y derechos",
         paragraphs: [
-          "Tu entrada permanece generalmente en tu navegador. La entrada y la configuración guardadas en localStorage pueden eliminarse desde la configuración del navegador en cualquier momento.",
+          "La entrada y los ajustes no se guardan de forma persistente en el dispositivo y se descartan al cerrar la página.",
           "Los enlaces para compartir incluyen tu entrada en la propia URL, así que controla con quién los compartes.",
         ],
       },
@@ -596,13 +572,7 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           category: "Datos de tabla pegados y código LaTeX/CSV/TikZ/gnuplot generado",
           purpose: "Generar, editar y previsualizar los resultados de conversión",
           legalBasis: "Respuesta a tus acciones y solicitudes",
-          retention: "Normalmente solo en el navegador; si se guarda en localStorage, hasta que lo elimines.",
-        },
-        {
-          category: "Entrada y ajustes de visualización en localStorage",
-          purpose: "Restaurar la entrada y mantener los ajustes",
-          legalBasis: "Tu elección",
-          retention: "Hasta que lo elimines en tu navegador o la app lo sobrescriba.",
+          retention: "Hasta cerrar la página; para enlaces compartidos, mientras exista la URL.",
         },
         {
           category: "Datos técnicos como dirección IP, User-Agent y registros de solicitudes",
@@ -696,7 +666,7 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
       {
         title: "Ihre Daten und Rechte",
         paragraphs: [
-          "Ihre Eingaben verbleiben in der Regel in Ihrem Browser. In localStorage gespeicherte Eingaben und Einstellungen können Sie jederzeit über die Browsereinstellungen löschen.",
+          "Eingaben und Anzeigeeinstellungen werden nicht dauerhaft auf dem Gerät gespeichert und beim Schließen der Seite verworfen.",
           "Freigabelinks enthalten Ihre Eingabe in der URL selbst; achten Sie daher darauf, mit wem Sie sie teilen.",
         ],
       },
@@ -720,13 +690,7 @@ export const privacyPolicy: Record<Language, PrivacyPolicyContent> = {
           category: "Eingefügte Tabellendaten und generierter LaTeX/CSV/TikZ/gnuplot-Code",
           purpose: "Erzeugen, Bearbeiten und Vorschau der Umwandlungsergebnisse",
           legalBasis: "Reaktion auf Ihre Aktionen und Anfragen",
-          retention: "Normalerweise nur im Browser; bei Speicherung in localStorage, bis Sie sie löschen.",
-        },
-        {
-          category: "Eingaben und Anzeigeeinstellungen in localStorage",
-          purpose: "Eingaben wiederherstellen und Einstellungen behalten",
-          legalBasis: "Ihre Wahl",
-          retention: "Bis Sie sie im Browser löschen oder die App sie überschreibt.",
+          retention: "Bis zum Schließen der Seite; bei Freigabelinks solange die URL besteht.",
         },
         {
           category: "Technische Daten wie IP-Adresse, User-Agent und Anfrageprotokolle",

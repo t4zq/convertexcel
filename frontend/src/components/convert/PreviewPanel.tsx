@@ -5,13 +5,6 @@ import { CheckCircle2 } from "lucide-react"
 import { PanelFallback } from "@/components/convert/panels"
 import { Loader } from "@/components/animate-ui/components/loader"
 import { AnimatedNumber } from "@/components/motion/AnimatedNumber"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { useI18n } from "@/hooks/useI18n"
 import type { OutputTab, usePreviewSubmission } from "@/hooks/usePreviewSubmission"
@@ -24,6 +17,11 @@ const GnuplotPreviewPane = lazy(() =>
 const PreviewErrorPanel = lazy(() =>
   import("@/components/convert/PreviewErrorPanel").then((module) => ({
     default: module.PreviewErrorPanel,
+  }))
+)
+const PdfPreview = lazy(() =>
+  import("@/components/convert/PdfPreview").then((module) => ({
+    default: module.PdfPreview,
   }))
 )
 
@@ -48,14 +46,7 @@ export function PreviewPanel({
   const reducedMotion = useReducedMotion()
 
   return (
-    <Card className="h-full">
-      <CardHeader>
-        <CardTitle>{t.convert.pdfTitle}</CardTitle>
-        <CardDescription>
-          {activeTab === "gnuplot" ? t.convert.gnuplotPreviewDescription : t.convert.pdfDescription}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
+    <div className="h-full space-y-3">
         {activeTab === "gnuplot" ? (
           <Suspense fallback={<PanelFallback minHeight={420} />}>
             <GnuplotPreviewPane
@@ -131,16 +122,11 @@ export function PreviewPanel({
                 </motion.div>
               )}
             </AnimatePresence>
-            <iframe
-              ref={preview.iframeRef}
-              name="tex-iframe"
-              title="LaTeX PDF preview"
-              className="h-[420px] w-full rounded-md border xl:h-[760px] dark:[filter:invert(1)_hue-rotate(180deg)]"
-              onLoad={preview.finishPreviewLoad}
-            />
+            <Suspense fallback={<PanelFallback minHeight={420} />}>
+              <PdfPreview pdf={preview.pdf} onRendered={preview.finishPreviewLoad} />
+            </Suspense>
           </>
         )}
-      </CardContent>
-    </Card>
+    </div>
   )
 }

@@ -1,4 +1,4 @@
-import { genCsv, genGnuplot, genLatex, genTikz } from "@/engine/loader"
+import { convertAll } from "@/engine/loader"
 import {
   DEFAULT_GNUPLOT_SETTINGS,
   toConvertOptions,
@@ -24,11 +24,7 @@ export async function convertTable(
   gnuplot: GnuplotSettings = DEFAULT_GNUPLOT_SETTINGS,
 ): Promise<ConversionResult> {
   const opts = toConvertOptions(table)
-  const [latex, csv, tikzGraph, gnuplotOut] = await Promise.all([
-    genLatex(input, opts).catch(() => ""),
-    genCsv(input, opts).catch(() => ""),
-    genTikz(input, toTikzOptions(tikz, table)).catch(() => ""),
-    genGnuplot(input, {
+  const result = await convertAll(input, opts, toTikzOptions(tikz, table), {
       // ラベル・軸スケール・近似手法は TikZ 設定を共有する。
       scaleMode: tikz.scaleMode,
       hasHeader: table.hasHeader,
@@ -43,18 +39,17 @@ export async function convertTable(
       pointType: gnuplot.pointType,
       pointSize: gnuplot.pointSize,
       title: gnuplot.title,
-    }).catch(() => ""),
-  ])
+    }).catch(() => ({ latex: "", csv: "", tikz: "", gnuplot: "" }))
 
   return {
-    latex: applyTableAlignment(latex, table.columnAlign, table.siunitx),
-    csv,
+    latex: applyTableAlignment(result.latex, table.columnAlign, table.siunitx),
+    csv: result.csv,
     tikz: applySeriesStyles(
-      tikzGraph,
+      result.tikz,
       tikz.seriesColors ?? [],
       tikz.seriesMarks ?? [],
       tikz.fitMethods ?? ["auto"],
     ),
-    gnuplot: gnuplotOut,
+    gnuplot: result.gnuplot,
   }
 }

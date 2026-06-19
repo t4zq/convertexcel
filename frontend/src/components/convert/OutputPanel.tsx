@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react"
-import { useReducedMotion } from "motion/react"
+import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { FileText, LoaderCircle, Settings2 } from "lucide-react"
 
 import { CopyButton } from "@/components/convert/CopyButton"
@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -35,6 +34,25 @@ const TikzSettingsPanel = lazy(() =>
 )
 
 const OUTPUT_MIN_HEIGHT = 273
+
+function CooldownLabel({ value, reducedMotion }: { value: number; reducedMotion: boolean | null }) {
+  const { t } = useI18n()
+  return (
+    <AnimatePresence initial={false}>
+      {value > 0 && (
+        <motion.span
+          key={value}
+          className="self-center text-sm text-muted-foreground"
+          initial={{ opacity: 0, y: reducedMotion ? 0 : -3 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: reducedMotion ? 0 : -3 }}
+        >
+          {t.convert.cooldown(value)}
+        </motion.span>
+      )}
+    </AnimatePresence>
+  )
+}
 
 type OutputPanelProps = {
   activeTab: OutputTab
@@ -92,7 +110,6 @@ export function OutputPanel({
     <Card className="h-full">
       <CardHeader>
         <CardTitle>{t.convert.outputTitle}</CardTitle>
-        <CardDescription>{t.convert.outputDescription}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <Suspense fallback={<PanelFallback />}>
@@ -111,7 +128,7 @@ export function OutputPanel({
                 <span>{t.convert.previewTable}</span>
               </RippleButton>
               <CopyButton value={latexOut} label={t.convert.copyTable} />
-              {cooldown > 0 && <span className="text-muted-foreground self-center text-sm">{t.convert.cooldown(cooldown)}</span>}
+              <CooldownLabel value={cooldown} reducedMotion={reducedMotion} />
             </div>
             <div>
               <OutputCodeEditor
@@ -119,6 +136,7 @@ export function OutputPanel({
                 value={latexOut}
                 onChange={onLatexChange}
                 minHeight={OUTPUT_MIN_HEIGHT}
+                compileErrors={preview.previewError?.type === "compile" && preview.previewError.kind === "latex" ? preview.previewError.errors : undefined}
               />
             </div>
           </TabsContent>
@@ -139,7 +157,7 @@ export function OutputPanel({
                 <span>{t.convert.previewGraph}</span>
               </RippleButton>
               <CopyButton value={tikzOut} label={t.convert.copyPlot} />
-              {cooldown > 0 && <span className="text-muted-foreground self-center text-sm">{t.convert.cooldown(cooldown)}</span>}
+              <CooldownLabel value={cooldown} reducedMotion={reducedMotion} />
             </div>
             <SettingsReveal open={showTikzSettings} reducedMotion={reducedMotion}>
               <Suspense fallback={<PanelFallback />}>
@@ -157,6 +175,7 @@ export function OutputPanel({
                 value={tikzOut}
                 onChange={onTikzChange}
                 minHeight={OUTPUT_MIN_HEIGHT}
+                compileErrors={preview.previewError?.type === "compile" && preview.previewError.kind === "tikz" ? preview.previewError.errors : undefined}
               />
             </div>
           </TabsContent>

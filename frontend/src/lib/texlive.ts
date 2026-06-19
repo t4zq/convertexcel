@@ -6,8 +6,6 @@
 
 import { API_BASE } from "@/api/client"
 
-const TEXLIVE_ORIGIN = "https://texlive.net"
-
 export const COOLDOWN_SECONDS = 15
 
 // wrapLatexDocument / wrapTikzDocument が本文の前に付けるプリアンブルの行数。
@@ -53,21 +51,16 @@ export interface ExtraFile {
 }
 
 export type TexliveResult =
-  | { ok: true; viewerUrl: string }
+  | { ok: true; pdf: Blob }
   // コンパイル失敗。texlive.net から返ってきた生ログ。解析は parseTexLog に渡す。
   | { ok: false; reason: "compile"; log: string }
   // 通信自体に失敗（オフライン・CORS・予期しないレスポンスなど）。
   | { ok: false; reason: "network"; detail: string }
 
-// Worker が返す PDF パス（例: /latexcgi/document_XXXX.pdf）を pdf.js ビューア URL にする。
-const viewerUrlFor = (pdfPath: string) =>
-  `${TEXLIVE_ORIGIN}/pdfjs/web/viewer.html?file=${encodeURIComponent(pdfPath)}`
-
 type TexPreviewResponse =
-  | { ok: true; pdfPath: string }
-  | { ok: false; reason?: "compile" | "network"; log: string }
+  { ok: false; reason?: "compile" | "network"; log: string }
 
-// Worker の /api/tex-preview 経由でコンパイルし、成功なら PDF ビューア URL を、
+// Worker の /api/tex-preview 経由でコンパイルし、成功なら PDF バイナリを、
 // 失敗なら TeX ログ（parseTexLog に渡す）を返す。
 export async function submitToTexlive(
   texCode: string,
@@ -84,6 +77,13 @@ export async function submitToTexlive(
     return { ok: false, reason: "network", detail: error instanceof Error ? error.message : String(error) }
   }
 
+  const contentType = response.headers.get("Content-Type") ?? ""
+  if (response.ok && contentType.toLowerCase().includes("application/pdf")) {
+    const pdf = await response.blob()
+    if (pdf.size > 0) return { ok: true, pdf }
+    return { ok: false, reason: "network", detail: "空のPDFを受信しました" }
+  }
+
   let data: TexPreviewResponse
   try {
     data = (await response.json()) as TexPreviewResponse
@@ -91,9 +91,6 @@ export async function submitToTexlive(
     return { ok: false, reason: "network", detail: `HTTP ${response.status}` }
   }
 
-  if (data.ok) {
-    return { ok: true, viewerUrl: viewerUrlFor(data.pdfPath) }
-  }
   if (data.reason === "network") {
     return { ok: false, reason: "network", detail: data.log }
   }

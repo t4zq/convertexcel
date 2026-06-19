@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react"
 import { BrowserRouter, Route, Routes } from "react-router-dom"
 
 import { AppHeader } from "@/components/AppHeader"
+import { CommandMenu } from "@/components/CommandMenu"
 import { SiteFooter } from "@/components/SiteFooter"
 import { StatusBar } from "@/components/StatusBar"
 import { I18nProvider } from "@/hooks/useI18n"
@@ -19,6 +20,7 @@ const ContactPage = lazy(() => import("@/pages/ContactPage"))
 const GuideDetailPage = lazy(() => import("@/pages/GuideDetailPage"))
 const TermsPage = lazy(() => import("@/pages/TermsPage"))
 const UpdatesPage = lazy(() => import("@/pages/UpdatesPage"))
+const DocsAdminPage = lazy(() => import("@/pages/DocsAdminPage"))
 
 const localizedRoutes = SUPPORTED_LANGUAGES
   .filter((language) => language !== "ja")
@@ -41,6 +43,7 @@ export default function App() {
     <StatusBarProvider>
       <BrowserRouter>
         <I18nProvider>
+          <CommandMenu />
           <AppHeader />
           <main className="pb-8">
             <Suspense fallback={<div className="p-4 sm:p-6" />}>
@@ -56,6 +59,7 @@ export default function App() {
                 <Route path="/contact" element={<ContactPage />} />
                 <Route path="/terms" element={<TermsPage />} />
                 <Route path="/updates" element={<UpdatesPage />} />
+                <Route path="/admin/docs" element={<DocsAdminPage />} />
                 {localizedRoutes}
                 <Route path="*" element={<NotFoundPage />} />
               </Routes>
