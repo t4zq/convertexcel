@@ -4,6 +4,7 @@ import GithubSlugger from 'github-slugger';
 import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
 import { Callout } from 'fumadocs-ui/components/callout';
 import { Card, Cards } from 'fumadocs-ui/components/card';
+import { CodeBlock, Pre } from 'fumadocs-ui/components/codeblock';
 import { File, Files, Folder } from 'fumadocs-ui/components/files';
 import { ImageZoom } from 'fumadocs-ui/components/image-zoom';
 import { Step, Steps } from 'fumadocs-ui/components/steps';
@@ -29,7 +30,12 @@ function Markdown({ children }: { children: string }) {
     <ReactMarkdown
       remarkPlugins={[remarkGfm, remarkMath]}
       rehypePlugins={[rehypeKatex]}
-      components={{ h2: heading(2), h3: heading(3), a: ({ href, ...props }) => <a href={href} {...props} /> }}
+      components={{
+        h2: heading(2),
+        h3: heading(3),
+        a: ({ href, ...props }) => <a href={href} {...props} />,
+        pre: ({ children }) => <CodeBlock><Pre>{children}</Pre></CodeBlock>,
+      }}
     >
       {children}
     </ReactMarkdown>
